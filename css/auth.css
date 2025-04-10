@@ -102,9 +102,79 @@ body {
     border-color: var(--primary-color);
 }
 
+.input-group select {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+    background-color: var(--white);
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+.input-group select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.input-group select option {
+    padding: 0.5rem;
+}
+
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.radio-option:hover {
+    background-color: var(--light-gray);
+}
+
+.radio-option input[type="radio"] {
+    margin-right: 12px;
+    width: 16px;
+    height: 16px;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+}
+
+.radio-label i {
+    color: var(--primary-color);
+    font-size: 18px;
+}
+
+.radio-option input[type="radio"]:checked + .radio-label {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.radio-option input[type="radio"]:checked {
+    accent-color: var(--primary-color);
+}
+
 .toggle-password {
     position: absolute;
-    right: 1rem;
+    right: 1px!important;
     cursor: pointer;
     color: var(--text-color);
     opacity: 0.5;

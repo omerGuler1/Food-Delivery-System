@@ -89,6 +89,7 @@ if (loginForm) {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const rememberMe = document.getElementById('rememberMe').checked;
+        const userType = document.querySelector('input[name="userType"]:checked').value;
 
         try {
             // Show loading state
@@ -105,12 +106,27 @@ if (loginForm) {
                 localStorage.setItem('rememberMe', 'true');
             }
 
+            // Store user type
+            localStorage.setItem('userType', userType);
+
             // Show success message
             showMessage('Login successful! Redirecting...', 'success');
 
-            // Redirect to dashboard
+            // Redirect based on user type
             setTimeout(() => {
-                window.location.href = 'index.html';
+                switch(userType) {
+                    case 'customer':
+                        window.location.href = 'index.html';
+                        break;
+                    case 'courier':
+                        window.location.href = 'courier-dashboard.html';
+                        break;
+                    case 'restaurant':
+                        window.location.href = 'restaurant-dashboard.html';
+                        break;
+                    default:
+                        window.location.href = 'index.html';
+                }
             }, 1500);
 
         } catch (error) {
