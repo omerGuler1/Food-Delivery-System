@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Courier Dashboard - HUFDS</title>
+    <link rel="stylesheet" href="css/courier-dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Login Form -->
+    <div class="courier-login">
+        <div class="login-container">
+            <h2>Courier Login</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="courierId">Courier ID</label>
+                    <input type="text" id="courierId" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn-submit">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="courier-dashboard">
+        <!-- Sidebar -->
+        <div class="courier-sidebar">
+            <div class="sidebar-header">
+                <h2>HUFDS</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li>
+                        <a href="#" data-section="overview" class="active">
+                            <i class="fas fa-home"></i>
+                            <span>Overview</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-section="orders">
+                            <i class="fas fa-list"></i>
+                            <span>Orders</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-section="earnings">
+                            <i class="fas fa-dollar-sign"></i>
+                            <span>Earnings</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-section="restaurants">
+                            <i class="fas fa-store"></i>
+                            <span>Restaurants</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-section="profile">
+                            <i class="fas fa-user"></i>
+                            <span>Profile</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="courier-main">
+            <!-- Header -->
+            <div class="courier-header">
+                <div class="header-status">
+                    <span class="status-text">Unavailable</span>
+                    <label class="switch">
+                        <input type="checkbox" id="statusToggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Overview Section -->
+            <section id="overview" class="courier-section active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <i class="fas fa-truck"></i>
+                        <div class="stat-info">
+                            <h3>Total Deliveries</h3>
+                            <div class="stat-number" id="totalDeliveries">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-dollar-sign"></i>
+                        <div class="stat-info">
+                            <h3>Total Earnings</h3>
+                            <div class="stat-number" id="totalEarnings">$0.00</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-star"></i>
+                        <div class="stat-info">
+                            <h3>Rating</h3>
+                            <div class="stat-number" id="rating">0.0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="current-order" id="currentOrder">
+                    <h3>Current Order</h3>
+                    <div class="order-details">
+                        <!-- Order details will be dynamically added here -->
+                    </div>
+                </div>
+
+                <div class="no-order" id="noOrder">
+                    <i class="fas fa-box"></i>
+                    <h3>No Current Order</h3>
+                    <p>You are available for new orders</p>
+                </div>
+            </section>
+
+            <!-- Orders Section -->
+            <section id="orders" class="courier-section">
+                <div class="section-filters">
+                    <div class="filter-group">
+                        <label for="orderStatus">Status:</label>
+                        <select id="orderStatus">
+                            <option value="all">All</option>
+                            <option value="pending">Pending</option>
+                            <option value="accepted">Accepted</option>
+                            <option value="picked">Picked Up</option>
+                            <option value="delivered">Delivered</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="orderDate">Date:</label>
+                        <select id="orderDate">
+                            <option value="all">All</option>
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="orders-list">
+                    <!-- Orders will be dynamically added here -->
+                </div>
+            </section>
+
+            <!-- Earnings Section -->
+            <section id="earnings" class="courier-section">
+                <div class="earnings-summary">
+                    <div class="earnings-card">
+                        <h3>Today's Earnings</h3>
+                        <div class="earnings-amount" id="todayEarnings">$0.00</div>
+                    </div>
+                    <div class="earnings-card">
+                        <h3>This Week</h3>
+                        <div class="earnings-amount" id="weekEarnings">$0.00</div>
+                    </div>
+                    <div class="earnings-card">
+                        <h3>This Month</h3>
+                        <div class="earnings-amount" id="monthEarnings">$0.00</div>
+                    </div>
+                    <div class="earnings-card">
+                        <h3>Total Earnings</h3>
+                        <div class="earnings-amount" id="totalEarnings">$0.00</div>
+                    </div>
+                </div>
+                <div class="earnings-chart">
+                    <h3>Earnings History</h3>
+                    <!-- Chart will be added here -->
+                </div>
+            </section>
+
+            <!-- Restaurants Section -->
+            <section id="restaurants" class="courier-section">
+                <div class="restaurants-grid">
+                    <!-- Restaurants will be dynamically added here -->
+                </div>
+                <div class="register-restaurant">
+                    <h3>Register with a New Restaurant</h3>
+                    <form id="registerForm">
+                        <div class="form-group">
+                            <label for="restaurantName">Restaurant Name</label>
+                            <input type="text" id="restaurantName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="restaurantAddress">Address</label>
+                            <input type="text" id="restaurantAddress" required>
+                        </div>
+                        <button type="submit" class="btn-submit">Register</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Profile Section -->
+            <section id="profile" class="courier-section">
+                <div class="profile-info">
+                    <div class="profile-header">
+                        <div class="profile-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div>
+                            <h2 id="profileName">Loading...</h2>
+                            <p id="profileEmail">Loading...</p>
+                        </div>
+                    </div>
+                    <div class="profile-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Total Deliveries</span>
+                            <div class="stat-value" id="profileDeliveries">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Total Earnings</span>
+                            <div class="stat-value" id="profileEarnings">$0.00</div>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Rating</span>
+                            <div class="stat-value" id="profileRating">0.0</div>
+                        </div>
+                    </div>
+                    <div class="profile-settings">
+                        <h3>Profile Settings</h3>
+                        <form id="profileForm">
+                            <div class="form-group">
+                                <label for="profilePhone">Phone Number</label>
+                                <input type="tel" id="profilePhone" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="profileVehicle">Vehicle Type</label>
+                                <select id="profileVehicle" required>
+                                    <option value="motorcycle">Motorcycle</option>
+                                    <option value="bicycle">Bicycle</option>
+                                    <option value="car">Car</option>
+                                    <option value="scooter">Scooter</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn-submit">Update Profile</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="js/courier-dashboard.js"></script>
+</body>
+</html> 

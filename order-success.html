@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sipariş Başarılı - FoodExpress</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/order-success.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="logo">
+                <h1>FoodExpress</h1>
+            </div>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="restaurants.html">Restaurants</a>
+                <a href="login.html">Login</a>
+                <a href="signup.html">Sign Up</a>
+                <a href="cart.html" class="cart-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count">0</span>
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="order-success">
+        <div class="success-container">
+            <div class="success-content">
+                <div class="success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h1>Siparişiniz Alındı!</h1>
+                <p>Siparişiniz başarıyla alındı ve hazırlanmaya başlandı.</p>
+                
+                <div class="order-details">
+                    <h2>Sipariş Detayları</h2>
+                    <div class="restaurant-info">
+                        <img id="restaurantImage" src="" alt="Restaurant Image">
+                        <div>
+                            <h3 id="restaurantName">Loading...</h3>
+                            <p id="deliveryTime">Loading...</p>
+                        </div>
+                    </div>
+                    <div class="order-items" id="orderItems">
+                        <!-- Sipariş öğeleri buraya dinamik olarak eklenecek -->
+                    </div>
+                    <div class="order-total">
+                        <div class="total-row">
+                            <span>Ara Toplam</span>
+                            <span id="subtotal">$0.00</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Teslimat Ücreti</span>
+                            <span id="deliveryFee">$0.00</span>
+                        </div>
+                        <div class="total-row final">
+                            <span>Toplam</span>
+                            <span id="total">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="delivery-info">
+                    <h2>Teslimat Bilgileri</h2>
+                    <div class="info-group">
+                        <label>Ad Soyad:</label>
+                        <span id="fullName">Loading...</span>
+                    </div>
+                    <div class="info-group">
+                        <label>Telefon:</label>
+                        <span id="phone">Loading...</span>
+                    </div>
+                    <div class="info-group">
+                        <label>Adres:</label>
+                        <span id="address">Loading...</span>
+                    </div>
+                    <div class="info-group">
+                        <label>Sipariş Notları:</label>
+                        <span id="instructions">Loading...</span>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <a href="index.html" class="home-btn">Ana Sayfaya Dön</a>
+                    <a href="orders.html" class="orders-btn">Siparişlerim</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>About Us</h3>
+                <p>FoodExpress is your one-stop destination for ordering delicious food from the best restaurants in town.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Quick Links</h3>
+                <ul>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                    <li><a href="faq.html">FAQ</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Connect With Us</h3>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-facebook"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 FoodExpress. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/order-success.js"></script>
+</body>
+</html> 
