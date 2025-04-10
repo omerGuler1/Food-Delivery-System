@@ -1,93 +1,376 @@
-# GPT+
+# Hacettepe University Food Delivery System (HUFDS)
 
+## 📋 About
+HUFDS (Hacettepe University Food Delivery System) is a food delivery system developed for Hacettepe University. The system enables users to place food orders, restaurants to manage their menus and orders, and couriers to handle deliveries.
 
+## 🛠 Technical Infrastructure
+- **Java Version:** 17
+- **Framework:** Spring Boot 3.2.3
+- **Build Tool:** Maven
+- **Database:** PostgreSQL
+- **Connection Pool:** HikariCP
 
-## Getting started
+## 💾 Database Structure
+### Core Entities
+#### Users Table
+| Field        | Type     | Properties                |
+|-------------|----------|---------------------------|
+| id          | Long     | Primary Key, Auto Inc     |
+| email       | String   | Unique, Not Null          |
+| password    | String   | Not Null                  |
+| full_name   | String   | Not Null                  |
+| role        | Enum     | Not Null                  |
+| enabled     | Boolean  | Default: true             |
+| phone_number| String   | -                         |
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+#### Restaurant Table
+| Field           | Type     | Properties                |
+|----------------|----------|---------------------------|
+| id             | Long     | Primary Key, Auto Inc     |
+| name           | String   | Not Null                  |
+| description    | String   | -                         |
+| cuisine_type   | String   | -                         |
+| rating         | Double   | Default: 0.0              |
+| address        | Address  | One-to-One                |
+| business_hours | BusinessHours | One-to-One         |
+| menu_items     | List     | One-to-Many               |
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+## 👥 User Roles
+- 🧑‍💼 CUSTOMER
+- 🏪 RESTAURANT
+- 🚴 COURIER
+- 👨‍💼 ADMIN
 
-## Add your files
+## 🔐 Security Features
+- JWT (JSON Web Token) based authentication
+- BCrypt encryption
+- Role-based access control
+- CSRF protection
+- Stateless session management
+- Remember-me functionality
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+## 🌟 Features
+### Authentication
+- User registration with email verification
+- Secure login with JWT tokens
+- Password encryption
+- Role-based authorization
+- Remember-me functionality
 
+### Restaurant Management
+- Restaurant registration and profile management
+- Menu item management
+- Business hours configuration
+- Restaurant search and filtering
+- Cuisine type categorization
+
+## 🔧 Configuration
+### Database Configuration
+```properties
+spring.datasource.url=jdbc:postgresql://localhost:5432/hufds
+spring.datasource.username=postgres
+spring.datasource.password=admin
+spring.datasource.driver-class-name=org.postgresql.Driver
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/bbm384-25/gpt-plus.git
-git branch -M main
-git push -uf origin main
+
+### Connection Pool Configuration
+```properties
+spring.datasource.hikari.connection-timeout=20000
+spring.datasource.hikari.maximum-pool-size=5
 ```
 
-## Integrate with your tools
+### JWT Configuration
+```properties
+jwt.secret=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+jwt.expiration=86400000
+```
 
-- [ ] [Set up project integrations](https://gitlab.com/bbm384-25/gpt-plus/-/settings/integrations)
+## 📚 Technologies and Libraries
+- Spring Boot Starter Web
+- Spring Boot Starter Data JPA
+- Spring Boot Starter Security
+- Spring Boot Starter Validation
+- JWT (jjwt-api, jjwt-impl, jjwt-jackson)
+- PostgreSQL
+- Lombok
+- Spring Boot Test
 
-## Collaborate with your team
+## 🔄 API Endpoints
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+### Authentication Endpoints
+#### Register(TESTED)
+- **URL:** `/api/auth/register`
+- **Method:** `POST`
+- **Description:** Register a new user
+- **Request Body:**
+```json
+{
+    "email": "string",
+    "password": "string",
+    "confirmPassword": "string",
+    "fullName": "string",
+    "role": "CUSTOMER | RESTAURANT | COURIER | ADMIN",
+    "phoneNumber": "string",
+    "termsAccepted": boolean
+}
+```
+- **Response:** `201 Created`
+```json
+{
+    "token": "string",
+    "email": "string",
+    "role": "string",
+    "fullName": "string"
+}
+```
 
-## Test and Deploy
+#### Login(TESTED)
+- **URL:** `/api/auth/login`
+- **Method:** `POST`
+- **Description:** Authenticate user and return JWT token
+- **Request Body:**
+```json
+{
+    "email": "string",
+    "password": "string",
+    "rememberMe": boolean
+}
+```
+- **Response:** `200 OK`
+```json
+{
+    "token": "string",
+    "email": "string",
+    "role": "string",
+    "fullName": "string"
+}
+```
 
-Use the built-in continuous integration in GitLab.
+### Restaurant Endpoints
+#### Get All Restaurants(TESTED)
+- **URL:** `/api/restaurants`
+- **Method:** `GET`
+- **Description:** Get all restaurants
+- **Response:** `200 OK`
+```json
+[
+    {
+        "id": "number",
+        "name": "string",
+        "description": "string",
+        "cuisineType": "string",
+        "rating": "number"
+    }
+]
+```
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+#### Get Restaurant by ID(TESTED)
+- **URL:** `/api/restaurants/{id}`
+- **Method:** `GET`
+- **Description:** Get restaurant by ID
+- **Response:** `200 OK`
+```json
+{
+    "id": "number",
+    "name": "string",
+    "description": "string",
+    "cuisineType": "string",
+    "rating": "number"
+}
+```
 
-***
+#### Search Restaurants(TESTED)
+- **URL:** `/api/restaurants/search`
+- **Method:** `GET`
+- **Description:** Search restaurants by name
+- **Query Parameters:** `name`
+- **Response:** `200 OK`
+```json
+[
+    {
+        "id": "number",
+        "name": "string",
+        "description": "string",
+        "cuisineType": "string",
+        "rating": "number"
+    }
+]
+```
 
-# Editing this README
+#### Get Restaurants by Cuisine(TESTED)
+- **URL:** `/api/restaurants/cuisine/{type}`
+- **Method:** `GET`
+- **Description:** Get restaurants by cuisine type
+- **Response:** `200 OK`
+```json
+[
+    {
+        "id": "number",
+        "name": "string",
+        "description": "string",
+        "cuisineType": "string",
+        "rating": "number"
+    }
+]
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+#### Create Restaurant(NOT TESTED)
+- **URL:** `/api/restaurants`
+- **Method:** `POST`
+- **Description:** Create a new restaurant
+- **Request Body:**
+```json
+{
+    "name": "string",
+    "description": "string",
+    "cuisineType": "string"
+}
+```
+- **Response:** `201 Created`
 
-## Suggestions for a good README
+#### Update Restaurant(NOT TESTED)
+- **URL:** `/api/restaurants/{id}`
+- **Method:** `PUT`
+- **Description:** Update restaurant information
+- **Request Body:**
+```json
+{
+    "name": "string",
+    "description": "string",
+    "cuisineType": "string"
+}
+```
+- **Response:** `200 OK`
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+#### Delete Restaurant(NOT TESTED)
+- **URL:** `/api/restaurants/{id}`
+- **Method:** `DELETE`
+- **Description:** Delete a restaurant
+- **Response:** `200 OK`
 
-## Name
-Choose a self-explaining name for your project.
+### Error Responses
+All endpoints may return the following error responses:
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+#### 400 Bad Request
+```json
+{
+    "error": "string",
+    "details": {
+        "field": "error message"
+    }
+}
+```
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+#### 401 Unauthorized
+```json
+{
+    "error": "Unauthorized",
+    "message": "Invalid or expired token"
+}
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+#### 403 Forbidden
+```json
+{
+    "error": "Forbidden",
+    "message": "Insufficient permissions"
+}
+```
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+#### 404 Not Found
+```json
+{
+    "error": "Not Found",
+    "message": "Resource not found"
+}
+```
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+#### 500 Internal Server Error
+```json
+{
+    "error": "Internal Server Error",
+    "message": "An unexpected error occurred"
+}
+```
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+## 🚀 Development Status
+The system currently has basic authentication and user management infrastructure. The main business logic modules related to food ordering and delivery are under development.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+## 📦 Project Structure
+```
+src/
+├── main/
+│   ├── java/
+│   │   └── com/
+│   │       └── hufds/
+│   │           ├── config/
+│   │           ├── controller/
+│   │           ├── dto/
+│   │           ├── exception/
+│   │           ├── model/
+│   │           ├── repository/
+│   │           ├── security/
+│   │           ├── service/
+│   │           └── HufdsApplication.java
+│   └── resources/
+│       └── application.properties
+```
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+## 🛠 Installation and Running
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+### Requirements
+- Java 17 JDK
+- Maven 3.6+
+- PostgreSQL (for Production)
+- H2 Database (for Development)
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+### Development Environment Setup
+1. Clone the project:
+```bash
+git clone [repository-url]
+```
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+2. Navigate to project directory:
+```bash
+cd hu-fds
+```
 
-## License
-For open source projects, say how it is licensed.
+3. Install Maven dependencies:
+```bash
+mvn clean install
+```
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+4. Run the application:
+```bash
+mvn spring-boot:run
+```
+
+### Production Environment Setup
+1. Configure `application.properties` for production environment
+2. Create PostgreSQL database
+3. Build and run the application
+
+## 🔒 Security
+- All passwords are hashed using BCrypt
+- JWT tokens are valid for 24 hours
+- Token validity can be extended to 7 days with remember-me feature
+- All API endpoints (except auth endpoints) require authentication
+
+## 🤝 Contributing
+1. Fork this repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📝 License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 📞 Contact
+Project Manager - [@github_username](https://github.com/github_username)
+
+Project Link: [https://github.com/github_username/hu-fds](https://github.com/github_username/hu-fds)
