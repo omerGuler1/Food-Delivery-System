@@ -1,4 +1,4 @@
-// Admin Panel JavaScript
+// Admin Panel
 
 // DOM Elements
 const loginForm = document.getElementById('loginForm');
