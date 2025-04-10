@@ -15,7 +15,7 @@ public class Courier {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "courier_id")
-    private Long courierId;
+    private Integer courierId;
 
     @Column(length = 100, nullable = false)
     private String name;
@@ -28,9 +28,6 @@ public class Courier {
 
     @Column(name = "phone_number", length = 20)
     private String phoneNumber;
-
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
 
     @Column(name = "vehicle_type", length = 50)
     private String vehicleType;
@@ -47,6 +44,12 @@ public class Courier {
 
     @OneToMany(mappedBy = "courier")
     private Set<CourierAssignment> assignments;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     public enum CourierStatus {
         AVAILABLE, UNAVAILABLE

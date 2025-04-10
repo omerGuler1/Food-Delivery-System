@@ -8,13 +8,13 @@ import java.time.LocalTime;
 
 @Data
 @Entity
-@Table(name = "business_hours")
+@Table(name = "businesshours")
 public class BusinessHours {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "hours_id")
-    private Long hoursId;
+    private Integer hoursId;
 
     @JsonBackReference
     @ManyToOne

@@ -3,6 +3,7 @@ package com.hufds.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -14,7 +15,7 @@ public class Restaurant {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "restaurant_id")
-    private Long restaurantId;
+    private Integer restaurantId;
 
     @Column(length = 100, nullable = false)
     private String name;
@@ -37,14 +38,40 @@ public class Restaurant {
     @Column(name = "delivery_range_km")
     private Integer deliveryRangeKm;
 
+    // Address fields
+    @Column(length = 255)
+    private String street;
+
+    @Column(length = 100)
+    private String city;
+
+    @Column(length = 100)
+    private String state;
+
+    @Column(length = 20)
+    private String zipCode;
+
+    @Column(length = 100)
+    private String country;
+
+    @Column(precision = 10, scale = 6)
+    private BigDecimal latitude;
+
+    @Column(precision = 10, scale = 6)
+    private BigDecimal longitude;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
     }
 
+    // Relationships
     @OneToMany(mappedBy = "restaurant")
     private Set<MenuItem> menuItems;
 

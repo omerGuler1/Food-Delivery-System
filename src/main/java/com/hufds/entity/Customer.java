@@ -14,7 +14,7 @@ public class Customer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "customer_id")
-    private Long customerId;
+    private Integer customerId;
 
     @Column(length = 100, nullable = false)
     private String name;
@@ -28,9 +28,6 @@ public class Customer {
     @Column(name = "phone_number", length = 20)
     private String phoneNumber;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
-
     @OneToMany(mappedBy = "customer")
     private Set<Address> addresses;
 
@@ -42,6 +39,12 @@ public class Customer {
 
     @OneToMany(mappedBy = "customer")
     private Set<Review> reviews;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @PrePersist
     protected void onCreate() {

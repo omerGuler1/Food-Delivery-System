@@ -10,7 +10,7 @@ public class Review {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "review_id")
-    private Long reviewId;
+    private Integer reviewId;
 
     @ManyToOne
     @JoinColumn(name = "customer_id", nullable = false)
@@ -18,7 +18,7 @@ public class Review {
 
     // This is a manual reference — application logic will decide what it points to
     @Column(name = "target_id", nullable = false)
-    private Long targetId;
+    private Integer targetId;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)

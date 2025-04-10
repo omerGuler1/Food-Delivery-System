@@ -7,13 +7,13 @@ import java.time.LocalDateTime;
 
 @Data
 @Entity
-@Table(name = "courier_assignment")
+@Table(name = "courierassignment")
 public class CourierAssignment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "assignment_id")
-    private Long assignmentId;
+    private Integer assignmentId;
 
     @ManyToOne
     @JoinColumn(name = "order_id", nullable = false)

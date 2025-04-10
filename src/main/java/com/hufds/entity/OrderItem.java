@@ -6,11 +6,11 @@ import java.math.BigDecimal;
 
 @Data
 @Entity
-@Table(name = "order_item")
+@Table(name = "orderitem")
 public class OrderItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long orderItemId;
+    private Integer orderItemId;
 
     @ManyToOne
     @JoinColumn(name = "order_id", nullable = false)

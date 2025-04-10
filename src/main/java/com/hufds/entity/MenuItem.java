@@ -7,13 +7,13 @@ import java.math.BigDecimal;
 
 @Data
 @Entity
-@Table(name = "menu_item")
+@Table(name = "menuitem")
 public class MenuItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "menu_item_id")
-    private Long menuItemId;
+    private Integer menuItemId;
 
     @ManyToOne
     @JoinColumn(name = "restaurant_id", nullable = false)

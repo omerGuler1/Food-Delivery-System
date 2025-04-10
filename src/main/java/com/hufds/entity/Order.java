@@ -13,7 +13,7 @@ import java.util.Set;
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long orderId;
+    private Integer orderId;
 
     @ManyToOne
     @JoinColumn(name = "customer_id", nullable = false)
