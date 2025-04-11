@@ -144,7 +144,7 @@ body {
 .form-group input[type="password"] {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--light-gray);
     border-radius: 4px;
     font-size: 1rem;
     transition: border-color 0.3s;
@@ -188,7 +188,7 @@ body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background-color: var(--success-color);
+    background-color: var(--accent-color);
     color: var(--white);
     border: none;
     padding: 0.75rem 1.5rem;
@@ -201,7 +201,7 @@ body {
 }
 
 .btn-add:hover {
-    background-color: #2e7d32;
+    background-color: #e6c200;
 }
 
 /* Modal */
@@ -599,4 +599,47 @@ input:checked + .slider:before {
 
 .delete-account-btn:hover {
     background-color: #c82333;
+}
+
+/* Danger Zone */
+.danger-zone {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 4px;
+    background-color: rgba(255, 75, 43, 0.05);
+}
+
+.danger-zone h3 {
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.danger-zone p {
+    color: var(--text-color);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.btn-delete {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--primary-color);
+    color: var(--white);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.btn-delete:hover {
+    background-color: var(--secondary-color);
+}
+
+.btn-delete i {
+    font-size: 1.1rem;
 } 

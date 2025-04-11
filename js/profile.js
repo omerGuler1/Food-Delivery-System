@@ -629,4 +629,21 @@ function updateFavoritesList() {
             </div>
         </div>
     `).join('');
+}
+
+// Hesap silme işlevselliği
+const deleteAccountBtn = document.getElementById('deleteAccountBtn');
+if (deleteAccountBtn) {
+    deleteAccountBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+            // Kullanıcı verilerini temizle
+            localStorage.removeItem('userData');
+            localStorage.removeItem('addresses');
+            localStorage.removeItem('orders');
+            localStorage.removeItem('favorites');
+            
+            // Kullanıcıyı ana sayfaya yönlendir
+            window.location.href = 'index.html';
+        }
+    });
 } 
