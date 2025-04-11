@@ -1,11 +1,15 @@
 package com.hufds.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "courierassignment")
 public class CourierAssignment {
@@ -17,10 +21,12 @@ public class CourierAssignment {
 
     @ManyToOne
     @JoinColumn(name = "order_id", nullable = false)
+    @JsonBackReference
     private Order order;
 
     @ManyToOne
     @JoinColumn(name = "courier_id")
+    @JsonBackReference
     private Courier courier;
 
     @Column(name = "assigned_at", nullable = false)

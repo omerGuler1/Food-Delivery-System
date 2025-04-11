@@ -1,8 +1,8 @@
-package com.hufds.DTOs;
+package com.hufds.dto;
 import lombok.Data;
 import java.math.BigDecimal;
 @Data
-public class UpdateMenuItemDTO {
+public class CreateMenuItemDTO {
     private String name;
     private String description;
     private BigDecimal price;

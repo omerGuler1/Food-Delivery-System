@@ -1,11 +1,14 @@
 package com.hufds.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 import java.math.BigDecimal;
-
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "menuitem")
 public class MenuItem {
@@ -17,7 +20,11 @@ public class MenuItem {
 
     @ManyToOne
     @JoinColumn(name = "restaurant_id", nullable = false)
+    @JsonBackReference
     private Restaurant restaurant;
+
+    @Column(length = 50)
+    private String category;
 
     @Column(length = 100, nullable = false)
     private String name;

@@ -1,7 +1,7 @@
 package com.hufds.service;
 
-import com.hufds.DTOs.CreateMenuItemDTO;
-import com.hufds.DTOs.UpdateMenuItemDTO;
+import com.hufds.dto.CreateMenuItemDTO;
+import com.hufds.dto.UpdateMenuItemDTO;
 import com.hufds.entity.MenuItem;
 import com.hufds.entity.Restaurant;
 import com.hufds.repository.MenuItemRepository;

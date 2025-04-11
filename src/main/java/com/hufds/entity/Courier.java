@@ -1,13 +1,17 @@
 package com.hufds.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Set;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "courier")
 public class Courier {
@@ -40,9 +44,11 @@ public class Courier {
     private BigDecimal earnings = BigDecimal.ZERO;
 
     @OneToMany(mappedBy = "courier")
+    @JsonManagedReference
     private Set<Order> orders;
 
     @OneToMany(mappedBy = "courier")
+    @JsonManagedReference
     private Set<CourierAssignment> assignments;
 
     @Column(name = "created_at", nullable = false)

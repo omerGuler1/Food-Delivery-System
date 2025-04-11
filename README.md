@@ -1,139 +1,77 @@
-# Hacettepe University Food Delivery System (HUFDS)
+# HU-FDS API Usage Guide
 
-## 📋 About
-HUFDS (Hacettepe University Food Delivery System) is a food delivery system developed for Hacettepe University. The system enables users to place food orders, restaurants to manage their menus and orders, and couriers to handle deliveries.
+This document provides example cURL requests for two critical use cases in the Hungry Users Food Delivery System.
 
-## 🚀 Getting Started
+---
 
-### Prerequisites
-- Java 17 or higher
-- Maven 3.6 or higher
-- PostgreSQL 12 or higher
-- Git
+## 1. Restaurant Menu Management
 
-### Installation Steps
+### 1.1 Add a New Menu Item
 
-1. **Clone the repository**
 ```bash
-git clone https://gitlab.com/bbm384-25/gpt-plus.git
-cd gpt-plus
+curl -X POST http://localhost:8080/api/restaurant/1/menu-items \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Kremalı Makarna",
+    "description": "Kremalı tavuklu makarna",
+    "price": 49.99,
+    "availability": true
+  }'
 ```
 
-2. **Set up PostgreSQL Database**
-- Create a new database named `hufds`
-- Update database credentials in `src/main/resources/application.properties`:
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/hufds
-spring.datasource.username=your_username
-spring.datasource.password=your_password
-```
+### 1.2 List All Menu Items
 
-3. **Build the project**
 ```bash
-mvn clean install
+curl -X GET http://localhost:8080/api/restaurant/1/menu-items
 ```
 
-4. **Run the application**
+### 1.3 Update a Menu Item
+
 ```bash
-mvn spring-boot:run
+curl -X PUT http://localhost:8080/api/restaurant/1/menu-items/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Kremalı Makarna",
+    "description": "Kremalı, baharatlı tavuklu makarna",
+    "price": 20.99,
+    "availability": true
+  }'
 ```
 
-The application will start on `http://localhost:8080`
+### 1.4 Delete a Menu Item
 
-## 🛠 Technical Stack
-
-### Core Technologies
-- **Java Version:** 17
-- **Framework:** Spring Boot 3.2.3
-- **Build Tool:** Maven
-- **Database:** PostgreSQL
-- **Connection Pool:** HikariCP
-
-### Dependencies
-```xml
-<dependencies>
-    <!-- Spring Boot Starters -->
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-data-jpa</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-security</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-validation</artifactId>
-    </dependency>
-
-    <!-- JWT -->
-    <dependency>
-        <groupId>io.jsonwebtoken</groupId>
-        <artifactId>jjwt-api</artifactId>
-        <version>0.11.5</version>
-    </dependency>
-    <dependency>
-        <groupId>io.jsonwebtoken</groupId>
-        <artifactId>jjwt-impl</artifactId>
-        <version>0.11.5</version>
-    </dependency>
-    <dependency>
-        <groupId>io.jsonwebtoken</groupId>
-        <artifactId>jjwt-jackson</artifactId>
-        <version>0.11.5</version>
-    </dependency>
-
-    <!-- Database -->
-    <dependency>
-        <groupId>org.postgresql</groupId>
-        <artifactId>postgresql</artifactId>
-        <scope>runtime</scope>
-    </dependency>
-
-    <!-- Lombok -->
-    <dependency>
-        <groupId>org.projectlombok</groupId>
-        <artifactId>lombok</artifactId>
-        <optional>true</optional>
-    </dependency>
-
-    <!-- Test -->
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-test</artifactId>
-        <scope>test</scope>
-    </dependency>
-</dependencies>
+```bash
+curl -X DELETE http://localhost:8080/api/restaurant/1/menu-items/2
 ```
 
-## 🔧 Configuration
+---
 
-### Database Configuration
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/hufds
-spring.datasource.username=postgres
-spring.datasource.password=admin
-spring.datasource.driver-class-name=org.postgresql.Driver
-spring.jpa.hibernate.ddl-auto=create-drop
-spring.jpa.show-sql=true
-spring.jpa.properties.hibernate.format_sql=true
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+## 2. Order Management
+
+### 2.1 Place a New Order
+
+```bash
+curl -X POST http://localhost:8080/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerId": 1,
+    "restaurantId": 1,
+    "addressId": 1,
+    "items": [
+      { "menuItemId": 1, "quantity": 2 },
+      { "menuItemId": 3, "quantity": 1 }
+    ]
+  }'
 ```
 
-### JWT Configuration
-```properties
-jwt.secret=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-jwt.expiration=86400000
+### 2.2 Get an Order by ID
+
+```bash
+curl -X GET http://localhost:8080/api/orders/1
 ```
 
-## 🔐 Security Features
-- JWT (JSON Web Token) based authentication
-- BCrypt encryption
-- Role-based access control
-- CSRF protection
-- Stateless session management
-- Remember-me functionality
+### 2.3 Cancel an Order (Only if status is PENDING)
+
+```bash
+curl -X PUT http://localhost:8080/api/orders/1/cancel
+```

@@ -1,9 +1,13 @@
 package com.hufds.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "review")
 public class Review {
@@ -14,6 +18,7 @@ public class Review {
 
     @ManyToOne
     @JoinColumn(name = "customer_id", nullable = false)
+    @JsonManagedReference
     private Customer customer;
 
     // This is a manual reference — application logic will decide what it points to

@@ -1,7 +1,7 @@
 package com.hufds.controller;
 
-import com.hufds.DTOs.CreateMenuItemDTO;
-import com.hufds.DTOs.UpdateMenuItemDTO;
+import com.hufds.dto.CreateMenuItemDTO;
+import com.hufds.dto.UpdateMenuItemDTO;
 import com.hufds.entity.MenuItem;
 import com.hufds.service.MenuItemService;
 import org.springframework.beans.factory.annotation.Autowired;

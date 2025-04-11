@@ -1,13 +1,17 @@
 package com.hufds.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Set;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "restaurant")
 public class Restaurant {
@@ -73,11 +77,14 @@ public class Restaurant {
 
     // Relationships
     @OneToMany(mappedBy = "restaurant")
+    @JsonManagedReference
     private Set<MenuItem> menuItems;
 
     @OneToMany(mappedBy = "restaurant")
+    @JsonManagedReference
     private Set<BusinessHours> businessHours;
 
     @OneToMany(mappedBy = "restaurant")
+    @JsonManagedReference
     private Set<Order> orders;
 }

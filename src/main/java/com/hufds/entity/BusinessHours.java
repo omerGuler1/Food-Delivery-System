@@ -2,11 +2,13 @@ package com.hufds.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 import java.time.LocalTime;
-
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "businesshours")
 public class BusinessHours {
@@ -16,9 +18,9 @@ public class BusinessHours {
     @Column(name = "hours_id")
     private Integer hoursId;
 
-    @JsonBackReference
     @ManyToOne
     @JoinColumn(name = "restaurant_id", nullable = false)
+    @JsonBackReference
     private Restaurant restaurant;
 
     @Column(name = "day_of_week", length = 10, nullable = false)

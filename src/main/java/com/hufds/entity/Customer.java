@@ -1,12 +1,18 @@
 package com.hufds.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.Set;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+
 @Entity
 @Table(name = "customer")
 public class Customer {
@@ -29,15 +35,19 @@ public class Customer {
     private String phoneNumber;
 
     @OneToMany(mappedBy = "customer")
+    @JsonManagedReference
     private Set<Address> addresses;
 
     @OneToMany(mappedBy = "customer")
+    @JsonManagedReference
     private Set<Order> orders;
 
     @OneToMany(mappedBy = "customer")
+    @JsonBackReference
     private Set<Payment> payments;
 
     @OneToMany(mappedBy = "customer")
+    @JsonBackReference
     private Set<Review> reviews;
 
     @Column(name = "created_at", nullable = false)

@@ -1,12 +1,16 @@
 package com.hufds.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "payment")
 public class Payment {
@@ -22,6 +26,7 @@ public class Payment {
 
     @ManyToOne
     @JoinColumn(name = "customer_id")
+    @JsonManagedReference
     private Customer customer;
 
     @Column(nullable = false, precision = 10, scale = 2)
@@ -42,7 +47,7 @@ public class Payment {
     private LocalDateTime paidAt;
 
     public enum PaymentMethod {
-        CREDIT_CARD, PAYPAL, CASH_ON_DELIVERY, BANK_TRANSFER
+        CREDIT_CARD, CASH_ON_DELIVERY
     }
 
     public enum PaymentStatus {
