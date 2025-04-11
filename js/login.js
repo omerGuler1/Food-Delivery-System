@@ -1,12 +1,12 @@
-// Sayfa yüklendiğinde
+// When page loads
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     checkAuthStatus();
 });
 
-// Event listener'ları ayarla
+// Setup event listeners
 function setupEventListeners() {
-    // Şifre göster/gizle
+    // Password show/hide
     const togglePasswordBtn = document.querySelector('.toggle-password');
     const passwordInput = document.getElementById('password');
     
@@ -17,82 +17,111 @@ function setupEventListeners() {
         togglePasswordBtn.querySelector('i').classList.toggle('fa-eye-slash');
     });
     
-    // Form gönderimi
+    // Form submission
     const loginForm = document.getElementById('loginForm');
     loginForm.addEventListener('submit', handleLogin);
     
-    // Sosyal medya girişleri
+    // Social media logins
     document.querySelector('.social-btn.google').addEventListener('click', handleGoogleLogin);
     document.querySelector('.social-btn.facebook').addEventListener('click', handleFacebookLogin);
 }
 
-// Oturum durumunu kontrol et
+// Check authentication status
 function checkAuthStatus() {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const userType = localStorage.getItem('userType');
+    
     if (isLoggedIn) {
-        window.location.href = 'index.html';
+        switch(userType) {
+            case 'customer':
+                window.location.href = 'index.html';
+                break;
+            case 'courier':
+                window.location.href = 'courier-dashboard.html';
+                break;
+            case 'restaurant':
+                window.location.href = 'restaurant-dashboard.html';
+                break;
+            default:
+                window.location.href = 'index.html';
+        }
     }
 }
 
-// Giriş işlemi
+// Login process
 async function handleLogin(e) {
     e.preventDefault();
     
+    const userType = document.querySelector('input[name="userType"]:checked').value;
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const rememberMe = document.getElementById('rememberMe').checked;
     
-    // Form doğrulama
+    // Form validation
     if (!validateForm(email, password)) {
         return;
     }
     
     try {
-        // API çağrısı simülasyonu
+        // API call simulation
         await simulateLogin(email, password);
         
-        // Kullanıcı verilerini kaydet
+        // Save user data
         const userData = {
             email,
-            name: email.split('@')[0], // Örnek kullanıcı adı
-            avatar: `https://ui-avatars.com/api/?name=${email.split('@')[0]}&background=random`
+            name: email.split('@')[0], // Example username
+            avatar: `https://ui-avatars.com/api/?name=${email.split('@')[0]}&background=random`,
+            type: userType
         };
         
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('userData', JSON.stringify(userData));
+        localStorage.setItem('userType', userType);
         
         if (rememberMe) {
             localStorage.setItem('rememberMe', 'true');
         }
         
-        // Ana sayfaya yönlendir
-        window.location.href = 'index.html';
+        // Redirect based on user type
+        switch(userType) {
+            case 'customer':
+                window.location.href = 'index.html';
+                break;
+            case 'courier':
+                window.location.href = 'courier-dashboard.html';
+                break;
+            case 'restaurant':
+                window.location.href = 'restaurant-dashboard.html';
+                break;
+            default:
+                window.location.href = 'index.html';
+        }
     } catch (error) {
-        showError('Giriş yapılırken bir hata oluştu. Lütfen tekrar deneyin.');
+        showError('An error occurred while logging in. Please try again.');
     }
 }
 
-// Form doğrulama
+// Form validation
 function validateForm(email, password) {
     let isValid = true;
     
-    // E-posta doğrulama
+    // Email validation
     if (!email) {
-        showFieldError('email', 'E-posta adresi gereklidir');
+        showFieldError('email', 'Email address is required');
         isValid = false;
     } else if (!isValidEmail(email)) {
-        showFieldError('email', 'Geçerli bir e-posta adresi giriniz');
+        showFieldError('email', 'Please enter a valid email address');
         isValid = false;
     } else {
         clearFieldError('email');
     }
     
-    // Şifre doğrulama
+    // Password validation
     if (!password) {
-        showFieldError('password', 'Şifre gereklidir');
+        showFieldError('password', 'Password is required');
         isValid = false;
     } else if (password.length < 6) {
-        showFieldError('password', 'Şifre en az 6 karakter olmalıdır');
+        showFieldError('password', 'Password must be at least 6 characters long');
         isValid = false;
     } else {
         clearFieldError('password');
@@ -101,51 +130,51 @@ function validateForm(email, password) {
     return isValid;
 }
 
-// E-posta formatı kontrolü
+// Email format check
 function isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
 }
 
-// Alan hata mesajı göster
+// Show field error message
 function showFieldError(fieldId, message) {
     const errorElement = document.getElementById(`${fieldId}Error`);
     errorElement.textContent = message;
     document.getElementById(fieldId).classList.add('error');
 }
 
-// Alan hata mesajını temizle
+// Clear field error message
 function clearFieldError(fieldId) {
     const errorElement = document.getElementById(`${fieldId}Error`);
     errorElement.textContent = '';
     document.getElementById(fieldId).classList.remove('error');
 }
 
-// Genel hata mesajı göster
+// Show general error message
 function showError(message) {
-    alert(message); // Daha gelişmiş bir hata gösterimi için modal kullanılabilir
+    alert(message); // A modal can be used for more advanced error display
 }
 
-// API çağrısı simülasyonu
+// API call simulation
 function simulateLogin(email, password) {
     return new Promise((resolve, reject) => {
         setTimeout(() => {
-            // Örnek kullanıcı kontrolü
+            // Example user check
             if (email === 'test@example.com' && password === '123456') {
                 resolve();
             } else {
-                reject(new Error('Geçersiz e-posta veya şifre'));
+                reject(new Error('Invalid email or password'));
             }
         }, 1000);
     });
 }
 
-// Google ile giriş
+// Google login
 function handleGoogleLogin() {
-    alert('Google ile giriş özelliği yakında eklenecek!');
+    alert('Google login feature coming soon!');
 }
 
-// Facebook ile giriş
+// Facebook login
 function handleFacebookLogin() {
-    alert('Facebook ile giriş özelliği yakında eklenecek!');
+    alert('Facebook login feature coming soon!');
 } 

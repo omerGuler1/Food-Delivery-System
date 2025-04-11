@@ -1,4 +1,4 @@
-// Form doğrulama fonksiyonları
+// Form validation functions
 const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -13,7 +13,7 @@ const validatePhone = (phone) => {
     return phoneRegex.test(phone);
 };
 
-// Hata mesajı gösterme fonksiyonu
+// Error message display function
 const showError = (element, message) => {
     element.textContent = message;
     element.style.display = 'block';
@@ -24,7 +24,7 @@ const hideError = (element) => {
     element.style.display = 'none';
 };
 
-// Şifre göster/gizle fonksiyonu
+// Password show/hide function
 const togglePassword = (input, button) => {
     const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
     input.setAttribute('type', type);
@@ -32,7 +32,7 @@ const togglePassword = (input, button) => {
     button.querySelector('i').classList.toggle('fa-eye-slash');
 };
 
-// Form gönderme işlemi
+// Form submission process
 const handleSubmit = async (form, endpoint) => {
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
@@ -49,18 +49,18 @@ const handleSubmit = async (form, endpoint) => {
         const result = await response.json();
 
         if (response.ok) {
-            // Başarılı işlem
+            // Successful operation
             localStorage.setItem('user', JSON.stringify(result.user));
             window.location.href = '/';
         } else {
-            // Hata durumu
+            // Error case
             const errorElement = form.querySelector('.error-message');
             showError(errorElement, result.message);
         }
     } catch (error) {
-        console.error('Bir hata oluştu:', error);
+        console.error('An error occurred:', error);
         const errorElement = form.querySelector('.error-message');
-        showError(errorElement, 'Bir hata oluştu. Lütfen tekrar deneyin.');
+        showError(errorElement, 'An error occurred. Please try again.');
     }
 };
 
@@ -103,52 +103,46 @@ document.addEventListener('DOMContentLoaded', () => {
 loginForm.addEventListener('submit', handleLogin);
 
 // Functions
-function handleLogin(e) {
-    e.preventDefault();
-
+function handleLogin(event) {
+    event.preventDefault();
+    
+    const userId = document.getElementById('userId').value;
+    const password = document.getElementById('password').value;
     const userType = document.querySelector('input[name="userType"]:checked').value;
-    const userId = userIdInput.value;
-    const password = passwordInput.value;
+    const rememberMe = document.getElementById('rememberMe').checked;
 
-    // Save credentials if remember me is checked
-    if (rememberMeCheckbox.checked) {
-        localStorage.setItem('userId', userId);
-        localStorage.setItem('password', password);
+    // Validate credentials (this is just a mock implementation)
+    if (userId && password) {
+        // Store user data in localStorage
+        const userData = {
+            id: userId,
+            name: userId, // In a real app, this would come from the server
+            type: userType
+        };
+
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('userData', JSON.stringify(userData));
         localStorage.setItem('userType', userType);
-    } else {
-        localStorage.removeItem('userId');
-        localStorage.removeItem('password');
-        localStorage.removeItem('userType');
-    }
 
-    // Show loading state
-    showLoading();
-
-    // Simulate API call
-    setTimeout(() => {
-        // For demo purposes, using simple validation
-        if (userId && password) {
-            // Store login state
-            localStorage.setItem('isLoggedIn', 'true');
-            localStorage.setItem('currentUserType', userType);
-
-            // Redirect based on user type
-            switch (userType) {
-                case 'customer':
-                    window.location.href = 'customer-dashboard.html';
-                    break;
-                case 'courier':
-                    window.location.href = 'courier-dashboard.html';
-                    break;
-                case 'restaurant':
-                    window.location.href = 'restaurant-dashboard.html';
-                    break;
-            }
-        } else {
-            showNotification('Invalid credentials', 'error');
+        if (rememberMe) {
+            localStorage.setItem('rememberMe', 'true');
         }
-        hideLoading();
-    }, 1000);
+
+        // Redirect based on user type
+        switch (userType) {
+            case 'customer':
+                window.location.href = 'index.html';
+                break;
+            case 'restaurant':
+                window.location.href = 'restaurant-dashboard.html';
+                break;
+            case 'courier':
+                window.location.href = 'courier-dashboard.html';
+                break;
+        }
+    } else {
+        alert('Please enter valid credentials');
+    }
 }
 
 function showLoading() {
@@ -317,13 +311,13 @@ function simulateForgotPassword(email) {
     });
 }
 
-// Sayfa yüklendiğinde
+// When page loads
 document.addEventListener('DOMContentLoaded', () => {
-    // Form elementlerini seç
+    // Select form elements
     const forms = document.querySelectorAll('.auth-form');
     const passwordToggles = document.querySelectorAll('.toggle-password');
 
-    // Şifre göster/gizle butonları için event listener
+    // Event listener for password show/hide buttons
     passwordToggles.forEach(toggle => {
         toggle.addEventListener('click', () => {
             const input = toggle.previousElementSibling;
@@ -331,12 +325,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Formlar için event listener
+    // Event listener for forms
     forms.forEach(form => {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
             
-            // Form doğrulama
+            // Form validation
             const email = form.querySelector('input[type="email"]');
             const password = form.querySelector('input[type="password"]');
             const phone = form.querySelector('input[type="tel"]');
@@ -346,22 +340,22 @@ document.addEventListener('DOMContentLoaded', () => {
             let isValid = true;
 
             if (email && !validateEmail(email.value)) {
-                showError(errorElement, 'Geçerli bir e-posta adresi giriniz.');
+                showError(errorElement, 'Please enter a valid email address.');
                 isValid = false;
             }
 
             if (password && !validatePassword(password.value)) {
-                showError(errorElement, 'Şifre en az 6 karakter olmalıdır.');
+                showError(errorElement, 'Password must be at least 6 characters long.');
                 isValid = false;
             }
 
             if (phone && !validatePhone(phone.value)) {
-                showError(errorElement, 'Geçerli bir telefon numarası giriniz.');
+                showError(errorElement, 'Please enter a valid phone number.');
                 isValid = false;
             }
 
             if (name && name.value.trim().length < 2) {
-                showError(errorElement, 'İsim en az 2 karakter olmalıdır.');
+                showError(errorElement, 'Name must be at least 2 characters long.');
                 isValid = false;
             }
 
@@ -372,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Input değişikliklerinde hata mesajlarını temizle
+        // Clear error messages on input changes
         form.querySelectorAll('input').forEach(input => {
             input.addEventListener('input', () => {
                 const errorElement = form.querySelector('.error-message');

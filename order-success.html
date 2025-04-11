@@ -17,8 +17,16 @@
             <div class="nav-links">
                 <a href="index.html">Home</a>
                 <a href="restaurants.html">Restaurants</a>
-                <a href="login.html">Login</a>
-                <a href="signup.html">Sign Up</a>
+                <div id="authLinks">
+                    <a href="login.html" id="loginLink">Login</a>
+                    <a href="signup.html" id="signupLink">Sign Up</a>
+                </div>
+                <div id="userSection" style="display: none;">
+                    <a href="profile.html" id="userName">User</a>
+                    <button id="logoutBtn" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
                 <a href="cart.html" class="cart-icon">
                     <i class="fas fa-shopping-cart"></i>
                     <span class="cart-count">0</span>
@@ -121,5 +129,28 @@
     </footer>
 
     <script src="js/order-success.js"></script>
+    <script>
+        // Check if user is logged in
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+        
+        const authLinks = document.getElementById('authLinks');
+        const userSection = document.getElementById('userSection');
+        const userName = document.getElementById('userName');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        if (isLoggedIn) {
+            authLinks.style.display = 'none';
+            userSection.style.display = 'flex';
+            userName.textContent = userData.name || 'User';
+        }
+
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('userData');
+            localStorage.removeItem('userType');
+            window.location.href = 'index.html';
+        });
+    </script>
 </body>
 </html> 
