@@ -3,20 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Courier Dashboard - HUFDS</title>
+    <title>Courier Dashboard - Login</title>
     <link rel="stylesheet" href="css/courier-dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Login Form -->
     <div class="courier-login">
         <div class="login-container">
             <h2>Courier Login</h2>
+            
+            <div class="login-options">
+                <a href="login.html" class="login-option">
+                    <i class="fas fa-user"></i>
+                    <span>Customer</span>
+                </a>
+                <a href="restaurant-dashboard.html" class="login-option">
+                    <i class="fas fa-utensils"></i>
+                    <span>Restaurant</span>
+                </a>
+                <a href="#" class="login-option active">
+                    <i class="fas fa-motorcycle"></i>
+                    <span>Courier</span>
+                </a>
+            </div>
+
             <form id="loginForm">
                 <div class="form-group">
-                    <label for="courierId">Courier ID</label>
-                    <input type="text" id="courierId" required>
+                    <label for="email">Email</label>
+                    <input type="email" id="email" required>
                 </div>
                 <div class="form-group">
                     <label for="password">Password</label>

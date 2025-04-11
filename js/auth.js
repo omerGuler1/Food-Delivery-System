@@ -108,7 +108,6 @@ function handleLogin(event) {
     
     const userId = document.getElementById('userId').value;
     const password = document.getElementById('password').value;
-    const userType = document.querySelector('input[name="userType"]:checked').value;
     const rememberMe = document.getElementById('rememberMe').checked;
 
     // Validate credentials (this is just a mock implementation)
@@ -117,29 +116,19 @@ function handleLogin(event) {
         const userData = {
             id: userId,
             name: userId, // In a real app, this would come from the server
-            type: userType
+            type: 'customer' // Default to customer type
         };
 
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('userData', JSON.stringify(userData));
-        localStorage.setItem('userType', userType);
+        localStorage.setItem('userType', 'customer');
 
         if (rememberMe) {
             localStorage.setItem('rememberMe', 'true');
         }
 
-        // Redirect based on user type
-        switch (userType) {
-            case 'customer':
-                window.location.href = 'index.html';
-                break;
-            case 'restaurant':
-                window.location.href = 'restaurant-dashboard.html';
-                break;
-            case 'courier':
-                window.location.href = 'courier-dashboard.html';
-                break;
-        }
+        // Redirect to index.html
+        window.location.href = 'index.html';
     } else {
         alert('Please enter valid credentials');
     }

@@ -17,29 +17,20 @@
             </div>
             <form id="loginForm" class="auth-form">
                 <div class="form-group">
-                    <label>User Type</label>
-                    <div class="radio-group">
-                        <label class="radio-option">
-                            <input type="radio" name="userType" value="customer" checked>
-                            <span class="radio-label">
-                                <i class="fas fa-user"></i>
-                                Customer
-                            </span>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="userType" value="courier">
-                            <span class="radio-label">
-                                <i class="fas fa-motorcycle"></i>
-                                Courier
-                            </span>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="userType" value="restaurant">
-                            <span class="radio-label">
-                                <i class="fas fa-utensils"></i>
-                                Restaurant
-                            </span>
-                        </label>
+                    <label>Login As</label>
+                    <div class="login-options">
+                        <a href="#" class="login-option active">
+                            <i class="fas fa-user"></i>
+                            <span>Customer</span>
+                        </a>
+                        <a href="restaurant-dashboard.html" class="login-option">
+                            <i class="fas fa-utensils"></i>
+                            <span>Restaurant</span>
+                        </a>
+                        <a href="courier-dashboard.html" class="login-option">
+                            <i class="fas fa-motorcycle"></i>
+                            <span>Courier</span>
+                        </a>
                     </div>
                 </div>
                 <div class="form-group">
