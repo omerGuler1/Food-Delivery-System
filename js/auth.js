@@ -69,6 +69,10 @@ const loginForm = document.getElementById('loginForm');
 const signupForm = document.getElementById('signupForm');
 const forgotPasswordForm = document.getElementById('forgotPasswordForm');
 const togglePasswordButtons = document.querySelectorAll('.toggle-password');
+const userTypeRadios = document.querySelectorAll('input[name="userType"]');
+const userIdInput = document.getElementById('userId');
+const passwordInput = document.getElementById('password');
+const rememberMeCheckbox = document.getElementById('rememberMe');
 
 // Toggle Password Visibility
 togglePasswordButtons.forEach(button => {
@@ -81,62 +85,95 @@ togglePasswordButtons.forEach(button => {
     });
 });
 
-// Login Form Handler
-if (loginForm) {
-    loginForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const rememberMe = document.getElementById('rememberMe').checked;
-        const userType = document.querySelector('input[name="userType"]:checked').value;
+// Event Listeners
+document.addEventListener('DOMContentLoaded', () => {
+    // Check for saved credentials
+    const savedUserId = localStorage.getItem('userId');
+    const savedPassword = localStorage.getItem('password');
+    const savedUserType = localStorage.getItem('userType');
 
-        try {
-            // Show loading state
-            const submitButton = this.querySelector('.btn-submit');
-            submitButton.classList.add('loading');
-            submitButton.disabled = true;
+    if (savedUserId && savedPassword && savedUserType) {
+        userIdInput.value = savedUserId;
+        passwordInput.value = savedPassword;
+        document.querySelector(`input[name="userType"][value="${savedUserType}"]`).checked = true;
+        rememberMeCheckbox.checked = true;
+    }
+});
 
-            // Simulate API call
-            await simulateLogin(email, password);
+loginForm.addEventListener('submit', handleLogin);
 
-            // Store user data if remember me is checked
-            if (rememberMe) {
-                localStorage.setItem('userEmail', email);
-                localStorage.setItem('rememberMe', 'true');
-            }
+// Functions
+function handleLogin(e) {
+    e.preventDefault();
 
-            // Store user type
-            localStorage.setItem('userType', userType);
+    const userType = document.querySelector('input[name="userType"]:checked').value;
+    const userId = userIdInput.value;
+    const password = passwordInput.value;
 
-            // Show success message
-            showMessage('Login successful! Redirecting...', 'success');
+    // Save credentials if remember me is checked
+    if (rememberMeCheckbox.checked) {
+        localStorage.setItem('userId', userId);
+        localStorage.setItem('password', password);
+        localStorage.setItem('userType', userType);
+    } else {
+        localStorage.removeItem('userId');
+        localStorage.removeItem('password');
+        localStorage.removeItem('userType');
+    }
+
+    // Show loading state
+    showLoading();
+
+    // Simulate API call
+    setTimeout(() => {
+        // For demo purposes, using simple validation
+        if (userId && password) {
+            // Store login state
+            localStorage.setItem('isLoggedIn', 'true');
+            localStorage.setItem('currentUserType', userType);
 
             // Redirect based on user type
-            setTimeout(() => {
-                switch(userType) {
-                    case 'customer':
-                        window.location.href = 'index.html';
-                        break;
-                    case 'courier':
-                        window.location.href = 'courier-dashboard.html';
-                        break;
-                    case 'restaurant':
-                        window.location.href = 'restaurant-dashboard.html';
-                        break;
-                    default:
-                        window.location.href = 'index.html';
-                }
-            }, 1500);
-
-        } catch (error) {
-            showMessage(error.message, 'error');
-        } finally {
-            // Remove loading state
-            submitButton.classList.remove('loading');
-            submitButton.disabled = false;
+            switch (userType) {
+                case 'customer':
+                    window.location.href = 'customer-dashboard.html';
+                    break;
+                case 'courier':
+                    window.location.href = 'courier-dashboard.html';
+                    break;
+                case 'restaurant':
+                    window.location.href = 'restaurant-dashboard.html';
+                    break;
+            }
+        } else {
+            showNotification('Invalid credentials', 'error');
         }
-    });
+        hideLoading();
+    }, 1000);
+}
+
+function showLoading() {
+    const loading = document.createElement('div');
+    loading.className = 'loading-indicator';
+    loading.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    document.body.appendChild(loading);
+}
+
+function hideLoading() {
+    const loading = document.querySelector('.loading-indicator');
+    if (loading) {
+        loading.remove();
+    }
+}
+
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
 }
 
 // Signup Form Handler
@@ -279,19 +316,6 @@ function simulateForgotPassword(email) {
         }, 1000);
     });
 }
-
-// Check for remembered email on login page
-document.addEventListener('DOMContentLoaded', () => {
-    if (loginForm && localStorage.getItem('rememberMe') === 'true') {
-        const emailInput = document.getElementById('email');
-        const rememberMeCheckbox = document.getElementById('rememberMe');
-        
-        if (emailInput && rememberMeCheckbox) {
-            emailInput.value = localStorage.getItem('userEmail');
-            rememberMeCheckbox.checked = true;
-        }
-    }
-});
 
 // Sayfa yüklendiğinde
 document.addEventListener('DOMContentLoaded', () => {

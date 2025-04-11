@@ -67,22 +67,6 @@ function displayOrderItems() {
 function setupFormValidation() {
     const deliveryForm = document.getElementById('deliveryForm');
     const paymentForm = document.getElementById('paymentForm');
-    const paymentMethodInputs = document.querySelectorAll('input[name="paymentMethod"]');
-    const cardPaymentDetails = document.getElementById('cardPaymentDetails');
-    const cashPaymentDetails = document.getElementById('cashPaymentDetails');
-
-    // Ödeme yöntemi değişikliğini dinle
-    paymentMethodInputs.forEach(input => {
-        input.addEventListener('change', (e) => {
-            if (e.target.value === 'card') {
-                cardPaymentDetails.style.display = 'block';
-                cashPaymentDetails.style.display = 'none';
-            } else {
-                cardPaymentDetails.style.display = 'none';
-                cashPaymentDetails.style.display = 'block';
-            }
-        });
-    });
 
     // Kart numarası formatı
     const cardNumber = document.getElementById('cardNumber');
@@ -149,40 +133,34 @@ function validateDeliveryForm() {
 
 // Ödeme formu validasyonu
 function validatePaymentForm() {
-    const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
-    
-    if (paymentMethod === 'card') {
-        const cardNumber = document.getElementById('cardNumber');
-        const expiry = document.getElementById('expiry');
-        const cvv = document.getElementById('cvv');
-        const cardName = document.getElementById('cardName');
+    const cardNumber = document.getElementById('cardNumber');
+    const expiry = document.getElementById('expiry');
+    const cvv = document.getElementById('cvv');
+    const cardName = document.getElementById('cardName');
 
-        let isValid = true;
+    let isValid = true;
 
-        if (!cardNumber.value.match(/^[0-9]{16}$/)) {
-            showError(cardNumber, 'Geçerli bir kart numarası giriniz');
-            isValid = false;
-        }
-
-        if (!expiry.value.match(/^[0-9]{2}\/[0-9]{2}$/)) {
-            showError(expiry, 'Geçerli bir son kullanma tarihi giriniz (AA/YY)');
-            isValid = false;
-        }
-
-        if (!cvv.value.match(/^[0-9]{3}$/)) {
-            showError(cvv, 'Geçerli bir CVV giriniz');
-            isValid = false;
-        }
-
-        if (!cardName.value.trim()) {
-            showError(cardName, 'Kart üzerindeki isim zorunludur');
-            isValid = false;
-        }
-
-        return isValid;
+    if (!cardNumber.value.match(/^[0-9]{16}$/)) {
+        showError(cardNumber, 'Geçerli bir kart numarası giriniz');
+        isValid = false;
     }
-    
-    return true; // Kapıda ödeme için validasyon gerekmez
+
+    if (!expiry.value.match(/^[0-9]{2}\/[0-9]{2}$/)) {
+        showError(expiry, 'Geçerli bir son kullanma tarihi giriniz (AA/YY)');
+        isValid = false;
+    }
+
+    if (!cvv.value.match(/^[0-9]{3}$/)) {
+        showError(cvv, 'Geçerli bir CVV giriniz');
+        isValid = false;
+    }
+
+    if (!cardName.value.trim()) {
+        showError(cardName, 'Kart üzerindeki isim zorunludur');
+        isValid = false;
+    }
+
+    return isValid;
 }
 
 // Hata mesajı göster
@@ -202,8 +180,6 @@ function showError(element, message) {
 
 // Siparişi işle
 function processOrder() {
-    const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
-    
     // Sipariş verilerini hazırla
     const orderData = {
         items: cart,
@@ -214,13 +190,10 @@ function processOrder() {
             instructions: document.getElementById('instructions').value
         },
         payment: {
-            method: paymentMethod,
-            ...(paymentMethod === 'card' ? {
-                cardNumber: document.getElementById('cardNumber').value,
-                expiry: document.getElementById('expiry').value,
-                cvv: document.getElementById('cvv').value,
-                cardName: document.getElementById('cardName').value
-            } : {})
+            cardNumber: document.getElementById('cardNumber').value,
+            expiry: document.getElementById('expiry').value,
+            cvv: document.getElementById('cvv').value,
+            cardName: document.getElementById('cardName').value
         },
         restaurant: restaurant,
         total: parseFloat(document.getElementById('total').textContent.replace('$', '')),

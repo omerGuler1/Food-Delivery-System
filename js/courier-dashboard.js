@@ -49,6 +49,7 @@ const sections = document.querySelectorAll('.courier-section');
 const statusToggle = document.getElementById('statusToggle');
 const currentOrderSection = document.getElementById('currentOrder');
 const noOrderSection = document.getElementById('noOrder');
+const logoutBtn = document.getElementById('logoutBtn');
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
@@ -66,6 +67,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Status toggle
     statusToggle.addEventListener('change', handleStatusChange);
+
+    // Logout button
+    logoutBtn.addEventListener('click', handleLogout);
 });
 
 // Authentication
@@ -464,4 +468,21 @@ function debounce(func, wait) {
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
     };
+}
+
+// Logout Handler
+function handleLogout() {
+    // Clear current courier data
+    localStorage.removeItem('currentCourier');
+    
+    // Reset state
+    currentOrder = null;
+    isAvailable = false;
+    
+    // Show login screen
+    courierDashboard.style.display = 'none';
+    courierLogin.style.display = 'flex';
+    
+    // Show success notification
+    showNotification('Logged out successfully', 'success');
 } 

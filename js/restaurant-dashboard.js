@@ -12,6 +12,7 @@ const statusToggle = document.getElementById('statusToggle');
 const menuModal = document.getElementById('menuModal');
 const menuForm = document.getElementById('menuForm');
 const closeMenuModal = document.getElementById('closeMenuModal');
+const logoutBtn = document.getElementById('logoutBtn');
 
 // Simulated Restaurant Accounts
 const restaurantAccounts = [
@@ -134,6 +135,7 @@ closeMenuModal.addEventListener('click', () => {
     menuModal.style.display = 'none';
     menuForm.reset();
 });
+logoutBtn.addEventListener('click', handleLogout);
 
 // Login Handler
 async function handleLogin(e) {
@@ -538,6 +540,15 @@ function deleteMenuItem(itemId) {
         // Simulate API call
         showNotification('Menu item deleted successfully', 'success');
     }
+}
+
+// Logout Handler
+function handleLogout() {
+    currentRestaurant = null;
+    localStorage.removeItem('currentRestaurant');
+    restaurantDashboard.style.display = 'none';
+    restaurantLogin.style.display = 'flex';
+    showNotification('Logged out successfully', 'success');
 }
 
 // Initialize

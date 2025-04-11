@@ -32,18 +32,24 @@ body {
 
 /* Auth Container */
 .auth-container {
-    width: 100%;
-    max-width: 450px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: var(--light-gray);
     padding: 2rem;
 }
 
 .auth-box {
-    background-color: var(--white);
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background: white;
     padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
 }
 
+/* Auth Header */
 .auth-header {
     text-align: center;
     margin-bottom: 2rem;
@@ -56,25 +62,64 @@ body {
 
 .auth-header p {
     color: var(--text-color);
-    opacity: 0.8;
 }
 
-/* Form Styles */
+/* Auth Form */
 .auth-form {
-    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
 }
 
 .form-group {
-    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
     color: var(--text-color);
     font-weight: 500;
 }
 
+/* Radio Group */
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.radio-option:hover {
+    background-color: var(--light-gray);
+}
+
+.radio-option input[type="radio"] {
+    margin: 0;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.radio-label i {
+    color: var(--primary-color);
+}
+
+/* Input Group */
 .input-group {
     position: relative;
     display: flex;
@@ -85,7 +130,6 @@ body {
     position: absolute;
     left: 1rem;
     color: var(--text-color);
-    opacity: 0.5;
 }
 
 .input-group input {
@@ -125,83 +169,21 @@ body {
     padding: 0.5rem;
 }
 
-.radio-group {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.radio-option {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    padding: 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    transition: all 0.3s ease;
-}
-
-.radio-option:hover {
-    background-color: var(--light-gray);
-}
-
-.radio-option input[type="radio"] {
-    margin-right: 12px;
-    width: 16px;
-    height: 16px;
-}
-
-.radio-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 16px;
-}
-
-.radio-label i {
-    color: var(--primary-color);
-    font-size: 18px;
-}
-
-.radio-option input[type="radio"]:checked + .radio-label {
-    color: var(--primary-color);
-    font-weight: 500;
-}
-
-.radio-option input[type="radio"]:checked {
-    accent-color: var(--primary-color);
-}
-
-.toggle-password {
-    position: absolute;
-    right: 1px!important;
-    cursor: pointer;
-    color: var(--text-color);
-    opacity: 0.5;
-}
-
-.toggle-password:hover {
-    opacity: 1;
-}
-
 /* Form Options */
 .form-options {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
 }
 
-.remember-me,
-.terms {
+.remember-me {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
 }
 
-.remember-me input,
-.terms input {
+.remember-me input {
     width: 16px;
     height: 16px;
 }
@@ -209,7 +191,7 @@ body {
 .forgot-password {
     color: var(--primary-color);
     text-decoration: none;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
 }
 
 .forgot-password:hover {
@@ -218,14 +200,12 @@ body {
 
 /* Submit Button */
 .btn-submit {
-    width: 100%;
-    padding: 0.75rem;
     background-color: var(--primary-color);
-    color: var(--white);
+    color: white;
+    padding: 0.75rem;
     border: none;
     border-radius: 4px;
     font-size: 1rem;
-    font-weight: 500;
     cursor: pointer;
     transition: background-color 0.3s;
 }
@@ -234,20 +214,21 @@ body {
     background-color: var(--secondary-color);
 }
 
-.btn-submit:disabled {
-    background-color: var(--light-gray);
+.btn-submit.loading {
+    opacity: 0.7;
     cursor: not-allowed;
 }
 
 /* Auth Footer */
 .auth-footer {
     text-align: center;
-    margin-top: 2rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
 }
 
 .auth-footer p {
     color: var(--text-color);
-    opacity: 0.8;
 }
 
 .auth-footer a {
@@ -258,6 +239,56 @@ body {
 
 .auth-footer a:hover {
     text-decoration: underline;
+}
+
+/* Loading Indicator */
+.loading-indicator {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.loading-indicator i {
+    font-size: 2rem;
+    color: var(--primary-color);
+}
+
+/* Notifications */
+.notification {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    padding: 1rem 2rem;
+    border-radius: 4px;
+    color: white;
+    z-index: 1000;
+    animation: slideIn 0.3s ease-out;
+}
+
+.notification.success {
+    background-color: var(--success-color);
+}
+
+.notification.error {
+    background-color: var(--danger-color);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
 }
 
 /* Responsive Design */
@@ -300,33 +331,7 @@ body {
     animation: slideIn 0.3s ease-out;
 }
 
-/* Loading State */
-.btn-submit.loading {
-    position: relative;
-    color: transparent;
-}
-
-.btn-submit.loading::after {
-    content: "";
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    top: 50%;
-    left: 50%;
-    margin: -10px 0 0 -10px;
-    border: 2px solid var(--white);
-    border-top-color: transparent;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
 /* Animations */
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
 @keyframes slideIn {
     from {
         transform: translateY(-10px);

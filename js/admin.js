@@ -12,6 +12,7 @@ const userTypeFilter = document.getElementById('userTypeFilter');
 const registrationStatusFilter = document.getElementById('registrationStatusFilter');
 const complaintStatusFilter = document.getElementById('complaintStatusFilter');
 const complaintTypeFilter = document.getElementById('complaintTypeFilter');
+const logoutBtn = document.getElementById('logoutBtn');
 
 // State Management
 let currentSection = 'overview';
@@ -76,6 +77,11 @@ function setupEventListeners() {
     forms.forEach(form => {
         form.addEventListener('submit', handleFormSubmit);
     });
+
+    // Logout button
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
+    }
 }
 
 // Authentication
@@ -577,4 +583,18 @@ function respondToComplaint(complaintId) {
 function resolveComplaint(complaintId) {
     // Implement complaint resolution functionality
     console.log('Resolving complaint:', complaintId);
+}
+
+// Logout Handler
+function handleLogout() {
+    // Clear admin data
+    localStorage.removeItem('adminLoggedIn');
+    localStorage.removeItem('currentSection');
+    
+    // Show login screen
+    adminDashboard.style.display = 'none';
+    adminLogin.style.display = 'flex';
+    
+    // Show success notification
+    showNotification('Başarıyla çıkış yapıldı', 'success');
 } 
