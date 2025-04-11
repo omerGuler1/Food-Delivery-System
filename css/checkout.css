@@ -162,6 +162,40 @@
     font-size: 1.5rem;
 }
 
+.payment-method-options {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.payment-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1.2rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.payment-option:hover {
+    border-color: var(--accent-color);
+}
+
+.payment-option input[type="radio"] {
+    margin: 0;
+}
+
+.cash-message {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 5px;
+    color: #666;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
 .place-order-btn {
     width: 100%;
     padding: 1rem;
