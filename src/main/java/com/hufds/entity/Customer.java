@@ -50,6 +50,10 @@ public class Customer {
     @JsonBackReference
     private Set<Review> reviews;
 
+    @OneToMany(mappedBy = "customer")
+    @JsonManagedReference
+    private Set<FavoriteRestaurant> favoriteRestaurants;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

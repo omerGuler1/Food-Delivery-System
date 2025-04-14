@@ -87,4 +87,9 @@ public class Restaurant {
     @OneToMany(mappedBy = "restaurant")
     @JsonManagedReference
     private Set<Order> orders;
+
+    @OneToMany(mappedBy = "restaurant")
+    @JsonManagedReference
+    private Set<FavoriteRestaurant> favoritedByCustomers;
+
 }

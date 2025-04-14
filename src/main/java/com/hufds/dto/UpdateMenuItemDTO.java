@@ -7,4 +7,5 @@ public class UpdateMenuItemDTO {
     private String description;
     private BigDecimal price;
     private Boolean availability;
+    private String category;
 }
