@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.hufds.service.MenuItemServiceTest" time="0.043" tests="11" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.hufds.service.RatingServiceTest" time="0.103" tests="12" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="18"/>
     <property name="sun.cpu.isalist" value="amd64"/>
@@ -56,15 +56,16 @@
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="java.class.version" value="62.0"/>
   </properties>
-  <testcase name="getAllMenuItems_Success" classname="com.hufds.service.MenuItemServiceTest" time="0.004"/>
-  <testcase name="createMenuItem_Success" classname="com.hufds.service.MenuItemServiceTest" time="0.003"/>
-  <testcase name="getAvailableMenuItems_Success" classname="com.hufds.service.MenuItemServiceTest" time="0.003"/>
-  <testcase name="getMenuItemById_Success" classname="com.hufds.service.MenuItemServiceTest" time="0.002"/>
-  <testcase name="updateMenuItem_NotFound" classname="com.hufds.service.MenuItemServiceTest" time="0.004"/>
-  <testcase name="getMenuItemsByCategory_Success" classname="com.hufds.service.MenuItemServiceTest" time="0.002"/>
-  <testcase name="deleteMenuItem_Success" classname="com.hufds.service.MenuItemServiceTest" time="0.002"/>
-  <testcase name="createMenuItem_RestaurantNotFound" classname="com.hufds.service.MenuItemServiceTest" time="0.004"/>
-  <testcase name="updateMenuItem_Success" classname="com.hufds.service.MenuItemServiceTest" time="0.003"/>
-  <testcase name="toggleAvailability_Success" classname="com.hufds.service.MenuItemServiceTest" time="0.004"/>
-  <testcase name="updateMenuItem_WrongRestaurant" classname="com.hufds.service.MenuItemServiceTest" time="0.003"/>
+  <testcase name="createRating_ShouldCreateReview_WhenValidData" classname="com.hufds.service.RatingServiceTest" time="0.062"/>
+  <testcase name="createRating_ShouldValidateRatingRange" classname="com.hufds.service.RatingServiceTest" time="0.003"/>
+  <testcase name="getCustomerRatings_ShouldReturnAllRatings" classname="com.hufds.service.RatingServiceTest" time="0.003"/>
+  <testcase name="createRating_ShouldValidateMinimumRating" classname="com.hufds.service.RatingServiceTest" time="0.003"/>
+  <testcase name="getRestaurantRatings_ShouldReturnAllRatings" classname="com.hufds.service.RatingServiceTest" time="0.002"/>
+  <testcase name="getRestaurantAverageRating_ShouldReturnAverage" classname="com.hufds.service.RatingServiceTest" time="0.002"/>
+  <testcase name="canCustomerRateOrder_ShouldReturnTrue_WhenEligible" classname="com.hufds.service.RatingServiceTest" time="0.003"/>
+  <testcase name="canCustomerRateOrder_ShouldReturnFalse_WhenNotDelivered" classname="com.hufds.service.RatingServiceTest" time="0.003"/>
+  <testcase name="createRating_ShouldThrowException_WhenOrderNotFound" classname="com.hufds.service.RatingServiceTest" time="0.003"/>
+  <testcase name="canCustomerRateOrder_ShouldReturnFalse_WhenNotOrderOwner" classname="com.hufds.service.RatingServiceTest" time="0.002"/>
+  <testcase name="createRating_ShouldThrowException_WhenNotOrderOwner" classname="com.hufds.service.RatingServiceTest" time="0.002"/>
+  <testcase name="createRating_ShouldThrowException_WhenOrderNotDelivered" classname="com.hufds.service.RatingServiceTest" time="0.003"/>
 </testsuite>

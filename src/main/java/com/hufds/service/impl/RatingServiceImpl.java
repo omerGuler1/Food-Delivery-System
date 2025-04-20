@@ -27,6 +27,11 @@ public class RatingServiceImpl implements RatingService {
     @Override
     @Transactional
     public RatingResponseDTO createRating(Integer customerId, RatingDTO ratingDTO) {
+        // Validate rating value
+        if (ratingDTO.getRating() < 1 || ratingDTO.getRating() > 5) {
+            throw new IllegalArgumentException("Rating must be between 1 and 5");
+        }
+
         Order order = orderRepository.findById(ratingDTO.getOrderId())
                 .orElseThrow(() -> new CustomException("Order not found", HttpStatus.NOT_FOUND));
 
