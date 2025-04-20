@@ -3,7 +3,6 @@ package com.hufds.entity;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -13,10 +12,26 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@SuperBuilder
 @Entity
-@Table(name = "couriers")
-public class Courier extends User {
+@Table(name = "courier")
+public class Courier {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "courier_id")
+    private Integer courierId;
+
+    @Column(length = 100, nullable = false)
+    private String name;
+
+    @Column(length = 255, nullable = false, unique = true)
+    private String email;
+
+    @Column(length = 255, nullable = false)
+    private String password;
+
+    @Column(name = "phone_number", length = 20)
+    private String phoneNumber;
 
     @Column(name = "vehicle_type", length = 50)
     private String vehicleType;
@@ -49,6 +64,5 @@ public class Courier extends User {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-        setRole(UserRole.COURIER);
     }
 }
