@@ -36,7 +36,7 @@ public class Review {
     private Integer rating;
 
     public enum ReviewRole {
-        RESTAURANT, COURIER
+        Restaurant, Courier
     }
 
     @PrePersist

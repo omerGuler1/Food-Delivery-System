@@ -38,7 +38,7 @@ public class Courier {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private CourierStatus status = CourierStatus.UNAVAILABLE;
+    private CourierStatus status = CourierStatus.Unavailable;
 
     @Column(precision = 10, scale = 2, nullable = false)
     private BigDecimal earnings = BigDecimal.ZERO;
@@ -58,7 +58,7 @@ public class Courier {
     private LocalDateTime deletedAt;
 
     public enum CourierStatus {
-        AVAILABLE, UNAVAILABLE
+        Available, Unavailable
     }
 
     @PrePersist

@@ -2,6 +2,7 @@ C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\controller
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\AdminResponseDTO.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\exception\PasswordMismatchException.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\controller\OrderController.java
+C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\repository\ReviewRepository.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\entity\FavoriteRestaurant.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\service\CourierAuthService.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\service\impl\RestaurantProfileServiceImpl.java
@@ -34,7 +35,6 @@ C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\AdminR
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\repository\AddressRepository.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\config\JwtAuthenticationFilter.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\service\TokenBlacklistService.java
-C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\repository\UserRepository.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\CustomerRegisterDTO.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\service\impl\MenuItemSearchServiceImpl.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\PasswordUpdateDTO.java
@@ -47,11 +47,13 @@ C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\controller
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\config\SecurityConfig.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\repository\RestaurantRepository.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\entity\AdminUser.java
+C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\RatingDTO.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\UpdateMenuItemDTO.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\controller\AuthController.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\controller\CourierAuthController.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\controller\RestaurantSearchController.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\service\impl\OrderServiceImpl.java
+C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\controller\RatingController.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\controller\AdminAuthController.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\RestaurantResponseDTO.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\CustomerResponseDTO.java
@@ -61,6 +63,7 @@ C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\service\im
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\ProfileUpdateDTO.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\CustomerLoginDTO.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\controller\MenuItemController.java
+C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\RatingResponseDTO.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\service\RestaurantSearchService.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\entity\Order.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\OrderDTO.java
@@ -76,13 +79,13 @@ C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\service\Pr
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\repository\BusinessHoursRepository.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\service\impl\RestaurantConfigServiceImpl.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\CreateMenuItemDTO.java
-C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\entity\User.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\entity\Review.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\exception\GlobalExceptionHandler.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\MenuItemDTO.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\RestaurantProfileDTO.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\RestaurantRegisterDTO.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\AdminLoginDTO.java
+C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\service\RatingService.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\RestaurantSearchResultDTO.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\service\impl\RestaurantSearchServiceImpl.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\service\AdminAuthService.java
@@ -90,6 +93,7 @@ C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\exception\
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\repository\OrderRepository.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\service\RestaurantProfileService.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\OrderSummaryDTO.java
+C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\service\impl\RatingServiceImpl.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\BusinessHoursDTO.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\CourierRegisterDTO.java
 C:\Users\root\Desktop\bbm384-Backend\gpt-plus\src\main\java\com\hufds\dto\OrderItemDTO.java

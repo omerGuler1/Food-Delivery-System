@@ -5,7 +5,6 @@ com\hufds\entity\MenuItem.class
 com\hufds\dto\AdminResponseDTO.class
 com\hufds\service\impl\AdminAuthServiceImpl.class
 com\hufds\entity\Courier.class
-com\hufds\entity\User.class
 com\hufds\entity\Restaurant.class
 com\hufds\dto\PasswordUpdateDTO.class
 com\hufds\repository\OrderRepository.class
@@ -24,7 +23,6 @@ com\hufds\dto\LogoutResponseDTO.class
 com\hufds\controller\AuthController.class
 com\hufds\dto\MenuItemSearchResultDTO.class
 com\hufds\entity\Courier$CourierStatus.class
-com\hufds\entity\UserRole.class
 com\hufds\service\impl\MenuItemServiceImpl.class
 com\hufds\entity\Customer.class
 com\hufds\service\OrderService.class
@@ -94,19 +92,16 @@ com\hufds\service\impl\CustomerAuthServiceImpl.class
 com\hufds\config\WebConfig.class
 com\hufds\dto\OrderItemDTO.class
 com\hufds\exception\InvalidPasswordException.class
-com\hufds\repository\UserRepository.class
 com\hufds\exception\GlobalExceptionHandler.class
 com\hufds\dto\RestaurantSearchDTO$RestaurantSearchDTOBuilder.class
 com\hufds\dto\ProfileUpdateDTO.class
 com\hufds\controller\OrderController.class
-com\hufds\entity\User$UserBuilder.class
 com\hufds\dto\RestaurantSearchResultDTO.class
 com\hufds\config\SecurityConfig.class
 com\hufds\dto\RestaurantConfigDTO.class
 com\hufds\dto\CustomerResponseDTO$CustomerResponseDTOBuilder.class
 com\hufds\entity\Review$ReviewRole.class
 com\hufds\service\impl\MenuItemSearchServiceImpl.class
-com\hufds\entity\User$UserBuilderImpl.class
 com\hufds\dto\RestaurantResponseDTO$RestaurantResponseDTOBuilder.class
 com\hufds\repository\AdminRepository.class
 com\hufds\entity\CourierAssignment.class
