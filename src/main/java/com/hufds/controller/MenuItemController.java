@@ -1,8 +1,6 @@
 package com.hufds.controller;
 
-import com.hufds.dto.CreateMenuItemDTO;
-import com.hufds.dto.DeleteResponseDTO;
-import com.hufds.dto.UpdateMenuItemDTO;
+import com.hufds.dto.MenuItemDTO;
 import com.hufds.entity.MenuItem;
 import com.hufds.service.JwtService;
 import com.hufds.service.MenuItemService;
@@ -23,45 +21,61 @@ public class MenuItemController {
     private final JwtService jwtService;
 
     @PostMapping
-    public ResponseEntity<MenuItem> addMenuItem(
-            @Valid @RequestBody CreateMenuItemDTO dto,
+    public ResponseEntity<MenuItem> createMenuItem(
+            @Valid @RequestBody MenuItemDTO dto,
             HttpServletRequest request) {
-
         Integer restaurantId = jwtService.extractUserId(getToken(request));
-        return ResponseEntity.ok(menuItemService.addMenuItem(restaurantId, dto));
+        return ResponseEntity.ok(menuItemService.createMenuItem(restaurantId, dto));
     }
 
     @GetMapping
-    public ResponseEntity<List<MenuItem>> listMenuItems(HttpServletRequest request) {
+    public ResponseEntity<List<MenuItem>> getMenuItems(
+            @RequestParam(required = false) Boolean availableOnly,
+            @RequestParam(required = false) String category,
+            HttpServletRequest request) {
         Integer restaurantId = jwtService.extractUserId(getToken(request));
-        return ResponseEntity.ok(menuItemService.listMenuItems(restaurantId));
+        
+        if (availableOnly != null && availableOnly) {
+            return ResponseEntity.ok(menuItemService.getAvailableMenuItems(restaurantId));
+        } else if (category != null && !category.isEmpty()) {
+            return ResponseEntity.ok(menuItemService.getMenuItemsByCategory(restaurantId, category));
+        } else {
+            return ResponseEntity.ok(menuItemService.getAllMenuItems(restaurantId));
+        }
+    }
+
+    @GetMapping("/{menuItemId}")
+    public ResponseEntity<MenuItem> getMenuItem(
+            @PathVariable Integer menuItemId,
+            HttpServletRequest request) {
+        Integer restaurantId = jwtService.extractUserId(getToken(request));
+        return ResponseEntity.ok(menuItemService.getMenuItemById(menuItemId, restaurantId));
     }
 
     @PutMapping("/{menuItemId}")
     public ResponseEntity<MenuItem> updateMenuItem(
             @PathVariable Integer menuItemId,
-            @Valid @RequestBody UpdateMenuItemDTO dto,
+            @Valid @RequestBody MenuItemDTO dto,
             HttpServletRequest request) {
-
         Integer restaurantId = jwtService.extractUserId(getToken(request));
         return ResponseEntity.ok(menuItemService.updateMenuItem(menuItemId, dto, restaurantId));
     }
 
     @DeleteMapping("/{menuItemId}")
-    public ResponseEntity<DeleteResponseDTO> deleteMenuItem(
+    public ResponseEntity<Void> deleteMenuItem(
             @PathVariable Integer menuItemId,
             HttpServletRequest request) {
-
         Integer restaurantId = jwtService.extractUserId(getToken(request));
-        boolean isDeleted = menuItemService.deleteMenuItem(menuItemId, restaurantId);
+        menuItemService.deleteMenuItem(menuItemId, restaurantId);
+        return ResponseEntity.noContent().build();
+    }
 
-        DeleteResponseDTO response = new DeleteResponseDTO();
-        response.setSuccess(isDeleted);
-        response.setMessage(isDeleted ?
-                "Menu item with ID " + menuItemId + " was successfully deleted" :
-                "Failed to delete menu item with ID " + menuItemId);
-
-        return ResponseEntity.ok(response);
+    @PatchMapping("/{menuItemId}/availability")
+    public ResponseEntity<MenuItem> toggleAvailability(
+            @PathVariable Integer menuItemId,
+            HttpServletRequest request) {
+        Integer restaurantId = jwtService.extractUserId(getToken(request));
+        return ResponseEntity.ok(menuItemService.toggleAvailability(menuItemId, restaurantId));
     }
 
     private String getToken(HttpServletRequest request) {

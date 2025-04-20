@@ -25,6 +25,7 @@ public class CourierRegisterDTO {
 
     @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number")
     private String phoneNumber;
-
+    
+    @NotBlank(message = "Vehicle type is required")
     private String vehicleType;
 }
