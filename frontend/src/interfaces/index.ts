@@ -1,0 +1,124 @@
+// User interfaces
+export interface User {
+  name: string;
+  email: string;
+  phoneNumber: string;
+  token: string;
+}
+
+export interface Address {
+  addressId: number;
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  latitude?: number;
+  longitude?: number;
+  isDefault: boolean;
+}
+
+export interface Customer extends User {
+  customerId: number;
+  addresses?: Address[];
+}
+
+export interface Restaurant extends User {
+  restaurantId: number;
+  cuisineType?: string;
+  rating?: number;
+}
+
+export interface Courier extends User {
+  courierId: number;
+  isAvailable?: boolean;
+  currentLocation?: string;
+  vehicleType?: string;
+}
+
+// Auth interfaces
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface CustomerRegisterRequest {
+  name: string;
+  email: string;
+  phoneNumber: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface RestaurantRegisterRequest {
+  name: string;
+  email: string;
+  phoneNumber: string;
+  password: string;
+  confirmPassword: string;
+  cuisineType: string;
+  taxNumber: string;
+  restaurantType: string;
+}
+
+export interface CourierRegisterRequest {
+  name: string;
+  email: string;
+  phoneNumber: string;
+  password: string;
+  confirmPassword: string;
+  vehicleType: string;
+}
+
+// Restaurant and Menu interfaces
+export enum FoodCategory {
+  STARTERS = 'Starters',
+  MAIN_COURSES = 'Main Courses',
+  SIDES = 'Sides',
+  DESSERTS = 'Desserts',
+  DRINKS = 'Drinks',
+  SALADS = 'Salads',
+  SOUPS = 'Soups',
+  APPETIZERS = 'Appetizers',
+  FAST_FOOD = 'Fast Food'
+}
+
+export interface MenuItem {
+  menuItemId: number;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  imageUrl?: string;
+  available: boolean;
+  restaurantId?: number;
+  allergens?: string[];
+  preparationTime?: number; // in minutes
+  calories?: number;
+  isVegetarian?: boolean;
+  isVegan?: boolean;
+  isGlutenFree?: boolean;
+  specialOffer?: boolean;
+  discountPercentage?: number;
+}
+
+export interface RestaurantDetails extends Restaurant {
+  address?: string;
+  description?: string;
+  openingHours?: string;
+  menuItems?: MenuItem[];
+}
+
+// Cart interfaces
+export interface CartItem extends MenuItem {
+  quantity: number;
+  restaurantId: number;
+  restaurantName: string;
+}
+
+export interface Cart {
+  items: CartItem[];
+  restaurantId: number | null;
+  restaurantName: string | null;
+  totalPrice: number;
+} 
