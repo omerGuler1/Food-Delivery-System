@@ -11,9 +11,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/profile")
+@RequestMapping("/api/customer/profile")
 @RequiredArgsConstructor
-public class ProfileController {
+public class CustomerProfileController {
 
     private final ProfileService profileService;
 

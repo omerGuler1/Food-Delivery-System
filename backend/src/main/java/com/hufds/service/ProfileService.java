@@ -5,6 +5,7 @@ import com.hufds.entity.*;
 import com.hufds.exception.CustomException;
 import com.hufds.repository.CustomerRepository;
 import com.hufds.repository.AddressRepository;
+import com.hufds.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -25,6 +26,7 @@ public class ProfileService {
 
     private final CustomerRepository customerRepository;
     private final AddressRepository addressRepository;
+    private final OrderRepository orderRepository;
     private final PasswordEncoder passwordEncoder;
 
     public Customer getCurrentProfile() {
@@ -55,6 +57,21 @@ public class ProfileService {
             throw new CustomException("Account deletion must be confirmed", HttpStatus.BAD_REQUEST);
         }
 
+        // Hard delete all addresses
+        Set<Address> addresses = currentUser.getAddresses();
+        if (!addresses.isEmpty()) {
+            addressRepository.deleteAll(addresses);
+            currentUser.getAddresses().clear();
+        }
+
+        // Hard delete all orders
+        Set<Order> orders = currentUser.getOrders();
+        if (!orders.isEmpty()) {
+            orderRepository.deleteAll(orders);
+            currentUser.getOrders().clear();
+        }
+
+        // Soft delete the account
         currentUser.setDeletedAt(LocalDateTime.now());
         customerRepository.save(currentUser);
     }
