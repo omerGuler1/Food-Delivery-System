@@ -13,6 +13,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
@@ -73,6 +75,15 @@ public class OrderController {
         String token = extractToken(request);
         Integer customerId = jwtService.extractUserId(token);
         return ResponseEntity.ok(orderService.cancelOrder(id, customerId));
+    }
+
+    // GET RESTAURANT ORDERS
+    @GetMapping("/restaurant")
+    public ResponseEntity<List<Order>> getRestaurantOrders(HttpServletRequest request) {
+        validateUserRole("restaurant");
+        String token = extractToken(request);
+        Integer restaurantId = jwtService.extractUserId(token);
+        return ResponseEntity.ok(orderService.getOrdersByRestaurantId(restaurantId));
     }
 
     // UTILITY: Extract token from header
