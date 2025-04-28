@@ -48,4 +48,8 @@ public class Address {
 
     @Column(name = "is_default", nullable = false)
     private Boolean isDefault = false;
+
+    public String getFullAddress() {
+        return String.format("%s, %s, %s %s, %s", street, city, state, zipCode, country);
+    }
 }
