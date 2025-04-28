@@ -83,4 +83,14 @@ export const updateAddress = async (addressId: number, addressData: Address): Pr
 export const deleteAddress = async (addressId: number): Promise<any> => {
   const response = await api.delete(`/profile/addresses/${addressId}`);
   return response.data;
+};
+
+// Upload profile image
+export const uploadProfileImage = async (formData: FormData): Promise<{ imageUrl: string }> => {
+  const response = await api.post('/profile/image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+  return response.data;
 }; 

@@ -16,6 +16,9 @@ import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
 import RestaurantDetailPage from './pages/RestaurantDetailPage';
 import RestaurantDashboard from './pages/RestaurantDashboard';
+import RestaurantProfile from './pages/RestaurantProfile';
+import CourierDashboard from './pages/CourierDashboard';
+import CourierProfile from './pages/CourierProfile';
 
 // Protected route component
 interface ProtectedRouteProps {
@@ -60,6 +63,32 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <Typography variant="h4" color="error" gutterBottom>Access Denied</Typography>
         <Typography variant="body1" mb={3}>
           Only restaurant owners can access the restaurant dashboard.
+        </Typography>
+        <Button 
+          variant="contained" 
+          component={Link} 
+          to="/"
+        >
+          Back to Home
+        </Button>
+      </Box>
+    );
+  }
+  
+  // If user is not a courier and trying to access courier dashboard, show an error or redirect
+  if (isDashboardPage && location.pathname.includes('/courier/dashboard') && userType !== 'courier') {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        minHeight: '100vh',
+        justifyContent: 'center',
+        alignItems: 'center',
+        p: 3
+      }}>
+        <Typography variant="h4" color="error" gutterBottom>Access Denied</Typography>
+        <Typography variant="body1" mb={3}>
+          Only couriers can access the courier dashboard.
         </Typography>
         <Button 
           variant="contained" 
@@ -213,14 +242,6 @@ const theme = createTheme({
   },
 });
 
-// Temporary placeholder pages for restaurant and courier dashboards
-const CourierDashboard = () => (
-  <Box sx={{ p: 4, textAlign: 'center', mb: 10 }}>
-    <h1>Courier Dashboard</h1>
-    <p>Welcome to your courier dashboard. Here you can view and manage deliveries.</p>
-  </Box>
-);
-
 const App: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
@@ -242,8 +263,16 @@ const App: React.FC = () => {
                   element={<ProtectedRoute userType="restaurant" element={<RestaurantDashboard />} />} 
                 />
                 <Route 
+                  path="/restaurant/profile" 
+                  element={<ProtectedRoute userType="restaurant" element={<RestaurantProfile />} />} 
+                />
+                <Route 
                   path="/courier/dashboard" 
                   element={<ProtectedRoute userType="courier" element={<CourierDashboard />} />} 
+                />
+                <Route 
+                  path="/courier/profile" 
+                  element={<ProtectedRoute userType="courier" element={<CourierProfile />} />} 
                 />
                 
                 <Route path="*" element={<Navigate to="/" replace />} />

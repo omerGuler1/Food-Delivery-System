@@ -138,7 +138,7 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
 
         // Convert assignments to DTOs
         return assignments.stream()
-                .map(assignment -> {
+                .<CourierOrderHistoryDTO>map(assignment -> {
                     Order order = assignment.getOrder();
                     return CourierOrderHistoryDTO.builder()
                             .orderId(order.getOrderId())

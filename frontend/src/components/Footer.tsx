@@ -10,7 +10,9 @@ const Footer: React.FC = () => {
   const location = useLocation();
   const isProfilePage = location.pathname === '/profile';
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
-  const isDashboardPage = location.pathname.includes('/dashboard');
+  const isDashboardPage = location.pathname.includes('/dashboard') || 
+                          location.pathname.includes('/restaurant/profile') || 
+                          location.pathname.includes('/courier/profile');
   const isCourierOrRestaurantTab = location.pathname === '/register' && 
     document.querySelector('[aria-selected="true"][id="register-tab-1"], [aria-selected="true"][id="register-tab-2"]');
   

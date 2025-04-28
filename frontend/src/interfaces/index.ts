@@ -27,6 +27,8 @@ export interface Restaurant extends User {
   restaurantId: number;
   cuisineType?: string;
   rating?: number;
+  profileImageUrl?: string;
+  isOpen?: boolean;
 }
 
 export interface Courier extends User {

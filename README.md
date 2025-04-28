@@ -1,583 +1,93 @@
-# BBM384 Backend API Documentation
+# GPT+
 
-## Authentication Endpoints
 
-### Customer Authentication
-- `POST /api/customer/auth/register` - Register a new customer account
-  - Required fields: email, password, name, phoneNumber
-  - Email must be unique and valid format
-  - Password must be at least 8 characters with:
-    - At least one digit
-    - At least one lowercase letter
-    - At least one uppercase letter
-    - At least one special character (!@#$%^&*()-_=+{};:,<.>?)
-  - Phone number must match format: +[1-9][0-9]{1,14}
 
-  ```json
-  // Request (CustomerRegisterDTO)
-  POST /api/customer/auth/register
-  {
-    "email": "customer@example.com",
-    "password": "SecurePass123!",
-    "name": "John Doe",
-    "phoneNumber": "+905551234567"
-  }
+## Getting started
 
-  // Response (CustomerResponseDTO)
-  {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "customerId": 1,
-    "name": "John Doe",
-    "email": "customer@example.com",
-    "phoneNumber": "+905551234567"
-  }
-  ```
+To make it easy for you to get started with GitLab, here's a list of recommended next steps.
 
-- `POST /api/customer/auth/login` - Login to customer account
-  - Required fields: email, password
-  - Returns JWT token for authentication
+Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
 
-  ```json
-  // Request (CustomerLoginDTO)
-  POST /api/customer/auth/login
-  {
-    "email": "customer@example.com",
-    "password": "SecurePass123!"
-  }
+## Add your files
 
-  // Response (CustomerResponseDTO)
-  {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "customerId": 1,
-    "name": "John Doe",
-    "email": "customer@example.com",
-    "phoneNumber": "+905551234567"
-  }
-  ```
+- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
+- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
 
-### Restaurant Authentication
-- `POST /api/restaurant/auth/register` - Register a new restaurant account
-  - Required fields: email, password, name, phoneNumber, cuisineType
-  - Email must be unique and valid format
-  - Password must be at least 8 characters with:
-    - At least one digit
-    - At least one lowercase letter
-    - At least one uppercase letter
-    - At least one special character (@#$%^&+=)
-  - Phone number must match format: +[1-9][0-9]{1,14}
-  - Cuisine type must be from predefined list
+```
+cd existing_repo
+git remote add origin https://gitlab.com/bbm384-25/gpt-plus.git
+git branch -M main
+git push -uf origin main
+```
 
-  ```json
-  // Request (RestaurantRegisterDTO)
-  POST /api/restaurant/auth/register
-  {
-    "email": "restaurant@example.com",
-    "password": "SecurePass123@",
-    "name": "Tasty Bites",
-    "phoneNumber": "+905551234567",
-    "cuisineType": "ITALIAN"
-  }
+## Integrate with your tools
 
-  // Response (RestaurantResponseDTO)
-  {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "restaurantId": 1,
-    "name": "Tasty Bites",
-    "email": "restaurant@example.com",
-    "phoneNumber": "+905551234567",
-    "cuisineType": "ITALIAN",
-    "rating": 0.0
-  }
-  ```
+- [ ] [Set up project integrations](https://gitlab.com/bbm384-25/gpt-plus/-/settings/integrations)
 
-### Courier Authentication
-- `POST /api/courier/auth/register` - Register a new courier account
-  - Required fields: email, password, name, phoneNumber, vehicleType
-  - Email must be unique and valid format
-  - Password must be at least 8 characters with:
-    - At least one digit
-    - At least one lowercase letter
-    - At least one uppercase letter
-    - At least one special character (!@#$%^&*()-_=+{};:,<.>?)
-  - Phone number must match format: +[1-9][0-9]{1,14}
-  - Vehicle type must be from predefined list
+## Collaborate with your team
 
-  ```json
-  // Request (CourierRegisterDTO)
-  POST /api/courier/auth/register
-  {
-    "email": "courier@example.com",
-    "password": "SecurePass123!",
-    "name": "Mike Courier",
-    "phoneNumber": "+905551234567",
-    "vehicleType": "MOTORCYCLE"
-  }
+- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
+- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
+- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
+- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
+- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
 
-  // Response (CourierResponseDTO)
-  {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "courierId": 1,
-    "name": "Mike Courier",
-    "email": "courier@example.com",
-    "phoneNumber": "+905551234567",
-    "vehicleType": "MOTORCYCLE",
-    "status": "AVAILABLE",
-    "earnings": 0.00
-  }
-  ```
+## Test and Deploy
 
-### Admin Authentication
-- `POST /api/admin/register` - Register a new admin account
-  - Required fields: email, password, name, phoneNumber
-  - Email must be unique and valid format
-  - Password must be at least 8 characters
-  - Phone number must match format: +[1-9][0-9]{1,14}
-  - Admin registration requires special authorization
+Use the built-in continuous integration in GitLab.
 
-  ```json
-  // Request (AdminRegisterDTO)
-  POST /api/admin/register
-  {
-    "email": "admin@example.com",
-    "password": "AdminPass123",
-    "name": "Admin User",
-    "phoneNumber": "+905551234567"
-  }
+- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
+- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
+- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
+- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
+- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
 
-  // Response (AdminResponseDTO)
-  {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "adminId": 1,
-    "name": "Admin User",
-    "email": "admin@example.com"
-  }
-  ```
+***
 
-### General Authentication
-- `POST /api/auth/logout` - Logout from any account type
-  - Requires valid JWT token in Authorization header
-  - Blacklists the current token
+# Editing this README
 
-  ```json
-  // Request
-  POST /api/auth/logout
-  Headers:
-  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
 
-  // Response (LogoutResponseDTO)
-  {
-    "message": "Logout successful",
-    "success": true
-  }
-  ```
+## Suggestions for a good README
 
-## Customer Profile Management
-- `GET /api/profile` - Get current user profile
-  - Requires authentication
-  - Returns user details including email, name, phone number
+Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
 
-  ```json
-  // Request
-  GET /api/profile
-  Headers:
-  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+## Name
+Choose a self-explaining name for your project.
 
-  // Response (CustomerResponseDTO)
-  {
-    "customerId": 1,
-    "name": "John Doe",
-    "email": "customer@example.com",
-    "phoneNumber": "+905551234567"
-  }
-  ```
+## Description
+Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
 
-- `PUT /api/profile` - Update user profile
-  - Requires authentication
-  - Can update: name, phoneNumber
-  - Email cannot be changed
-  - Phone number must match format if provided
+## Badges
+On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
 
-  ```json
-  // Request (ProfileUpdateDTO)
-  PUT /api/profile
-  Headers:
-  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-  {
-    "name": "John Updated",
-    "phoneNumber": "+905559876543"
-  }
-  ```
+## Visuals
+Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
 
-- `PUT /api/profile/password` - Update user password
-  - Requires authentication
-  - Required fields: currentPassword, newPassword
-  - New password must meet same requirements as registration
+## Installation
+Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
 
-- `DELETE /api/profile` - Delete user account (soft delete)
-  - Requires authentication
-  - Required fields: userId, confirmation
-  - Account can be reactivated by admin
+## Usage
+Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
 
-  ```json
-  // Request (AccountDeletionDTO)
-  DELETE /api/profile
-  Headers:
-  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-  {
-    "userId": 1,
-    "confirmation": true
-  }
-  ```
+## Support
+Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
 
-### Address Management
-- `GET /api/profile/addresses` - Get all addresses for current user
-  - Requires authentication
-  - Returns list of saved addresses
+## Roadmap
+If you have ideas for releases in the future, it is a good idea to list them in the README.
 
-- `POST /api/profile/addresses` - Add new address
-  - Requires authentication
-  - Required fields: street, city, state, country, zipCode, isDefault
-  - Optional: latitude, longitude
+## Contributing
+State if you are open to contributions and what your requirements are for accepting them.
 
-  ```json
-  // Request (AddressDTO)
-  POST /api/profile/addresses
-  Headers:
-  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-  {
-    "street": "456 Oak Street",
-    "city": "Istanbul",
-    "state": "Marmara",
-    "country": "Turkey",
-    "zipCode": "34000",
-    "isDefault": true,
-    "latitude": 41.0082,
-    "longitude": 28.9784
-  }
+For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
 
-  // Response (AddressDTO)
-  {
-    "addressId": 1,
-    "street": "456 Oak Street",
-    "city": "Istanbul",
-    "state": "Marmara",
-    "country": "Turkey",
-    "zipCode": "34000",
-    "isDefault": true,
-    "latitude": 41.0082,
-    "longitude": 28.9784
-  }
-  ```
+You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
 
-## Restaurant Menu Management
-- `POST /api/restaurant/menu-items` - Create new menu item
-  - Requires restaurant authentication
-  - Required fields: name, description, price, category
-  - Optional fields: imageUrl, preparationTime
-  - Price must be positive
+## Authors and acknowledgment
+Show your appreciation to those who have contributed to the project.
 
-  ```json
-  // Request (MenuItemDTO)
-  POST /api/restaurant/menu-items
-  Headers:
-  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-  {
-    "name": "Margherita Pizza",
-    "description": "Classic tomato and mozzarella pizza",
-    "price": 89.90,
-    "category": "PIZZA",
-    "imageUrl": "https://example.com/pizza.jpg",
-    "preparationTime": 15
-  }
+## License
+For open source projects, say how it is licensed.
 
-  // Response (MenuItem)
-  {
-    "id": 1,
-    "name": "Margherita Pizza",
-    "description": "Classic tomato and mozzarella pizza",
-    "price": 89.90,
-    "category": "PIZZA",
-    "imageUrl": "https://example.com/pizza.jpg",
-    "preparationTime": 15,
-    "isAvailable": true
-  }
-  ```
-
-- `GET /api/restaurant/menu-items` - Get all menu items
-  - Requires restaurant authentication
-  - Query parameters:
-    - `availableOnly` - Filter only available items
-    - `category` - Filter by category
-  - Returns list of menu items
-
-- `GET /api/restaurant/menu-items/{menuItemId}` - Get specific menu item
-  - Requires restaurant authentication
-  - Menu item must belong to the restaurant
-
-- `PUT /api/restaurant/menu-items/{menuItemId}` - Update menu item
-  - Requires restaurant authentication
-  - Can update all fields except ID
-  - Menu item must belong to the restaurant
-
-- `DELETE /api/restaurant/menu-items/{menuItemId}` - Delete menu item
-  - Requires restaurant authentication
-  - Menu item must belong to the restaurant
-  - Returns 204 No Content on success
-
-- `PATCH /api/restaurant/menu-items/{menuItemId}/availability` - Toggle item availability
-  - Requires restaurant authentication
-  - Menu item must belong to the restaurant
-  - Toggles between available and unavailable
-
-## Order Management
-- `POST /api/orders` - Place new order
-  - Requires customer authentication
-  - Required fields: restaurantId, addressId, items (list of menuItemId and quantity)
-  - Items must be available and belong to the restaurant
-  - Customer must have at least one address
-
-  ```json
-  // Request (PlaceOrderRequestDTO)
-  POST /api/orders
-  Headers:
-  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-  {
-    "restaurantId": 1,
-    "addressId": 1,
-    "items": [
-      {
-        "menuItemId": 1,
-        "quantity": 2
-      },
-      {
-        "menuItemId": 3,
-        "quantity": 1
-      }
-    ]
-  }
-
-  // Response (OrderDTO)
-  {
-    "orderId": 1,
-    "restaurantId": 1,
-    "userId": 1,
-    "orderItems": [
-      {
-        "menuItemId": 1,
-        "quantity": 2,
-        "price": 89.90,
-        "specialInstructions": null
-      },
-      {
-        "menuItemId": 3,
-        "quantity": 1,
-        "price": 89.90,
-        "specialInstructions": null
-      }
-    ],
-    "status": "PENDING",
-    "totalAmount": 269.70,
-    "deliveryAddress": "456 Oak Street, Istanbul, Turkey",
-    "orderTime": "2024-03-15T11:30:00Z",
-    "deliveryTime": null,
-    "specialInstructions": null
-  }
-  ```
-
-- `GET /api/orders/{id}` - Get order details
-  - Requires authentication
-  - Customer can view their own orders
-  - Restaurant can view orders for their restaurant
-  - Courier can view assigned orders
-
-- `PUT /api/orders/{id}/status` - Update order status (Restaurant/Courier only)
-  - Requires restaurant or courier authentication
-  - Required fields: status
-  - Optional: statusUpdateReason
-  - Status transitions must follow the workflow:
-    - PENDING → ACCEPTED → PREPARING → READY → PICKED_UP → DELIVERED
-    - Can be CANCELLED at any point by customer
-
-  ```json
-  // Request (OrderStatusUpdateDTO)
-  PUT /api/orders/1/status
-  Headers:
-  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-  {
-    "status": "ACCEPTED",
-    "statusUpdateReason": "Order accepted and will be prepared"
-  }
-  ```
-
-- `PUT /api/orders/{id}/cancel` - Cancel order (Customer only)
-  - Requires customer authentication
-  - Can only cancel orders in PENDING or ACCEPTED status
-  - Order must belong to the customer
-
-## Rating System
-- `POST /api/ratings` - Create new rating for an order
-  - Requires customer authentication
-  - Required fields: orderId, rating (1-5)
-  - Optional: comment
-  - Order must be in DELIVERED status
-  - Customer can only rate their own orders
-  - One rating per order
-
-  ```json
-  // Request (RatingDTO)
-  POST /api/ratings
-  Headers:
-  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-  {
-    "orderId": 1,
-    "rating": 5,
-    "comment": "Great service and delicious food!"
-  }
-
-  // Response (RatingResponseDTO)
-  {
-    "id": 1,
-    "orderId": 1,
-    "customerId": 1,
-    "restaurantId": 1,
-    "rating": 5,
-    "comment": "Great service and delicious food!",
-    "createdAt": "2024-03-15T12:30:00Z",
-    "customerName": "John Doe",
-    "restaurantName": "Tasty Bites"
-  }
-  ```
-
-- `GET /api/ratings/restaurant/{restaurantId}` - Get all ratings for a restaurant
-  - Public endpoint
-  - Returns list of ratings with customer comments
-
-- `GET /api/ratings/restaurant/{restaurantId}/average` - Get average rating for a restaurant
-  - Public endpoint
-  - Returns average rating (1-5)
-
-- `GET /api/ratings/customer` - Get all ratings given by current customer
-  - Requires customer authentication
-  - Returns list of ratings given by the customer
-
-- `GET /api/ratings/can-rate/{orderId}` - Check if customer can rate an order
-  - Requires customer authentication
-  - Returns boolean indicating if order can be rated
-  - Order must be DELIVERED and not already rated
-
-## Search Functionality
-
-### Restaurant Search
-- `GET /api/restaurants/search` - Search restaurants with filters
-  - Public endpoint
-  - All filters are optional:
-    - name
-    - cuisineType
-    - city
-    - state
-    - country
-    - minPrice
-    - maxPrice
-    - deliveryTime
-    - latitude
-    - longitude
-    - maxDistanceKm
-
-  ```json
-  // Request
-  GET /api/restaurants/search?cuisineType=ITALIAN&city=Istanbul&minPrice=50&maxPrice=200
-
-  // Response (RestaurantSearchResultDTO)
-  {
-    "restaurants": [
-      {
-        "restaurantId": 1,
-        "name": "Tasty Bites",
-        "cuisineType": "ITALIAN",
-        "phoneNumber": "+905551234567",
-        "rating": 4.5,
-        "street": "123 Main St",
-        "city": "Istanbul",
-        "state": "Marmara",
-        "zipCode": "34000",
-        "country": "Turkey",
-        "latitude": 41.0082,
-        "longitude": 28.9784,
-        "deliveryRangeKm": 5,
-        "estimatedDeliveryTime": "30:00",
-        "averagePrice": 89.90,
-        "isOpen": true
-      }
-    ],
-    "total": 1
-  }
-  ```
-
-### Menu Item Search
-- `GET /api/menu-items/search` - Search menu items with filters
-  - Public endpoint
-  - All filters are optional:
-    - name
-    - category
-    - minPrice
-    - maxPrice
-    - isAvailable
-    - restaurantId
-
-  ```json
-  // Request
-  GET /api/menu-items/search?category=PIZZA&minPrice=50&maxPrice=100&restaurantId=1
-
-  // Response (MenuItemSearchResultDTO)
-  {
-    "menuItems": [
-      {
-        "id": 1,
-        "name": "Margherita Pizza",
-        "description": "Classic tomato and mozzarella pizza",
-        "price": 89.90,
-        "category": "PIZZA",
-        "imageUrl": "https://example.com/pizza.jpg",
-        "isAvailable": true,
-        "restaurantId": 1,
-        "restaurantName": "Tasty Bites"
-      }
-    ],
-    "total": 1
-  }
-  ```
-
-- `POST /api/menu-items/search` - Advanced menu item search
-  - Public endpoint
-  - Accepts complex search criteria
-
-  ```json
-  // Request (MenuItemSearchDTO)
-  POST /api/menu-items/search
-  {
-    "name": "Pizza",
-    "category": "PIZZA",
-    "minPrice": 50.00,
-    "maxPrice": 100.00,
-    "isAvailable": true,
-    "restaurantId": 1
-  }
-
-  // Response (MenuItemSearchResultDTO)
-  {
-    "menuItems": [
-      {
-        "id": 1,
-        "name": "Margherita Pizza",
-        "description": "Classic tomato and mozzarella pizza",
-        "price": 89.90,
-        "category": "PIZZA",
-        "imageUrl": "https://example.com/pizza.jpg",
-        "isAvailable": true,
-        "restaurantId": 1,
-        "restaurantName": "Tasty Bites"
-      }
-    ],
-    "total": 1
-  }
-  ``` 
+## Project status
+If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.

@@ -64,7 +64,12 @@ const Navbar: React.FC = () => {
   if (isAuthenticated && userType === 'restaurant') {
     // For restaurant users, show dashboard only
     pages = [
-      { title: 'Dashboard', path: '/restaurant/dashboard', icon: <DashboardIcon /> }
+      { title: 'Dashboard', path: '/restaurant/dashboard', icon: <DashboardIcon sx={{ mr: 0.5 }} /> }
+    ];
+  } else if (isAuthenticated && userType === 'courier') {
+    // For courier users, show dashboard only
+    pages = [
+      { title: 'Dashboard', path: '/courier/dashboard', icon: <DashboardIcon sx={{ mr: 0.5 }} /> }
     ];
   } else {
     // For other users, show regular navigation
@@ -77,7 +82,17 @@ const Navbar: React.FC = () => {
   // User menu based on authentication state
   const settings = isAuthenticated 
     ? [
-        { title: 'Profile', path: '/profile', icon: <PersonIcon fontSize="small" />, onClick: () => { navigate('/profile'); handleCloseUserMenu(); } },
+        { title: 'Profile', path: '/profile', icon: <PersonIcon fontSize="small" />, onClick: () => { 
+          // Navigate to appropriate profile page based on user type
+          if (userType === 'restaurant') {
+            navigate('/restaurant/profile');
+          } else if (userType === 'courier') {
+            navigate('/courier/profile');
+          } else {
+            navigate('/profile');
+          }
+          handleCloseUserMenu(); 
+        }},
         ...(userType === 'customer' ? [{ title: 'My Orders', path: '/orders', icon: <ReceiptIcon fontSize="small" />, onClick: () => { navigate('/orders'); handleCloseUserMenu(); } }] : []),
         { title: 'Logout', icon: <ExitToAppIcon fontSize="small" />, onClick: handleLogout }
       ]
@@ -176,7 +191,13 @@ const Navbar: React.FC = () => {
                 to={page.path}
                 onClick={handleCloseNavMenu}
                 startIcon={page.icon || undefined}
-                sx={{ my: 2, color: 'white', display: 'block' }}
+                sx={{ 
+                  my: 2, 
+                  color: 'white', 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  textAlign: 'center'
+                }}
               >
                 {page.title}
               </Button>

@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -149,11 +148,6 @@ public class OrderServiceImpl implements OrderService {
 
         order.setStatus(Order.OrderStatus.CANCELLED);
         return orderRepository.save(order);
-    }
-
-    @Override
-    public List<Order> getOrdersByRestaurantId(Integer restaurantId) {
-        return orderRepository.findByRestaurantRestaurantId(restaurantId);
     }
 
     private boolean isValidStatusTransition(Order.OrderStatus current, Order.OrderStatus next) {
