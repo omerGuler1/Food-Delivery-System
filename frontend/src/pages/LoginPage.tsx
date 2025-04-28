@@ -122,8 +122,14 @@ const LoginPage: React.FC = () => {
       // Update context with user data
       login(response, userType as any);
       
-      // Redirect to home page
-      navigate('/');
+      // Redirect based on user type
+      if (userType === 'courier') {
+        navigate('/courier/dashboard');
+      } else if (userType === 'restaurant') {
+        navigate('/restaurant/dashboard');
+      } else {
+        navigate('/');
+      }
       
     } catch (err: any) {
       let message = 'Login failed. Please try again.';

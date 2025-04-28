@@ -38,7 +38,10 @@ import {
   Avatar,
   Stack,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Switch,
+  Tooltip,
+  Snackbar
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -54,12 +57,15 @@ import {
   AccessTime as AccessTimeIcon,
   LocalOffer as LocalOfferIcon,
   Info as InfoIcon,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Person,
+  Warning as WarningIcon
 } from '@mui/icons-material';
 import { mockMenuItems, foodCategories, restaurantInfo } from '../data/mockData';
 import { MenuItem as MenuItemType, FoodCategory } from '../interfaces';
-import { addMenuItem, updateMenuItem, deleteMenuItem, getRestaurantMenuItems } from '../services/restaurantService';
+import { addMenuItem, updateMenuItem, deleteMenuItem, getRestaurantMenuItems, updateRestaurantStatus } from '../services/restaurantService';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -99,6 +105,9 @@ const RestaurantDashboard: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRestaurantOpen, setIsRestaurantOpen] = useState(false);
+  const [showStatusWarning, setShowStatusWarning] = useState(false);
+  const navigate = useNavigate();
 
   // Helper function to map API response to our MenuItem type
   const mapApiMenuItemToLocal = (apiItem: any): MenuItemType => {
@@ -143,6 +152,16 @@ const RestaurantDashboard: React.FC = () => {
           setMenuItems([]);
           setFilteredItems([]);
         }
+
+        // Fetch restaurant status (in a real app, this would be a separate API call)
+        // For now, we're just simulating it
+        if (user && 'isOpen' in user) {
+          setIsRestaurantOpen(user.isOpen as boolean);
+        } else if (process.env.NODE_ENV === 'development') {
+          // Default to closed in development
+          setIsRestaurantOpen(false);
+        }
+        
       } catch (error: any) {
         console.error('Error fetching menu items:', error);
         
@@ -419,12 +438,87 @@ const RestaurantDashboard: React.FC = () => {
     }
   };
 
+  // Toggle restaurant open/closed status
+  const toggleRestaurantStatus = async () => {
+    // If trying to open restaurant but no menu items exist, show warning
+    if (!isRestaurantOpen && menuItems.length === 0) {
+      setShowStatusWarning(true);
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      
+      // Get restaurant ID from user context
+      const restaurantId = user && 'restaurantId' in user ? user.restaurantId : 1;
+      
+      // Call API to update restaurant status
+      const newStatus = !isRestaurantOpen;
+      
+      // If in development mode or API call is not available yet, skip the actual API call
+      if (process.env.NODE_ENV !== 'development') {
+        await updateRestaurantStatus(restaurantId, newStatus);
+      }
+      
+      // Update local state
+      setIsRestaurantOpen(newStatus);
+      
+      // In a real implementation, we would also update the user context
+      // For example:
+      // updateUser({...user, isOpen: newStatus});
+      
+      setSuccessMessage(`Restaurant is now ${newStatus ? 'open' : 'closed'} for orders`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error: any) {
+      console.error('Error updating restaurant status:', error);
+      setError('Failed to update restaurant status. Please try again.');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Close the warning dialog
+  const handleCloseWarning = () => {
+    setShowStatusWarning(false);
+  };
+
   return (
     <Box sx={{ minHeight: '100vh', py: 3, bgcolor: '#f8f9fa' }}>
       <Container maxWidth="lg">
         {/* Dashboard Header */}
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              mr: 3, 
+              p: 1, 
+              borderRadius: 2,
+              bgcolor: isRestaurantOpen ? 'success.light' : 'error.light',
+              color: 'white',
+              transition: 'background-color 0.3s ease'
+            }}>
+              <Typography sx={{ mr: 1, fontWeight: 'medium' }}>
+                {isRestaurantOpen ? 'Open' : 'Closed'}
+              </Typography>
+              <Tooltip title={isRestaurantOpen ? "Set restaurant as closed" : "Set restaurant as open"}>
+                <Switch
+                  checked={isRestaurantOpen}
+                  onChange={toggleRestaurantStatus}
+                  color="default"
+                  sx={{
+                    '& .MuiSwitch-switchBase.Mui-checked': {
+                      color: '#fff',
+                    },
+                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                      backgroundColor: '#fff',
+                      opacity: 0.5
+                    },
+                  }}
+                />
+              </Tooltip>
+            </Box>
             <Avatar 
               sx={{ 
                 width: 50, 
@@ -444,7 +538,7 @@ const RestaurantDashboard: React.FC = () => {
               </Typography>
             </Box>
           </Box>
-          <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Button 
               variant="contained" 
               color="primary" 
@@ -765,6 +859,42 @@ const RestaurantDashboard: React.FC = () => {
             disabled={loading || !editingItem?.name || !editingItem?.description || editingItem?.price <= 0}
           >
             {loading ? <CircularProgress size={24} /> : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Warning Dialog when trying to open restaurant without menu items */}
+      <Dialog
+        open={showStatusWarning}
+        onClose={handleCloseWarning}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ color: 'error.main' }}>
+          Cannot Open Restaurant
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <WarningIcon color="error" sx={{ mr: 1, fontSize: 30 }} />
+            <Typography variant="body1">
+              Your restaurant menu is empty. You need to add at least one menu item before opening your restaurant for orders.
+            </Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary">
+            Customers need to see what food your restaurant offers. Please add some menu items first.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleAddItem}
+            color="primary"
+            variant="contained"
+            startIcon={<AddIcon />}
+          >
+            Add Menu Item
+          </Button>
+          <Button onClick={handleCloseWarning} color="inherit">
+            Close
           </Button>
         </DialogActions>
       </Dialog>

@@ -84,4 +84,17 @@ export const deleteMenuItem = async (menuItemId: number, restaurantId: number): 
     console.error('API Error in deleteMenuItem:', error);
     throw error;
   }
+};
+
+// Update restaurant status (open/closed)
+export const updateRestaurantStatus = async (restaurantId: number, isOpen: boolean): Promise<{ isOpen: boolean }> => {
+  console.log(`API Call: Updating restaurant status to ${isOpen ? 'open' : 'closed'} for restaurant ${restaurantId}`);
+  try {
+    const response = await api.put(`/restaurants/${restaurantId}/status`, { isOpen });
+    console.log('API Response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('API Error in updateRestaurantStatus:', error);
+    throw error;
+  }
 }; 
