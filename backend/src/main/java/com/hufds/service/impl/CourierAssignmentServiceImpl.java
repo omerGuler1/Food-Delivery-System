@@ -1,6 +1,7 @@
 package com.hufds.service.impl;
 
 import com.hufds.dto.CourierAssignmentDTO;
+import com.hufds.dto.CourierOrderHistoryDTO;
 import com.hufds.entity.CourierAssignment;
 import com.hufds.entity.Order;
 import com.hufds.entity.Courier;
@@ -13,6 +14,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class CourierAssignmentServiceImpl implements CourierAssignmentService {
@@ -120,5 +124,36 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
             default:
                 return false;
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CourierOrderHistoryDTO> getCourierOrderHistory(Integer courierId) {
+        // Validate courier exists
+        courierRepository.findById(courierId)
+                .orElseThrow(() -> new CustomException("Courier not found", HttpStatus.NOT_FOUND));
+
+        // Get all assignments for the courier
+        List<CourierAssignment> assignments = assignmentRepository.findByCourierCourierId(courierId);
+
+        // Convert assignments to DTOs
+        return assignments.stream()
+                .map(assignment -> {
+                    Order order = assignment.getOrder();
+                    return CourierOrderHistoryDTO.builder()
+                            .orderId(order.getOrderId())
+                            .assignmentId(assignment.getAssignmentId())
+                            .restaurantName(order.getRestaurant().getName())
+                            .customerName(order.getCustomer().getName())
+                            .deliveryAddress(order.getAddress().getFullAddress())
+                            .totalPrice(order.getTotalPrice())
+                            .orderStatus(order.getStatus())
+                            .assignmentStatus(assignment.getStatus())
+                            .assignedAt(assignment.getAssignedAt())
+                            .pickedUpAt(assignment.getPickedUpAt())
+                            .deliveredAt(assignment.getDeliveredAt())
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 } 

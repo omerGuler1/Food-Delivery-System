@@ -1,6 +1,7 @@
 package com.hufds.controller;
 
 import com.hufds.dto.CourierAssignmentDTO;
+import com.hufds.dto.CourierOrderHistoryDTO;
 import com.hufds.entity.CourierAssignment;
 import com.hufds.service.CourierAssignmentService;
 import com.hufds.service.JwtService;
@@ -11,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/courier-assignments")
@@ -64,6 +67,16 @@ public class CourierAssignmentController {
 
         CourierAssignment assignment = assignmentService.getAssignmentById(id);
         return ResponseEntity.ok(assignment);
+    }
+
+    @GetMapping("/courier/history")
+    public ResponseEntity<List<CourierOrderHistoryDTO>> getCourierOrderHistory(HttpServletRequest request) {
+        validateUserRole("courier");
+        String token = extractToken(request);
+        Integer courierId = jwtService.extractUserId(token);
+
+        List<CourierOrderHistoryDTO> history = assignmentService.getCourierOrderHistory(courierId);
+        return ResponseEntity.ok(history);
     }
 
     private String extractToken(HttpServletRequest request) {
