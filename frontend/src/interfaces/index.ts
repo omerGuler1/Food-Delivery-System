@@ -29,6 +29,16 @@ export interface Restaurant extends User {
   rating?: number;
   profileImageUrl?: string;
   isOpen?: boolean;
+  street?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+  latitude?: number;
+  longitude?: number;
+  deliveryRangeKm?: number;
+  estimatedDeliveryTime?: string;
+  averagePrice?: number;
 }
 
 export interface Courier extends User {

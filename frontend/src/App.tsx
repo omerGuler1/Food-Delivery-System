@@ -14,11 +14,12 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
-import RestaurantDetailPage from './pages/RestaurantDetailPage';
 import RestaurantDashboard from './pages/RestaurantDashboard';
 import RestaurantProfile from './pages/RestaurantProfile';
 import CourierDashboard from './pages/CourierDashboard';
 import CourierProfile from './pages/CourierProfile';
+import RestaurantsPage from './pages/RestaurantsPage';
+import RestaurantDetailPage from './pages/RestaurantDetailPage';
 
 // Protected route component
 interface ProtectedRouteProps {
@@ -251,30 +252,35 @@ const App: React.FC = () => {
           <Router>
             <AppLayout>
               <Routes>
+                {/* Public routes */}
                 <Route path="/" element={<HomePage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/restaurants" element={<RestaurantsPage />} />
                 <Route path="/restaurants/:id" element={<RestaurantDetailPage />} />
                 
                 {/* Protected routes */}
-                <Route 
-                  path="/restaurant/dashboard" 
-                  element={<ProtectedRoute userType="restaurant" element={<RestaurantDashboard />} />} 
-                />
-                <Route 
-                  path="/restaurant/profile" 
-                  element={<ProtectedRoute userType="restaurant" element={<RestaurantProfile />} />} 
-                />
-                <Route 
-                  path="/courier/dashboard" 
-                  element={<ProtectedRoute userType="courier" element={<CourierDashboard />} />} 
-                />
-                <Route 
-                  path="/courier/profile" 
-                  element={<ProtectedRoute userType="courier" element={<CourierProfile />} />} 
-                />
+                <Route path="/profile" element={
+                  <ProtectedRoute userType="customer" element={<ProfilePage />} />
+                } />
                 
+                {/* Restaurant owner routes */}
+                <Route path="/restaurant/dashboard" element={
+                  <ProtectedRoute userType="restaurant" element={<RestaurantDashboard />} />
+                } />
+                <Route path="/restaurant/profile" element={
+                  <ProtectedRoute userType="restaurant" element={<RestaurantProfile />} />
+                } />
+                
+                {/* Courier routes */}
+                <Route path="/courier/dashboard" element={
+                  <ProtectedRoute userType="courier" element={<CourierDashboard />} />
+                } />
+                <Route path="/courier/profile" element={
+                  <ProtectedRoute userType="courier" element={<CourierProfile />} />
+                } />
+                
+                {/* Fallback route */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AppLayout>
