@@ -5,7 +5,9 @@ import com.hufds.entity.Order;
 import com.hufds.repository.CourierRepository;
 import com.hufds.repository.OrderRepository;
 import com.hufds.service.CourierService;
+import com.hufds.dto.PasswordUpdateDTO;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,9 @@ public class CourierServiceImpl implements CourierService {
     @Autowired
     private OrderRepository orderRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @Override
     public Courier getCourierProfile(Integer courierId) {
         return courierRepository.findById(courierId)
@@ -31,7 +36,6 @@ public class CourierServiceImpl implements CourierService {
     public Courier updateCourierProfile(Integer courierId, Courier courier) {
         Courier existingCourier = getCourierProfile(courierId);
         existingCourier.setName(courier.getName());
-        existingCourier.setEmail(courier.getEmail());
         existingCourier.setPhoneNumber(courier.getPhoneNumber());
         existingCourier.setVehicleType(courier.getVehicleType());
         return courierRepository.save(existingCourier);
@@ -75,6 +79,12 @@ public class CourierServiceImpl implements CourierService {
 
         if (order.getStatus() != Order.OrderStatus.PENDING) {
             throw new RuntimeException("Order is not available for delivery");
+        }
+
+        // Check if courier has reached maximum active orders
+        List<Order> activeDeliveries = getActiveDeliveries(courierId);
+        if (activeDeliveries.size() >= 3) {
+            throw new RuntimeException("You have reached the maximum limit of 3 active orders");
         }
 
         order.setCourier(courier);
@@ -122,5 +132,22 @@ public class CourierServiceImpl implements CourierService {
     public Double getTotalEarnings(Integer courierId) {
         Courier courier = getCourierProfile(courierId);
         return courier.getEarnings().doubleValue();
+    }
+
+    @Override
+    @Transactional
+    public void updatePassword(Integer courierId, PasswordUpdateDTO passwordUpdateDTO) {
+        Courier courier = getCourierProfile(courierId);
+
+        if (!passwordEncoder.matches(passwordUpdateDTO.getCurrentPassword(), courier.getPassword())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+
+        if (!passwordUpdateDTO.getNewPassword().equals(passwordUpdateDTO.getConfirmPassword())) {
+            throw new RuntimeException("New password and confirmation do not match");
+        }
+
+        courier.setPassword(passwordEncoder.encode(passwordUpdateDTO.getNewPassword()));
+        courierRepository.save(courier);
     }
 } 
