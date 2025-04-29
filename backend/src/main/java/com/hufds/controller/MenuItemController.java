@@ -43,7 +43,7 @@ public class MenuItemController {
             return ResponseEntity.ok(menuItemService.getAllMenuItems(restaurantId));
         }
     }
-    
+
     @GetMapping("/public/{restaurantId}")
     public ResponseEntity<List<MenuItem>> getMenuItemsByRestaurant(
             @PathVariable Integer restaurantId,
