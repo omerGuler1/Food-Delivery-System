@@ -43,6 +43,21 @@ public class MenuItemController {
             return ResponseEntity.ok(menuItemService.getAllMenuItems(restaurantId));
         }
     }
+    
+    @GetMapping("/public/{restaurantId}")
+    public ResponseEntity<List<MenuItem>> getMenuItemsByRestaurant(
+            @PathVariable Integer restaurantId,
+            @RequestParam(required = false) Boolean availableOnly,
+            @RequestParam(required = false) String category) {
+        
+        if (availableOnly != null && availableOnly) {
+            return ResponseEntity.ok(menuItemService.getAvailableMenuItems(restaurantId));
+        } else if (category != null && !category.isEmpty()) {
+            return ResponseEntity.ok(menuItemService.getMenuItemsByCategory(restaurantId, category));
+        } else {
+            return ResponseEntity.ok(menuItemService.getAllMenuItems(restaurantId));
+        }
+    }
 
     @GetMapping("/{menuItemId}")
     public ResponseEntity<MenuItem> getMenuItem(
