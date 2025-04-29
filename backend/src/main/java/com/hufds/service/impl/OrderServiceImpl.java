@@ -55,6 +55,16 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("Address does not belong to customer");
         }
 
+        // Create and save order first without items
+        Order order = new Order();
+        order.setCustomer(customer);
+        order.setRestaurant(restaurant);
+        order.setAddress(address);
+        order.setTotalPrice(BigDecimal.ZERO);
+        order.setStatus(Order.OrderStatus.PENDING);
+        order.setCreatedAt(LocalDateTime.now());
+        order = orderRepository.save(order);
+
         // Create order items and calculate total
         Set<OrderItem> orderItems = new HashSet<>();
         BigDecimal totalPrice = BigDecimal.ZERO;
@@ -69,6 +79,7 @@ public class OrderServiceImpl implements OrderService {
             }
 
             OrderItem orderItem = new OrderItem();
+            orderItem.setOrder(order); // Set order reference explicitly
             orderItem.setMenuItem(menuItem);
             orderItem.setQuantity(itemDto.getQuantity());
             orderItem.setSubtotal(menuItem.getPrice().multiply(BigDecimal.valueOf(itemDto.getQuantity())));
@@ -77,16 +88,11 @@ public class OrderServiceImpl implements OrderService {
             totalPrice = totalPrice.add(orderItem.getSubtotal());
         }
 
-        // Create and save order
-        Order order = new Order();
-        order.setCustomer(customer);
-        order.setRestaurant(restaurant);
-        order.setAddress(address);
+        // Update order with items and total price
         order.setOrderItems(orderItems);
         order.setTotalPrice(totalPrice);
-        order.setStatus(Order.OrderStatus.PENDING);
-        order.setCreatedAt(LocalDateTime.now());
 
+        // Save again to update the order with items
         return orderRepository.save(order);
     }
 
