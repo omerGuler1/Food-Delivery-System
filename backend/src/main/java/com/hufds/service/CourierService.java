@@ -2,6 +2,7 @@ package com.hufds.service;
 
 import com.hufds.entity.Courier;
 import com.hufds.entity.Order;
+import com.hufds.dto.PasswordUpdateDTO;
 
 import java.util.List;
 
@@ -24,4 +25,7 @@ public interface CourierService {
     
     // Earnings operations
     Double getTotalEarnings(Integer courierId);
+    
+    // Password operations
+    void updatePassword(Integer courierId, PasswordUpdateDTO passwordUpdateDTO);
 } 
