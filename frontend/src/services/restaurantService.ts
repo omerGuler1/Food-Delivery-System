@@ -97,4 +97,10 @@ export const updateRestaurantStatus = async (restaurantId: number, isOpen: boole
     console.error('API Error in updateRestaurantStatus:', error);
     throw error;
   }
+};
+
+// Get restaurants sorted by a specific field
+export const getRestaurantsSorted = async (sortBy: string): Promise<Restaurant[]> => {
+  const response = await api.get<Restaurant[]>(`/restaurants?sortBy=${sortBy}`);
+  return response.data;
 }; 

@@ -17,6 +17,37 @@ public class RestaurantSearchController {
 
     private final RestaurantSearchService restaurantSearchService;
 
+    @GetMapping
+    public ResponseEntity<List<RestaurantSearchResultDTO>> getAllRestaurants(
+            @RequestParam(required = false, defaultValue = "") String sortBy) {
+        // Boş bir search DTO oluşturarak tüm restoranları getiriyoruz
+        RestaurantSearchDTO searchDTO = RestaurantSearchDTO.builder().build();
+        List<RestaurantSearchResultDTO> results = restaurantSearchService.searchRestaurants(searchDTO);
+        
+        // Eğer sıralama parametresi varsa, sonuçları sırala
+        if (sortBy != null && !sortBy.isEmpty()) {
+            switch (sortBy) {
+                case "rating":
+                    results.sort((r1, r2) -> Float.compare(r2.getRating(), r1.getRating())); // Büyükten küçüğe
+                    break;
+                case "name":
+                    results.sort((r1, r2) -> r1.getName().compareToIgnoreCase(r2.getName())); // A-Z
+                    break;
+                case "cuisine":
+                    results.sort((r1, r2) -> {
+                        if (r1.getCuisineType() == null) return 1;
+                        if (r2.getCuisineType() == null) return -1;
+                        return r1.getCuisineType().compareToIgnoreCase(r2.getCuisineType());
+                    });
+                    break;
+                default:
+                    break;
+            }
+        }
+        
+        return ResponseEntity.ok(results);
+    }
+
     @GetMapping("/search")
     public ResponseEntity<List<RestaurantSearchResultDTO>> searchRestaurants(
             @RequestParam(required = false) String name,

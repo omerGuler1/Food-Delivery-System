@@ -19,6 +19,7 @@ import RestaurantDashboard from './pages/RestaurantDashboard';
 import RestaurantProfile from './pages/RestaurantProfile';
 import CourierDashboard from './pages/CourierDashboard';
 import CourierProfile from './pages/CourierProfile';
+import RestaurantsPage from './pages/RestaurantsPage';
 
 // Protected route component
 interface ProtectedRouteProps {
@@ -255,6 +256,7 @@ const App: React.FC = () => {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/restaurants" element={<RestaurantsPage />} />
                 <Route path="/restaurants/:id" element={<RestaurantDetailPage />} />
                 
                 {/* Protected routes */}
