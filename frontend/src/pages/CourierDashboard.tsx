@@ -1,0 +1,1004 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Box,
+  Container,
+  Typography,
+  Paper,
+  Tabs,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Button,
+  Chip,
+  Alert,
+  CircularProgress,
+  Avatar,
+  Switch,
+  Tooltip,
+  Pagination,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
+  Badge
+} from '@mui/material';
+import {
+  LocalShipping as DeliveryIcon,
+  DeliveryDining,
+  Person as PersonIcon,
+  History as HistoryIcon,
+  ReceiptLong as ReceiptIcon,
+  Visibility as VisibilityIcon,
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon,
+  Warning as WarningIcon,
+  DoubleArrow as DoubleArrowIcon
+} from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { 
+  getActiveDeliveries, 
+  getPendingDeliveryRequests, 
+  acceptDeliveryRequest, 
+  rejectDeliveryRequest, 
+  updateAssignmentStatus, 
+  getCourierOrderHistory,
+  updateCourierStatus,
+  getCourierProfile
+} from '../services/courierService';
+import { 
+  ActiveDeliveryOrder, 
+  PendingDeliveryRequest, 
+  CourierOrderHistoryDTO,
+  CourierAssignment 
+} from '../interfaces';
+import { formatDate, formatDateTime } from '../utils/dateUtils';
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`dashboard-tabpanel-${index}`}
+      aria-labelledby={`dashboard-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
+
+const CourierDashboard: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isAvailable, setIsAvailable] = useState(true);
+  const [activeDeliveries, setActiveDeliveries] = useState<ActiveDeliveryOrder[]>([]);
+  const [availableOrders, setAvailableOrders] = useState<PendingDeliveryRequest[]>([]);
+  const [pastDeliveries, setPastDeliveries] = useState<CourierOrderHistoryDTO[]>([]);
+  const [orderDetailsOpen, setOrderDetailsOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [pastDeliveriesPage, setPastDeliveriesPage] = useState(1);
+  const [availableOrdersPage, setAvailableOrdersPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Toggle courier availability
+  const toggleAvailability = async () => {
+    try {
+      if (!user || !('courierId' in user)) {
+        setError('Courier ID not found');
+        return;
+      }
+
+      const courierId = user.courierId as number;
+      // Toggle the status - if currently available, set to unavailable and vice versa
+      const newStatus = isAvailable ? 'UNAVAILABLE' : 'AVAILABLE';
+      
+      // Call the API to update the courier status
+      await updateCourierStatus(courierId, newStatus);
+      
+      // Update the local state
+      setIsAvailable(!isAvailable);
+      setSuccessMessage(`You are now ${!isAvailable ? 'available' : 'unavailable'} for deliveries`);
+      
+      // Refresh pending requests if courier becomes available
+      if (!isAvailable) {
+        fetchAvailableOrders();
+      }
+      
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error: any) {
+      console.error('Error toggling availability:', error);
+      setError(error.response?.data?.message || 'Failed to update availability');
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  // Handle tab change
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
+
+  // Accept an order
+  const handleAcceptOrder = async (assignment: PendingDeliveryRequest) => {
+    try {
+      setLoading(true);
+      await acceptDeliveryRequest(assignment.assignmentId);
+      
+      // Remove from available orders
+      setAvailableOrders(availableOrders.filter(o => o.assignmentId !== assignment.assignmentId));
+      
+      // Refresh active deliveries
+      fetchActiveDeliveries();
+      
+      // Show success message
+      setSuccessMessage(`Order #${assignment.order.orderId} accepted`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error: any) {
+      console.error('Error accepting order:', error);
+      setError(error.response?.data?.message || 'Failed to accept order');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Reject an order
+  const handleRejectOrder = async (assignment: PendingDeliveryRequest) => {
+    try {
+      setLoading(true);
+      await rejectDeliveryRequest(assignment.assignmentId);
+      
+      // Remove from available orders
+      setAvailableOrders(availableOrders.filter(o => o.assignmentId !== assignment.assignmentId));
+      
+      // Show success message
+      setSuccessMessage(`Order #${assignment.order.orderId} rejected`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error: any) {
+      console.error('Error rejecting order:', error);
+      setError(error.response?.data?.message || 'Failed to reject order');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle picking up an order
+  const handlePickupOrder = async (order: ActiveDeliveryOrder) => {
+    try {
+      setLoading(true);
+      
+      // Find the active assignment for this order
+      const assignment = order.courierAssignments.find(a => 
+        a.status === 'ACCEPTED');
+      
+      if (!assignment) {
+        throw new Error('No active assignment found for this order');
+      }
+      
+      await updateAssignmentStatus(assignment.assignmentId, 'PICKED_UP');
+      
+      // Refresh active deliveries
+      fetchActiveDeliveries();
+      
+      // Show success message
+      setSuccessMessage(`Order #${order.orderId} picked up`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error: any) {
+      console.error('Error picking up order:', error);
+      setError(error.response?.data?.message || 'Failed to update order status');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Complete delivery
+  const handleCompleteDelivery = async (order: ActiveDeliveryOrder) => {
+    try {
+      setLoading(true);
+      
+      // Find the active assignment for this order
+      const assignment = order.courierAssignments.find(a => a.status === 'PICKED_UP');
+      
+      if (!assignment) {
+        throw new Error('No active assignment found for this order');
+      }
+      
+      await updateAssignmentStatus(assignment.assignmentId, 'DELIVERED');
+      
+      // Refresh active deliveries and delivery history
+      fetchActiveDeliveries();
+      fetchDeliveryHistory();
+      
+      // Show success message
+      setSuccessMessage(`Order #${order.orderId} delivered successfully`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error: any) {
+      console.error('Error completing delivery:', error);
+      setError(error.response?.data?.message || 'Failed to complete delivery');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cancel delivery
+  const handleCancelDelivery = async (order: ActiveDeliveryOrder) => {
+    try {
+      setLoading(true);
+      
+      // Find the active assignment for this order
+      const assignment = order.courierAssignments.find(a => 
+        a.status === 'ACCEPTED' || a.status === 'PICKED_UP');
+      
+      if (!assignment) {
+        throw new Error('No active assignment found for this order');
+      }
+      
+      await updateAssignmentStatus(assignment.assignmentId, 'CANCELLED');
+      
+      // Refresh active deliveries
+      fetchActiveDeliveries();
+      
+      // Show success message
+      setSuccessMessage(`Order #${order.orderId} cancelled`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error: any) {
+      console.error('Error cancelling delivery:', error);
+      setError(error.response?.data?.message || 'Failed to cancel delivery');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // View order details
+  const handleViewOrderDetails = (order: any) => {
+    setSelectedOrder(order);
+    setOrderDetailsOpen(true);
+  };
+
+  // Close order details
+  const handleCloseOrderDetails = () => {
+    setOrderDetailsOpen(false);
+    setSelectedOrder(null);
+  };
+
+  // Handle pagination change
+  const handlePastDeliveriesPageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
+    setPastDeliveriesPage(value);
+  };
+
+  const handleAvailableOrdersPageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
+    setAvailableOrdersPage(value);
+  };
+
+  // Fetch active deliveries
+  const fetchActiveDeliveries = async () => {
+    try {
+      setLoading(true);
+      
+      if (!user || !('courierId' in user)) {
+        setError('Courier ID not found');
+        return;
+      }
+      
+      const courierId = user.courierId as number;
+      const deliveries = await getActiveDeliveries(courierId);
+      setActiveDeliveries(deliveries);
+    } catch (error: any) {
+      console.error('Error fetching active deliveries:', error);
+      setError(error.response?.data?.message || 'Failed to load active deliveries');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch available orders (pending requests)
+  const fetchAvailableOrders = async () => {
+    try {
+      setLoading(true);
+      console.log('Courier availability status:', isAvailable);
+      const pendingRequests = await getPendingDeliveryRequests();
+      console.log('Pending requests before processing:', pendingRequests);
+      
+      // Ensure each item has a valid order object
+      const validRequests = pendingRequests.filter((req: PendingDeliveryRequest) => req && req.order);
+      
+      if (validRequests.length !== pendingRequests.length) {
+        console.warn('Some pending requests had invalid order data and were filtered out:', 
+          pendingRequests.length - validRequests.length);
+      }
+      
+      console.log('Setting available orders with valid requests:', validRequests);
+      setAvailableOrders(validRequests);
+    } catch (error: any) {
+      console.error('Error fetching available orders:', error);
+      setError(error.response?.data?.message || 'Failed to load available orders');
+      // Set empty array on error to avoid rendering issues
+      setAvailableOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch delivery history
+  const fetchDeliveryHistory = async () => {
+    try {
+      setLoading(true);
+      const history = await getCourierOrderHistory();
+      setPastDeliveries(history);
+    } catch (error: any) {
+      console.error('Error fetching delivery history:', error);
+      setError(error.response?.data?.message || 'Failed to load delivery history');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch courier profile to get current status
+  const fetchCourierProfile = useCallback(async () => {
+    try {
+      if (!user || !('courierId' in user)) {
+        setError('Courier ID not found');
+        return;
+      }
+
+      const courierId = user.courierId as number;
+      const profile = await getCourierProfile(courierId);
+      
+      // Update availability state based on profile
+      console.log('Setting courier availability from profile:', profile.status);
+      setIsAvailable(profile.status === 'AVAILABLE');
+    } catch (error: any) {
+      console.error('Error fetching courier profile:', error);
+      setError(error.response?.data?.message || 'Failed to load courier profile');
+      setTimeout(() => setError(null), 3000);
+    }
+  }, [user, setError, setIsAvailable]);
+
+  // Fetch courier profile when component mounts
+  useEffect(() => {
+    if (user && 'courierId' in user) {
+      fetchCourierProfile();
+    }
+  }, [user, fetchCourierProfile]);
+
+  // Load data based on active tab
+  useEffect(() => {
+    console.log('Active tab changed to:', activeTab);
+    if (activeTab === 0) {
+      fetchActiveDeliveries();
+    } else if (activeTab === 1) {
+      console.log('Fetching available orders for tab 1');
+      fetchAvailableOrders();
+    } else if (activeTab === 2) {
+      fetchDeliveryHistory();
+    }
+  }, [activeTab]); // Only depend on activeTab
+
+  // Set up polling for pending requests
+  useEffect(() => {
+    // Only poll if on the pending requests tab
+    if (activeTab === 1) {
+      console.log('Setting up polling for available orders tab');
+      // Immediate fetch to avoid waiting for interval
+      fetchAvailableOrders();
+      // Set up polling every 30 seconds
+      const intervalId = setInterval(fetchAvailableOrders, 30000);
+      
+      // Clean up
+      return () => {
+        console.log('Cleaning up polling for available orders');
+        clearInterval(intervalId);
+      };
+    }
+  }, [activeTab]); // Only depend on activeTab
+
+  // Set up polling for active deliveries
+  useEffect(() => {
+    // Only poll if on the active deliveries tab
+    if (activeTab === 0) {
+      console.log('Setting up polling for active deliveries tab');
+      // Immediate fetch
+      fetchActiveDeliveries();
+      // Set up polling every 30 seconds
+      const intervalId = setInterval(fetchActiveDeliveries, 30000);
+      
+      // Clean up
+      return () => {
+        console.log('Cleaning up polling for active deliveries');
+        clearInterval(intervalId);
+      };
+    }
+  }, [activeTab]);
+
+  return (
+    <Box sx={{ minHeight: '100vh', py: 3, bgcolor: '#f8f9fa' }}>
+      <Container maxWidth="lg">
+        {/* Dashboard Header */}
+        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              mr: 3, 
+              p: 1, 
+              borderRadius: 2,
+              bgcolor: isAvailable ? 'success.light' : 'error.light',
+              color: 'white',
+              transition: 'background-color 0.3s ease'
+            }}>
+              <Typography sx={{ mr: 1, fontWeight: 'medium' }}>
+                {isAvailable ? 'Available' : 'Unavailable'}
+              </Typography>
+              <Tooltip title={isAvailable ? "Set as unavailable" : "Set as available"}>
+                <Switch
+                  checked={isAvailable}
+                  onChange={toggleAvailability}
+                  color="default"
+                  sx={{
+                    '& .MuiSwitch-switchBase.Mui-checked': {
+                      color: '#fff',
+                    },
+                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                      backgroundColor: '#fff',
+                      opacity: 0.5
+                    },
+                  }}
+                />
+              </Tooltip>
+            </Box>
+            <Avatar 
+              sx={{ 
+                width: 50, 
+                height: 50, 
+                bgcolor: 'primary.main',
+                mr: 2
+              }}
+            >
+              <DeliveryIcon />
+            </Avatar>
+            <Box>
+              <Typography variant="h5" component="h1" fontWeight="bold">
+                Courier Dashboard
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Manage your deliveries and orders
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Badge 
+              badgeContent={activeDeliveries.length} 
+              color="primary"
+              sx={{ mr: 2 }}
+            >
+              <DeliveryDining />
+            </Badge>
+            <Typography sx={{ fontWeight: 'medium' }}>
+              {activeDeliveries.length}/3 Deliveries
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Success and Error Messages */}
+        {successMessage && (
+          <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
+            {successMessage}
+          </Alert>
+        )}
+        
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
+        {/* Dashboard Tabs */}
+        <Paper sx={{ mb: 2, borderRadius: 2 }}>
+          <Tabs 
+            value={activeTab} 
+            onChange={handleTabChange} 
+            variant="fullWidth"
+            indicatorColor="primary"
+            textColor="primary"
+          >
+            <Tab label="Active Deliveries" icon={<DeliveryDining />} iconPosition="start" />
+            <Tab label="Available Orders" icon={<ReceiptIcon />} iconPosition="start" />
+            <Tab label="Past Deliveries" icon={<HistoryIcon />} iconPosition="start" />
+          </Tabs>
+        </Paper>
+
+        {/* Active Deliveries Tab */}
+        <TabPanel value={activeTab} index={0}>
+          <Typography variant="h6" gutterBottom>
+            Your Active Deliveries
+          </Typography>
+          
+          {loading && activeDeliveries.length === 0 ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : activeDeliveries.length === 0 ? (
+            <Alert severity="info">
+              You don't have any active deliveries. Go to the "Available Orders" tab to accept new orders.
+            </Alert>
+          ) : (
+            <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 2 }}>
+              <Table>
+                <TableHead sx={{ bgcolor: 'primary.light' }}>
+                  <TableRow>
+                    <TableCell>Order ID</TableCell>
+                    <TableCell>Restaurant</TableCell>
+                    <TableCell>Customer</TableCell>
+                    <TableCell>Address</TableCell>
+                    <TableCell>Order Time</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Amount</TableCell>
+                    <TableCell align="center">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {activeDeliveries.map((delivery) => {
+                    // Find the active assignment for this delivery
+                    const activeAssignment = delivery.courierAssignments.find(
+                      a => a.status === 'ACCEPTED' || a.status === 'PICKED_UP'
+                    );
+                    
+                    // If no active assignment, skip this delivery
+                    if (!activeAssignment) return null;
+                    
+                    return (
+                      <TableRow key={delivery.orderId} hover>
+                        <TableCell>#{delivery.orderId}</TableCell>
+                        <TableCell>{delivery.restaurant ? delivery.restaurant.name : 'Unknown'}</TableCell>
+                        <TableCell>{delivery.customer ? delivery.customer.name : 'Unknown'}</TableCell>
+                        <TableCell>{delivery.address.fullAddress || `${delivery.address.street}, ${delivery.address.city}`}</TableCell>
+                        <TableCell>{formatDateTime(delivery.createdAt)}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={activeAssignment.status} 
+                            color={
+                              activeAssignment.status === 'PICKED_UP' ? 'primary' : 
+                              activeAssignment.status === 'ACCEPTED' ? 'warning' : 'default'
+                            } 
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>${delivery.totalPrice.toFixed(2)}</TableCell>
+                        <TableCell align="center">
+                          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                            <Tooltip title="View Details">
+                              <IconButton 
+                                size="small" 
+                                color="primary"
+                                onClick={() => handleViewOrderDetails(delivery)}
+                              >
+                                <VisibilityIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            
+                            {activeAssignment.status === 'ACCEPTED' && (
+                              <Tooltip title="Pick Up Order">
+                                <IconButton 
+                                  size="small" 
+                                  color="warning"
+                                  onClick={() => handlePickupOrder(delivery)}
+                                >
+                                  <DeliveryDining fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            
+                            {activeAssignment.status === 'PICKED_UP' && (
+                              <Tooltip title="Mark as Delivered">
+                                <IconButton 
+                                  size="small" 
+                                  color="success"
+                                  onClick={() => handleCompleteDelivery(delivery)}
+                                >
+                                  <CheckCircleIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            
+                            <Tooltip title="Cancel Delivery">
+                              <IconButton 
+                                size="small" 
+                                color="error"
+                                onClick={() => handleCancelDelivery(delivery)}
+                              >
+                                <CancelIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </TabPanel>
+
+        {/* Available Orders Tab */}
+        <TabPanel value={activeTab} index={1}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">
+              Available Orders for Pickup
+            </Typography>
+            {activeDeliveries.length >= 3 && (
+              <Alert severity="warning" sx={{ maxWidth: 'fit-content' }}>
+                You have reached the maximum of 3 active deliveries
+              </Alert>
+            )}
+          </Box>
+          
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+              <Typography sx={{ ml: 2 }}>Loading available orders...</Typography>
+            </Box>
+          ) : availableOrders.length === 0 ? (
+            <Alert severity="info">
+              There are no orders available for pickup at the moment.
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="body2" color="textSecondary">
+                  Debug info - Orders array length: {availableOrders.length}
+                </Typography>
+              </Box>
+            </Alert>
+          ) : (
+            <>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                Found {availableOrders.length} order(s) available for pickup
+              </Typography>
+              <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 2, mb: 2 }}>
+                <Table>
+                  <TableHead sx={{ bgcolor: 'primary.light' }}>
+                    <TableRow>
+                      <TableCell>Assignment ID</TableCell>
+                      <TableCell>Order ID</TableCell>
+                      <TableCell>Restaurant</TableCell>
+                      <TableCell>Address</TableCell>
+                      <TableCell>Order Time</TableCell>
+                      <TableCell>Total</TableCell>
+                      <TableCell align="center">Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {availableOrders
+                      .slice((availableOrdersPage - 1) * itemsPerPage, availableOrdersPage * itemsPerPage)
+                      .filter((assignment: PendingDeliveryRequest) => assignment && assignment.order)
+                      .map((assignment: PendingDeliveryRequest) => (
+                      <TableRow key={assignment.assignmentId} hover>
+                        <TableCell>#{assignment.assignmentId}</TableCell>
+                        <TableCell>#{assignment.order.orderId}</TableCell>
+                        <TableCell>{assignment.order.restaurant?.name || 'Unknown'}</TableCell>
+                        <TableCell>{assignment.order.address?.fullAddress || 
+                          (assignment.order.address ? `${assignment.order.address.street || ''}, ${assignment.order.address.city || ''}` : 'Unknown')}</TableCell>
+                        <TableCell>{assignment.order.createdAt ? formatDateTime(assignment.order.createdAt) : 'Unknown'}</TableCell>
+                        <TableCell>${assignment.order.totalPrice ? assignment.order.totalPrice.toFixed(2) : '0.00'}</TableCell>
+                        <TableCell align="center">
+                          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                            <Tooltip title="View Details">
+                              <IconButton 
+                                size="small" 
+                                color="primary"
+                                onClick={() => handleViewOrderDetails(assignment)}
+                              >
+                                <VisibilityIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              size="small"
+                              startIcon={<DoubleArrowIcon />}
+                              onClick={() => handleAcceptOrder(assignment)}
+                              disabled={activeDeliveries.length >= 3}
+                            >
+                              Accept
+                            </Button>
+                            <Button
+                              variant="outlined"
+                              color="error"
+                              size="small"
+                              startIcon={<CancelIcon />}
+                              onClick={() => handleRejectOrder(assignment)}
+                            >
+                              Reject
+                            </Button>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                <Pagination 
+                  count={Math.ceil(availableOrders.length / itemsPerPage)} 
+                  page={availableOrdersPage}
+                  onChange={handleAvailableOrdersPageChange}
+                  color="primary"
+                />
+              </Box>
+            </>
+          )}
+        </TabPanel>
+
+        {/* Past Deliveries Tab */}
+        <TabPanel value={activeTab} index={2}>
+          <Typography variant="h6" gutterBottom>
+            Your Delivery History
+          </Typography>
+          
+          {loading && pastDeliveries.length === 0 ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : pastDeliveries.length === 0 ? (
+            <Alert severity="info">
+              You don't have any past deliveries yet.
+            </Alert>
+          ) : (
+            <>
+              <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 2, mb: 2 }}>
+                <Table>
+                  <TableHead sx={{ bgcolor: 'primary.light' }}>
+                    <TableRow>
+                      <TableCell>Order ID</TableCell>
+                      <TableCell>Restaurant</TableCell>
+                      <TableCell>Customer</TableCell>
+                      <TableCell>Address</TableCell>
+                      <TableCell>Assigned At</TableCell>
+                      <TableCell>Delivered At</TableCell>
+                      <TableCell>Amount</TableCell>
+                      <TableCell align="center">Status</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {pastDeliveries
+                      .slice((pastDeliveriesPage - 1) * itemsPerPage, pastDeliveriesPage * itemsPerPage)
+                      .map((delivery) => (
+                      <TableRow key={delivery.orderId} hover>
+                        <TableCell>#{delivery.orderId}</TableCell>
+                        <TableCell>{delivery.restaurantName}</TableCell>
+                        <TableCell>{delivery.customerName}</TableCell>
+                        <TableCell>{delivery.deliveryAddress}</TableCell>
+                        <TableCell>{formatDateTime(delivery.assignedAt)}</TableCell>
+                        <TableCell>{delivery.deliveredAt ? formatDateTime(delivery.deliveredAt) : 'N/A'}</TableCell>
+                        <TableCell>${delivery.totalPrice.toFixed(2)}</TableCell>
+                        <TableCell align="center">
+                          <Chip 
+                            label={delivery.assignmentStatus} 
+                            color={delivery.assignmentStatus === 'DELIVERED' ? 'success' : 
+                                  delivery.assignmentStatus === 'CANCELLED' ? 'error' : 'default'} 
+                            size="small" 
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                <Pagination 
+                  count={Math.ceil(pastDeliveries.length / itemsPerPage)} 
+                  page={pastDeliveriesPage}
+                  onChange={handlePastDeliveriesPageChange}
+                  color="primary"
+                />
+              </Box>
+            </>
+          )}
+        </TabPanel>
+
+        {/* Order Details Dialog */}
+        <Dialog
+          open={orderDetailsOpen}
+          onClose={handleCloseOrderDetails}
+          maxWidth="sm"
+          fullWidth
+        >
+          {selectedOrder && (
+            <>
+              <DialogTitle>
+                {selectedOrder.orderId 
+                  ? `Order #${selectedOrder.orderId} Details` 
+                  : selectedOrder.order 
+                    ? `Order #${selectedOrder.order.orderId} Details`
+                    : 'Order Details'
+                }
+              </DialogTitle>
+              <DialogContent dividers>
+                <Box sx={{ mb: 2 }}>
+                  {selectedOrder.assignmentStatus ? (
+                    <Chip 
+                      label={selectedOrder.assignmentStatus} 
+                      color={
+                        selectedOrder.assignmentStatus === 'DELIVERED' ? "success" : 
+                        selectedOrder.assignmentStatus === 'CANCELLED' ? "error" : "primary"
+                      }
+                      sx={{ mb: 2 }}
+                    />
+                  ) : selectedOrder.status ? (
+                    <Chip 
+                      label={selectedOrder.status} 
+                      color={
+                        selectedOrder.status === 'DELIVERED' ? "success" : 
+                        selectedOrder.status === 'OUT_FOR_DELIVERY' ? "primary" : "warning"
+                      }
+                      sx={{ mb: 2 }}
+                    />
+                  ) : selectedOrder.order ? (
+                    <Chip 
+                      label={selectedOrder.status} 
+                      color="warning"
+                      sx={{ mb: 2 }}
+                    />
+                  ) : null}
+                  
+                  <Typography variant="subtitle1" gutterBottom>
+                    Order Information
+                  </Typography>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 3 }}>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Restaurant</Typography>
+                      <Typography variant="body1">
+                        {selectedOrder.restaurantName || 
+                         (selectedOrder.restaurant && selectedOrder.restaurant.name) ||
+                         (selectedOrder.order && selectedOrder.order.restaurant && selectedOrder.order.restaurant.name) ||
+                         'Unknown'}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Amount</Typography>
+                      <Typography variant="body1">
+                        ${(selectedOrder.totalPrice || 
+                           (selectedOrder.order && selectedOrder.order.totalPrice) || 
+                           0).toFixed(2)}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Order Time</Typography>
+                      <Typography variant="body1">
+                        {selectedOrder.createdAt 
+                          ? formatDateTime(selectedOrder.createdAt)
+                          : selectedOrder.order && selectedOrder.order.createdAt
+                            ? formatDateTime(selectedOrder.order.createdAt)
+                            : selectedOrder.assignedAt
+                              ? formatDateTime(selectedOrder.assignedAt)
+                              : 'N/A'}
+                      </Typography>
+                    </Box>
+                    {selectedOrder.deliveredAt && (
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">Delivery Time</Typography>
+                        <Typography variant="body1">{formatDateTime(selectedOrder.deliveredAt)}</Typography>
+                      </Box>
+                    )}
+                  </Box>
+                  
+                  <Typography variant="subtitle1" gutterBottom>
+                    Customer Information
+                  </Typography>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Name</Typography>
+                      <Typography variant="body1">
+                        {selectedOrder.customerName ||
+                         (selectedOrder.customer && selectedOrder.customer.name) ||
+                         (selectedOrder.order && selectedOrder.order.customer && selectedOrder.order.customer.name) ||
+                         'Unknown'}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Address</Typography>
+                      <Typography variant="body1">
+                        {selectedOrder.deliveryAddress ||
+                         (selectedOrder.address && (selectedOrder.address.fullAddress || 
+                                                   `${selectedOrder.address.street}, ${selectedOrder.address.city}`)) ||
+                         (selectedOrder.order && selectedOrder.order.address && 
+                          (selectedOrder.order.address.fullAddress || 
+                           `${selectedOrder.order.address.street}, ${selectedOrder.order.address.city}`)) ||
+                         'Unknown'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              </DialogContent>
+              <DialogActions>
+                {selectedOrder.courierAssignments && selectedOrder.courierAssignments.some((a: any) => a.status === 'ACCEPTED') && (
+                  <Button 
+                    onClick={() => {
+                      handlePickupOrder(selectedOrder);
+                      handleCloseOrderDetails();
+                    }}
+                    color="warning" 
+                    variant="contained"
+                    startIcon={<DeliveryDining />}
+                  >
+                    Pick Up Order
+                  </Button>
+                )}
+                {selectedOrder.courierAssignments && selectedOrder.courierAssignments.some((a: any) => a.status === 'PICKED_UP') && (
+                  <Button 
+                    onClick={() => {
+                      handleCompleteDelivery(selectedOrder);
+                      handleCloseOrderDetails();
+                    }}
+                    color="success" 
+                    variant="contained"
+                    startIcon={<CheckCircleIcon />}
+                  >
+                    Mark as Delivered
+                  </Button>
+                )}
+                {selectedOrder.status === 'REQUESTED' && selectedOrder.order && (
+                  <>
+                    <Button 
+                      onClick={() => {
+                        handleRejectOrder(selectedOrder);
+                        handleCloseOrderDetails();
+                      }}
+                      color="error" 
+                      variant="outlined"
+                      startIcon={<CancelIcon />}
+                    >
+                      Reject Order
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        handleAcceptOrder(selectedOrder);
+                        handleCloseOrderDetails();
+                      }}
+                      color="primary" 
+                      variant="contained"
+                      startIcon={<DoubleArrowIcon />}
+                      disabled={activeDeliveries.length >= 3}
+                    >
+                      Accept Order
+                    </Button>
+                  </>
+                )}
+                <Button onClick={handleCloseOrderDetails} color="inherit">
+                  Close
+                </Button>
+              </DialogActions>
+            </>
+          )}
+        </Dialog>
+      </Container>
+    </Box>
+  );
+};
+
+export default CourierDashboard; 
