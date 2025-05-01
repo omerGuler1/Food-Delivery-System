@@ -192,4 +192,24 @@ public class OrderServiceImpl implements OrderService {
     private boolean canBeCancelled(Order.OrderStatus status) {
         return status == Order.OrderStatus.PENDING;
     }
+
+    @Override
+    public List<Order> getActiveCourierOrders(Integer courierId) {
+        // Get orders with OUT_FOR_DELIVERY status assigned to this courier
+        List<Order> orders = orderRepository.findByCourierCourierIdAndStatus(
+            courierId, Order.OrderStatus.OUT_FOR_DELIVERY);
+        
+        // Make sure restaurant and customer are loaded (eager fetch)
+        for (Order order : orders) {
+            // Initialize restaurant and customer details to ensure they're loaded
+            if (order.getRestaurant() != null) {
+                order.getRestaurant().getName(); // Ensure data is fetched
+            }
+            if (order.getCustomer() != null) {
+                order.getCustomer().getName(); // Ensure data is fetched
+            }
+        }
+        
+        return orders;
+    }
 } 

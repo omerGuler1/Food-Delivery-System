@@ -15,4 +15,14 @@ public interface OrderService {
     Order cancelOrder(Integer id, Integer customerId);
     List<Order> getRestaurantOrders(Integer restaurantId, OrderStatus status);
     List<Order> getAllRestaurantOrders(Integer restaurantId);
+    
+    /**
+     * Get active orders for a courier.
+     * These are orders with OUT_FOR_DELIVERY status assigned to this courier.
+     * Restaurant and customer details are included in the response.
+     * 
+     * @param courierId The courier ID
+     * @return List of active orders
+     */
+    List<Order> getActiveCourierOrders(Integer courierId);
 }

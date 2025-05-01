@@ -9,11 +9,13 @@ import com.hufds.service.RestaurantService;
 import com.hufds.service.CourierAssignmentService;
 import com.hufds.service.OrderService;
 import com.hufds.dto.CourierAssignmentDTO;
+import com.hufds.dto.OrderResponseDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/restaurants")
@@ -73,12 +75,22 @@ public class RestaurantController {
     }
 
     @GetMapping("/{restaurantId}/orders")
-    public ResponseEntity<List<Order>> getRestaurantOrders(
+    public ResponseEntity<List<OrderResponseDTO>> getRestaurantOrders(
             @PathVariable Integer restaurantId,
             @RequestParam(required = false) OrderStatus status) {
+        
+        List<Order> orders;
         if (status != null) {
-            return ResponseEntity.ok(orderService.getRestaurantOrders(restaurantId, status));
+            orders = orderService.getRestaurantOrders(restaurantId, status);
+        } else {
+            orders = orderService.getAllRestaurantOrders(restaurantId);
         }
-        return ResponseEntity.ok(orderService.getAllRestaurantOrders(restaurantId));
+        
+        // Convert Order entities to OrderResponseDTO
+        List<OrderResponseDTO> orderDTOs = orders.stream()
+                .map(OrderResponseDTO::fromOrder)
+                .collect(Collectors.toList());
+                
+        return ResponseEntity.ok(orderDTOs);
     }
 } 

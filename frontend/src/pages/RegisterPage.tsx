@@ -92,9 +92,7 @@ const RegisterPage: React.FC = () => {
     phoneNumber: '',
     password: '',
     confirmPassword: '',
-    cuisineType: '',
-    taxNumber: '',
-    restaurantType: ''
+    cuisineType: ''
   });
   
   // Courier registration form
@@ -134,12 +132,6 @@ const RegisterPage: React.FC = () => {
         formData = restaurantForm;
         if (!formData.cuisineType) {
           errors.cuisineType = 'Cuisine type is required';
-        }
-        if (!formData.taxNumber) {
-          errors.taxNumber = 'Tax number is required';
-        }
-        if (!formData.restaurantType) {
-          errors.restaurantType = 'Restaurant type is required';
         }
         if (formData.password !== formData.confirmPassword) {
           errors.confirmPassword = 'Passwords do not match';
@@ -675,47 +667,6 @@ const RegisterPage: React.FC = () => {
                   <MenuItem value="Other">Other</MenuItem>
                 </Select>
                 {formErrors.cuisineType && <FormHelperText>{formErrors.cuisineType}</FormHelperText>}
-              </FormControl>
-              
-              <TextField
-                margin="dense"
-                required
-                fullWidth
-                name="taxNumber"
-                label="Tax Number"
-                size="small"
-                value={restaurantForm.taxNumber}
-                onChange={handleRestaurantTextChange}
-                error={!!formErrors.taxNumber}
-                helperText={formErrors.taxNumber}
-              />
-              
-              <FormControl 
-                fullWidth 
-                margin="dense" 
-                required
-                size="small"
-                error={!!formErrors.restaurantType}
-              >
-                <InputLabel id="restaurantType-label">Restaurant Type</InputLabel>
-                <Select
-                  labelId="restaurantType-label"
-                  id="restaurantType"
-                  name="restaurantType"
-                  value={restaurantForm.restaurantType}
-                  label="Restaurant Type"
-                  onChange={handleRestaurantSelectChange}
-                >
-                  <MenuItem value="Fast Food">Fast Food</MenuItem>
-                  <MenuItem value="Casual Dining">Casual Dining</MenuItem>
-                  <MenuItem value="Fine Dining">Fine Dining</MenuItem>
-                  <MenuItem value="Bistro">Bistro</MenuItem>
-                  <MenuItem value="Cafe">Cafe</MenuItem>
-                  <MenuItem value="Bar">Bar</MenuItem>
-                  <MenuItem value="Pub">Pub</MenuItem>
-                  <MenuItem value="Other">Other</MenuItem>
-                </Select>
-                {formErrors.restaurantType && <FormHelperText>{formErrors.restaurantType}</FormHelperText>}
               </FormControl>
               
               <TextField

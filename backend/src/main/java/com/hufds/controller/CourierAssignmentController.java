@@ -195,6 +195,126 @@ public class CourierAssignmentController {
         return ResponseEntity.ok(history);
     }
 
+    /**
+     * Get all pending delivery requests for the authenticated courier.
+     * These are assignments with status REQUESTED that the courier can accept or reject.
+     * 
+     * @param request HTTP request containing the authentication token
+     * @return List of pending courier assignments
+     */
+    @GetMapping("/pending-requests")
+    public ResponseEntity<List<CourierAssignment>> getPendingDeliveryRequests(HttpServletRequest request) {
+        validateUserRole("courier");
+        String token = extractToken(request);
+        Integer courierId = jwtService.extractUserId(token);
+        
+        log.info("Fetching pending delivery requests for courier: {}", courierId);
+        List<CourierAssignment> pendingRequests = assignmentService.getPendingRequestsForCourier(courierId);
+        log.info("Found {} pending requests for courier {}", pendingRequests.size(), courierId);
+        
+        return ResponseEntity.ok(pendingRequests);
+    }
+
+    /**
+     * Get all delivery requests for a specific courier ID.
+     * Primarily for administrative purposes - requires proper authentication.
+     * 
+     * @param courierId The courier ID to get requests for
+     * @param request HTTP request containing the authentication token
+     * @return List of courier assignments for the courier
+     */
+    @GetMapping("/courier/{courierId}")
+    public ResponseEntity<List<CourierAssignment>> getAssignmentsForCourier(
+            @PathVariable Integer courierId,
+            HttpServletRequest request) {
+        
+        validateUserRole("courier");
+        String token = extractToken(request);
+        Integer authenticatedCourierId = jwtService.extractUserId(token);
+        
+        // Ensure courier can only see their own assignments
+        if (!authenticatedCourierId.equals(courierId)) {
+            throw new CustomException("You can only view your own assignments", HttpStatus.FORBIDDEN);
+        }
+        
+        log.info("Fetching all assignments for courier: {}", courierId);
+        List<CourierAssignment> assignments = assignmentService.getAllAssignmentsForCourier(courierId);
+        log.info("Found {} assignments for courier {}", assignments.size(), courierId);
+        
+        return ResponseEntity.ok(assignments);
+    }
+
+    /**
+     * Check if a specific assignment has expired.
+     * 
+     * @param id The assignment ID to check
+     * @return True if the assignment was expired and handled, false otherwise
+     */
+    @GetMapping("/{id}/check-expired")
+    public ResponseEntity<Boolean> checkAssignmentExpired(@PathVariable Integer id) {
+        try {
+            log.info("Checking if assignment {} has expired", id);
+            boolean expired = assignmentService.checkAndHandleExpiredAssignment(id);
+            log.info("Assignment {} expired status: {}", id, expired);
+            return ResponseEntity.ok(expired);
+        } catch (Exception e) {
+            log.error("Error checking if assignment is expired: {}", e.getMessage(), e);
+            throw new CustomException("Error checking if assignment is expired", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    /**
+     * Check all requested assignments for a specific order and handle expired ones.
+     * 
+     * @param orderId The order ID to check
+     * @return True if any assignments were expired and handled, false otherwise
+     */
+    @GetMapping("/order/{orderId}/check-expired")
+    public ResponseEntity<Boolean> checkOrderAssignmentsExpired(@PathVariable Integer orderId) {
+        try {
+            log.info("Checking if any assignments for order {} have expired", orderId);
+            boolean anyExpired = assignmentService.checkAndHandleExpiredAssignmentsForOrder(orderId);
+            log.info("Order {} has expired assignments: {}", orderId, anyExpired);
+            return ResponseEntity.ok(anyExpired);
+        } catch (Exception e) {
+            log.error("Error checking for expired assignments: {}", e.getMessage(), e);
+            throw new CustomException("Error checking for expired assignments", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    /**
+     * Get a list of order IDs for a restaurant that need new courier assignments.
+     * These are orders with all courier assignments either expired or rejected.
+     * 
+     * @param restaurantId The restaurant ID
+     * @param request HTTP request containing the authentication token
+     * @return List of order IDs that need new courier assignments
+     */
+    @GetMapping("/restaurant/{restaurantId}/orders-needing-couriers")
+    public ResponseEntity<List<Integer>> getOrdersNeedingCouriers(
+            @PathVariable Integer restaurantId,
+            HttpServletRequest request) {
+        
+        validateUserRole("restaurant");
+        String token = extractToken(request);
+        Integer authenticatedRestaurantId = jwtService.extractUserId(token);
+        
+        // Ensure restaurant can only see its own orders
+        if (!authenticatedRestaurantId.equals(restaurantId)) {
+            throw new CustomException("You can only view your own orders", HttpStatus.FORBIDDEN);
+        }
+        
+        try {
+            log.info("Finding orders for restaurant {} that need new courier assignments", restaurantId);
+            List<Integer> orderIds = assignmentService.getOrdersNeedingNewCourierAssignment(restaurantId);
+            log.info("Found {} orders needing courier assignments for restaurant {}", orderIds.size(), restaurantId);
+            return ResponseEntity.ok(orderIds);
+        } catch (Exception e) {
+            log.error("Error finding orders needing couriers: {}", e.getMessage(), e);
+            throw new CustomException("Error finding orders needing couriers", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     private String extractToken(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
         if (header == null || !header.startsWith("Bearer ")) {

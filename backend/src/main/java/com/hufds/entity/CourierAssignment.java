@@ -1,6 +1,7 @@
 package com.hufds.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,9 +20,9 @@ public class CourierAssignment {
     @Column(name = "assignment_id")
     private Integer assignmentId;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "order_id", nullable = false)
-    @JsonBackReference
+    @JsonIgnoreProperties({"courierAssignments", "orderItems"})
     private Order order;
 
     @ManyToOne
@@ -44,12 +45,12 @@ public class CourierAssignment {
 
     public enum AssignmentStatus {
         REQUESTED,    // Initial state when restaurant requests a courier
-        ACCEPTED,     // Courier has accepted the request
+        ACCEPTED,     // Courier has accepted the request and is ready for pickup
         REJECTED,     // Courier has rejected the request
-        ASSIGNED,     // Courier is assigned and ready for pickup
         PICKED_UP,    // Courier has picked up the order
         DELIVERED,    // Order has been delivered
-        CANCELLED     // Assignment was cancelled
+        CANCELLED,    // Assignment was cancelled
+        EXPIRED       // Request has expired (not accepted/rejected within time limit)
     }
 
     @PrePersist
