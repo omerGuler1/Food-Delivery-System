@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.List;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -154,6 +155,24 @@ public class OrderServiceImpl implements OrderService {
 
         order.setStatus(Order.OrderStatus.CANCELLED);
         return orderRepository.save(order);
+    }
+
+    @Override
+    public List<Order> getRestaurantOrders(Integer restaurantId, Order.OrderStatus status) {
+        // Validate restaurant exists
+        restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+        
+        return orderRepository.findByRestaurantRestaurantIdAndStatus(restaurantId, status);
+    }
+
+    @Override
+    public List<Order> getAllRestaurantOrders(Integer restaurantId) {
+        // Validate restaurant exists
+        restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+        
+        return orderRepository.findByRestaurantRestaurantId(restaurantId);
     }
 
     private boolean isValidStatusTransition(Order.OrderStatus current, Order.OrderStatus next) {

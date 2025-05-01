@@ -3,8 +3,11 @@ package com.hufds.controller;
 import com.hufds.entity.BusinessHours;
 import com.hufds.entity.Courier;
 import com.hufds.entity.Restaurant;
+import com.hufds.entity.Order;
+import com.hufds.entity.Order.OrderStatus;
 import com.hufds.service.RestaurantService;
 import com.hufds.service.CourierAssignmentService;
+import com.hufds.service.OrderService;
 import com.hufds.dto.CourierAssignmentDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +24,9 @@ public class RestaurantController {
 
     @Autowired
     private CourierAssignmentService courierAssignmentService;
+
+    @Autowired
+    private OrderService orderService;
 
     @PutMapping("/{id}/status")
     public ResponseEntity<BusinessHours> updateRestaurantStatus(
@@ -64,5 +70,15 @@ public class RestaurantController {
         assignmentDTO.setOrderId(orderId);
         assignmentDTO.setCourierId(courierId);
         return ResponseEntity.ok(courierAssignmentService.assignOrderToCourier(assignmentDTO));
+    }
+
+    @GetMapping("/{restaurantId}/orders")
+    public ResponseEntity<List<Order>> getRestaurantOrders(
+            @PathVariable Integer restaurantId,
+            @RequestParam(required = false) OrderStatus status) {
+        if (status != null) {
+            return ResponseEntity.ok(orderService.getRestaurantOrders(restaurantId, status));
+        }
+        return ResponseEntity.ok(orderService.getAllRestaurantOrders(restaurantId));
     }
 } 
