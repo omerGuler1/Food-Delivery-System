@@ -8,6 +8,8 @@ import java.util.List;
 
 public interface CourierAssignmentService {
     CourierAssignment assignOrderToCourier(CourierAssignmentDTO assignmentDTO);
+    CourierAssignment acceptDeliveryRequest(Integer assignmentId);
+    CourierAssignment rejectDeliveryRequest(Integer assignmentId);
     CourierAssignment updateAssignmentStatus(Integer assignmentId, CourierAssignment.AssignmentStatus status);
     CourierAssignment getAssignmentById(Integer assignmentId);
     List<CourierOrderHistoryDTO> getCourierOrderHistory(Integer courierId);

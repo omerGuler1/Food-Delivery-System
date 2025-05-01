@@ -1,6 +1,7 @@
 package com.hufds.service;
 
 import com.hufds.entity.BusinessHours;
+import com.hufds.entity.Courier;
 import com.hufds.entity.Restaurant;
 
 import java.util.List;
@@ -35,4 +36,20 @@ public interface RestaurantService {
      * @return Updated Restaurant entity
      */
     Restaurant updateRestaurant(Integer id, Restaurant restaurantDetails);
+
+    /**
+     * Gets all available couriers for a restaurant
+     * @param restaurantId ID of the restaurant
+     * @return List of available couriers
+     */
+    List<Courier> getAvailableCouriers(Integer restaurantId);
+
+    /**
+     * Assigns a courier to an order
+     * @param restaurantId ID of the restaurant
+     * @param orderId ID of the order
+     * @param courierId ID of the courier
+     * @return The updated order
+     */
+    Object assignCourierToOrder(Integer restaurantId, Integer orderId, Integer courierId);
 } 

@@ -34,6 +34,7 @@ public class Order {
 
     @ManyToOne
     @JoinColumn(name = "courier_id")
+    @JsonBackReference
     private Courier courier;
 
     @ManyToOne

@@ -1,11 +1,16 @@
 package com.hufds.controller;
 
 import com.hufds.entity.BusinessHours;
+import com.hufds.entity.Courier;
 import com.hufds.entity.Restaurant;
 import com.hufds.service.RestaurantService;
+import com.hufds.service.CourierAssignmentService;
+import com.hufds.dto.CourierAssignmentDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/restaurants")
@@ -13,6 +18,9 @@ public class RestaurantController {
 
     @Autowired
     private RestaurantService restaurantService;
+
+    @Autowired
+    private CourierAssignmentService courierAssignmentService;
 
     @PutMapping("/{id}/status")
     public ResponseEntity<BusinessHours> updateRestaurantStatus(
@@ -40,5 +48,21 @@ public class RestaurantController {
     public ResponseEntity<Restaurant> getRestaurant(@PathVariable Integer id) {
         Restaurant restaurant = restaurantService.getRestaurantById(id);
         return ResponseEntity.ok(restaurant);
+    }
+
+    @GetMapping("/{restaurantId}/available-couriers")
+    public ResponseEntity<List<Courier>> getAvailableCouriers(@PathVariable Integer restaurantId) {
+        return ResponseEntity.ok(restaurantService.getAvailableCouriers(restaurantId));
+    }
+
+    @PostMapping("/{restaurantId}/orders/{orderId}/request-courier/{courierId}")
+    public ResponseEntity<?> requestCourierForOrder(
+            @PathVariable Integer restaurantId,
+            @PathVariable Integer orderId,
+            @PathVariable Integer courierId) {
+        CourierAssignmentDTO assignmentDTO = new CourierAssignmentDTO();
+        assignmentDTO.setOrderId(orderId);
+        assignmentDTO.setCourierId(courierId);
+        return ResponseEntity.ok(courierAssignmentService.assignOrderToCourier(assignmentDTO));
     }
 } 

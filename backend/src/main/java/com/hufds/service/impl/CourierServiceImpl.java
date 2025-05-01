@@ -52,12 +52,7 @@ public class CourierServiceImpl implements CourierService {
     @Override
     public boolean isCourierAvailable(Integer courierId) {
         Courier courier = getCourierProfile(courierId);
-        return courier.getStatus() == Courier.CourierStatus.Available;
-    }
-
-    @Override
-    public List<Order> getAvailableOrders() {
-        return orderRepository.findByStatus(Order.OrderStatus.PENDING);
+        return courier.getStatus() == Courier.CourierStatus.AVAILABLE;
     }
 
     @Override
@@ -72,40 +67,18 @@ public class CourierServiceImpl implements CourierService {
 
     @Override
     @Transactional
-    public Order acceptOrder(Integer courierId, Integer orderId) {
-        Courier courier = getCourierProfile(courierId);
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
-
-        if (order.getStatus() != Order.OrderStatus.PENDING) {
-            throw new RuntimeException("Order is not available for delivery");
-        }
-
-        // Check if courier has reached maximum active orders
-        List<Order> activeDeliveries = getActiveDeliveries(courierId);
-        if (activeDeliveries.size() >= 3) {
-            throw new RuntimeException("You have reached the maximum limit of 3 active orders");
-        }
-
-        order.setCourier(courier);
-        order.setStatus(Order.OrderStatus.OUT_FOR_DELIVERY);
-        return orderRepository.save(order);
-    }
-
-    @Override
-    @Transactional
     public Order completeDelivery(Integer courierId, Integer orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
-
-        if (order.getCourier().getCourierId() != courierId) {
-            throw new RuntimeException("This order is not assigned to you");
+        
+        if (!order.getCourier().getCourierId().equals(courierId)) {
+            throw new RuntimeException("Order is not assigned to this courier");
         }
-
+        
         if (order.getStatus() != Order.OrderStatus.OUT_FOR_DELIVERY) {
-            throw new RuntimeException("Order is not out for delivery");
+            throw new RuntimeException("Order must be out for delivery before completion");
         }
-
+        
         order.setStatus(Order.OrderStatus.DELIVERED);
         return orderRepository.save(order);
     }
@@ -115,23 +88,25 @@ public class CourierServiceImpl implements CourierService {
     public Order cancelDelivery(Integer courierId, Integer orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
-
-        if (order.getCourier().getCourierId() != courierId) {
-            throw new RuntimeException("This order is not assigned to you");
+        
+        if (!order.getCourier().getCourierId().equals(courierId)) {
+            throw new RuntimeException("Order is not assigned to this courier");
         }
-
-        if (order.getStatus() != Order.OrderStatus.OUT_FOR_DELIVERY) {
-            throw new RuntimeException("Order is not out for delivery");
+        
+        if (order.getStatus() == Order.OrderStatus.DELIVERED) {
+            throw new RuntimeException("Cannot cancel a delivered order");
         }
-
+        
         order.setStatus(Order.OrderStatus.CANCELLED);
         return orderRepository.save(order);
     }
 
     @Override
-    public Double getTotalEarnings(Integer courierId) {
-        Courier courier = getCourierProfile(courierId);
-        return courier.getEarnings().doubleValue();
+    public double getTotalEarnings(Integer courierId) {
+        return orderRepository.findByCourierCourierIdAndStatus(courierId, Order.OrderStatus.DELIVERED)
+                .stream()
+                .mapToDouble(order -> order.getTotalPrice().doubleValue())
+                .sum();
     }
 
     @Override

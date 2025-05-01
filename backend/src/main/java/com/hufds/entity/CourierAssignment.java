@@ -40,13 +40,16 @@ public class CourierAssignment {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20, nullable = false)
-    private AssignmentStatus status = AssignmentStatus.ASSIGNED;
+    private AssignmentStatus status = AssignmentStatus.REQUESTED;
 
     public enum AssignmentStatus {
-        ASSIGNED,
-        PICKED_UP,
-        DELIVERED,
-        CANCELLED
+        REQUESTED,    // Initial state when restaurant requests a courier
+        ACCEPTED,     // Courier has accepted the request
+        REJECTED,     // Courier has rejected the request
+        ASSIGNED,     // Courier is assigned and ready for pickup
+        PICKED_UP,    // Courier has picked up the order
+        DELIVERED,    // Order has been delivered
+        CANCELLED     // Assignment was cancelled
     }
 
     @PrePersist

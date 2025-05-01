@@ -9,4 +9,6 @@ public interface CourierAssignmentRepository extends JpaRepository<CourierAssign
     boolean existsByOrderOrderId(Integer orderId);
     List<CourierAssignment> findByCourierCourierIdAndStatusIn(Integer courierId, List<CourierAssignment.AssignmentStatus> statuses);
     List<CourierAssignment> findByCourierCourierId(Integer courierId);
+    boolean existsByOrderOrderIdAndStatusNot(Integer orderId, CourierAssignment.AssignmentStatus status);
+    List<CourierAssignment> findByOrderOrderIdAndStatus(Integer orderId, CourierAssignment.AssignmentStatus status);
 } 
