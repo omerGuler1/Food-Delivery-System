@@ -3,14 +3,19 @@ package com.hufds.controller;
 import com.hufds.entity.BusinessHours;
 import com.hufds.entity.Courier;
 import com.hufds.entity.Restaurant;
+import com.hufds.entity.Order;
+import com.hufds.entity.Order.OrderStatus;
 import com.hufds.service.RestaurantService;
 import com.hufds.service.CourierAssignmentService;
+import com.hufds.service.OrderService;
 import com.hufds.dto.CourierAssignmentDTO;
+import com.hufds.dto.OrderResponseDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/restaurants")
@@ -21,6 +26,9 @@ public class RestaurantController {
 
     @Autowired
     private CourierAssignmentService courierAssignmentService;
+
+    @Autowired
+    private OrderService orderService;
 
     @PutMapping("/{id}/status")
     public ResponseEntity<BusinessHours> updateRestaurantStatus(
@@ -64,5 +72,25 @@ public class RestaurantController {
         assignmentDTO.setOrderId(orderId);
         assignmentDTO.setCourierId(courierId);
         return ResponseEntity.ok(courierAssignmentService.assignOrderToCourier(assignmentDTO));
+    }
+
+    @GetMapping("/{restaurantId}/orders")
+    public ResponseEntity<List<OrderResponseDTO>> getRestaurantOrders(
+            @PathVariable Integer restaurantId,
+            @RequestParam(required = false) OrderStatus status) {
+        
+        List<Order> orders;
+        if (status != null) {
+            orders = orderService.getRestaurantOrders(restaurantId, status);
+        } else {
+            orders = orderService.getAllRestaurantOrders(restaurantId);
+        }
+        
+        // Convert Order entities to OrderResponseDTO
+        List<OrderResponseDTO> orderDTOs = orders.stream()
+                .map(OrderResponseDTO::fromOrder)
+                .collect(Collectors.toList());
+                
+        return ResponseEntity.ok(orderDTOs);
     }
 } 

@@ -49,8 +49,14 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
             throw new CustomException("Courier is not available", HttpStatus.BAD_REQUEST);
         }
 
-        // Check if order is already assigned
-        if (assignmentRepository.existsByOrderOrderId(assignmentDTO.getOrderId())) {
+        // Check if order has any active assignments (not REJECTED or EXPIRED)
+        List<CourierAssignment> existingAssignments = assignmentRepository.findByOrderOrderId(assignmentDTO.getOrderId());
+        boolean hasActiveAssignment = existingAssignments.stream()
+                .anyMatch(assignment -> 
+                    assignment.getStatus() != CourierAssignment.AssignmentStatus.REJECTED && 
+                    assignment.getStatus() != CourierAssignment.AssignmentStatus.EXPIRED);
+
+        if (hasActiveAssignment) {
             throw new CustomException("Order is already assigned to a courier", HttpStatus.BAD_REQUEST);
         }
 
@@ -77,6 +83,9 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
 
         // Check if the request is too old (e.g., more than 5 minutes)
         if (assignment.getAssignedAt().plusMinutes(5).isBefore(java.time.LocalDateTime.now())) {
+            // Mark the assignment as expired
+            assignment.setStatus(CourierAssignment.AssignmentStatus.EXPIRED);
+            assignmentRepository.save(assignment);
             throw new CustomException("This delivery request has expired", HttpStatus.BAD_REQUEST);
         }
 
@@ -94,7 +103,7 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
             throw new CustomException("Courier is no longer available", HttpStatus.BAD_REQUEST);
         }
 
-        // Check if this order is already assigned to another courier with ACCEPTED status
+        // Check if this order is already assigned to any courier with ACCEPTED status
         List<CourierAssignment> acceptedAssignments = assignmentRepository.findByOrderOrderIdAndStatus(
                 order.getOrderId(), CourierAssignment.AssignmentStatus.ACCEPTED);
         
@@ -127,7 +136,16 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
             throw new CustomException("Can only reject REQUESTED assignments", HttpStatus.BAD_REQUEST);
         }
 
+        // Update assignment status
         assignment.setStatus(CourierAssignment.AssignmentStatus.REJECTED);
+        
+        // Ensure the order status remains PROCESSING
+        Order order = assignment.getOrder();
+        if (order.getStatus() == Order.OrderStatus.PROCESSING) {
+            // No need to change the status, just ensure it's saved
+            orderRepository.save(order);
+        }
+        
         return assignmentRepository.save(assignment);
     }
 
@@ -177,11 +195,9 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
         switch (current) {
             case REQUESTED:
                 return next == CourierAssignment.AssignmentStatus.ACCEPTED || 
-                       next == CourierAssignment.AssignmentStatus.REJECTED;
+                       next == CourierAssignment.AssignmentStatus.REJECTED || 
+                       next == CourierAssignment.AssignmentStatus.EXPIRED;
             case ACCEPTED:
-                return next == CourierAssignment.AssignmentStatus.ASSIGNED || 
-                       next == CourierAssignment.AssignmentStatus.CANCELLED;
-            case ASSIGNED:
                 return next == CourierAssignment.AssignmentStatus.PICKED_UP || 
                        next == CourierAssignment.AssignmentStatus.CANCELLED;
             case PICKED_UP:
@@ -190,6 +206,7 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
             case DELIVERED:
             case REJECTED:
             case CANCELLED:
+            case EXPIRED:
                 return false; // Cannot transition from these states
             default:
                 return false;
@@ -224,6 +241,118 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
                             .deliveredAt(assignment.getDeliveredAt())
                             .build();
                 })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CourierAssignment> getPendingRequestsForCourier(Integer courierId) {
+        // Validate courier exists
+        courierRepository.findById(courierId)
+                .orElseThrow(() -> new CustomException("Courier not found", HttpStatus.NOT_FOUND));
+        
+        // Get all assignments with REQUESTED status for the courier
+        return assignmentRepository.findByCourierCourierIdAndStatus(courierId, CourierAssignment.AssignmentStatus.REQUESTED);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CourierAssignment> getAllAssignmentsForCourier(Integer courierId) {
+        // Validate courier exists
+        courierRepository.findById(courierId)
+                .orElseThrow(() -> new CustomException("Courier not found", HttpStatus.NOT_FOUND));
+        
+        // Get all assignments for the courier regardless of status
+        return assignmentRepository.findByCourierCourierId(courierId);
+    }
+
+    /**
+     * Check if a delivery request has expired (older than 5 minutes).
+     * 
+     * @param assignmentId The assignment ID to check
+     * @return true if the assignment is expired and was handled, false otherwise
+     */
+    @Override
+    @Transactional
+    public boolean checkAndHandleExpiredAssignment(Integer assignmentId) {
+        CourierAssignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new CustomException("Assignment not found", HttpStatus.NOT_FOUND));
+        
+        // Only check REQUESTED assignments
+        if (assignment.getStatus() != CourierAssignment.AssignmentStatus.REQUESTED) {
+            return false;
+        }
+        
+        // Check if the request is too old (more than 5 minutes)
+        if (assignment.getAssignedAt().plusMinutes(5).isBefore(java.time.LocalDateTime.now())) {
+            // Update assignment status to EXPIRED
+            assignment.setStatus(CourierAssignment.AssignmentStatus.EXPIRED);
+            assignmentRepository.save(assignment);
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Check all requested assignments for a specific order and handle any expired ones.
+     * 
+     * @param orderId The order ID to check assignments for
+     * @return true if any assignments were expired and handled, false otherwise
+     */
+    @Override
+    @Transactional
+    public boolean checkAndHandleExpiredAssignmentsForOrder(Integer orderId) {
+        // Find all REQUESTED assignments for this order
+        List<CourierAssignment> requestedAssignments = assignmentRepository.findByOrderOrderIdAndStatus(
+                orderId, CourierAssignment.AssignmentStatus.REQUESTED);
+        
+        boolean anyExpired = false;
+        
+        for (CourierAssignment assignment : requestedAssignments) {
+            // Check if the request is too old (more than 5 minutes)
+            if (assignment.getAssignedAt().plusMinutes(5).isBefore(java.time.LocalDateTime.now())) {
+                // Update assignment status to EXPIRED
+                assignment.setStatus(CourierAssignment.AssignmentStatus.EXPIRED);
+                assignmentRepository.save(assignment);
+                anyExpired = true;
+            }
+        }
+        
+        return anyExpired;
+    }
+
+    /**
+     * Find and return a list of orders that have all their courier assignments expired or rejected.
+     * These orders can have new courier assignments created.
+     * 
+     * @param restaurantId The restaurant ID to check orders for
+     * @return List of order IDs that need new courier assignments
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<Integer> getOrdersNeedingNewCourierAssignment(Integer restaurantId) {
+        // Find all PROCESSING orders for this restaurant
+        List<Order> processingOrders = orderRepository.findByRestaurantRestaurantIdAndStatus(
+                restaurantId, Order.OrderStatus.PROCESSING);
+        
+        return processingOrders.stream()
+                .filter(order -> {
+                    // Check all assignments for this order
+                    List<CourierAssignment> assignments = assignmentRepository.findByOrderOrderId(order.getOrderId());
+                    
+                    // If no assignments exist, order needs a courier
+                    if (assignments.isEmpty()) {
+                        return true;
+                    }
+                    
+                    // Order needs a new courier if all assignments are EXPIRED or REJECTED
+                    return assignments.stream()
+                            .allMatch(assignment -> 
+                                assignment.getStatus() == CourierAssignment.AssignmentStatus.EXPIRED || 
+                                assignment.getStatus() == CourierAssignment.AssignmentStatus.REJECTED);
+                })
+                .map(Order::getOrderId)
                 .collect(Collectors.toList());
     }
 } 

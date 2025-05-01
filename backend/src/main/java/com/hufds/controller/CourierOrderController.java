@@ -1,8 +1,10 @@
 package com.hufds.controller;
 
 import com.hufds.dto.CourierOrderHistoryDTO;
+import com.hufds.entity.Order;
 import com.hufds.service.CourierAssignmentService;
 import com.hufds.service.JwtService;
+import com.hufds.service.OrderService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,7 @@ import java.util.List;
 public class CourierOrderController {
 
     private final CourierAssignmentService courierAssignmentService;
+    private final OrderService orderService;
     private final JwtService jwtService;
 
     @GetMapping("/orders")

@@ -41,7 +41,18 @@ import {
   CircularProgress,
   Switch,
   Tooltip,
-  Snackbar
+  Snackbar,
+  Badge,
+  ListItem,
+  ListItemText,
+  ListItemAvatar,
+  List,
+  Backdrop,
+  CircularProgress as FullPageCircularProgress,
+  Collapse,
+  Modal,
+  Radio,
+  RadioGroup
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -59,13 +70,24 @@ import {
   Info as InfoIcon,
   Search as SearchIcon,
   Person,
-  Warning as WarningIcon
+  Warning as WarningIcon,
+  CheckCircle as CheckCircleIcon,
+  ReceiptLong as ReceiptIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  ShoppingBasket as ShoppingBasketIcon,
+  LocalShipping as LocalShippingIcon,
+  DirectionsBike as DirectionsBikeIcon,
+  TwoWheeler as TwoWheelerIcon,
+  DirectionsCar as DirectionsCarIcon
 } from '@mui/icons-material';
 import { mockMenuItems, foodCategories, restaurantInfo } from '../data/mockData';
-import { MenuItem as MenuItemType, FoodCategory } from '../interfaces';
+import { MenuItem as MenuItemType, FoodCategory, OrderResponseDTO, CourierInfo } from '../interfaces';
 import { addMenuItem, updateMenuItem, deleteMenuItem, getRestaurantMenuItems, updateRestaurantStatus } from '../services/restaurantService';
+import { getRestaurantOrders, updateOrderStatus, getAvailableCouriers, requestCourierForOrder, checkOrderAssignmentsExpired, getOrdersNeedingCouriers } from '../services/orderService';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { formatDate, formatDateTime } from '../utils/dateUtils';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -107,6 +129,16 @@ const RestaurantDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isRestaurantOpen, setIsRestaurantOpen] = useState(false);
   const [showStatusWarning, setShowStatusWarning] = useState(false);
+  const [orders, setOrders] = useState<OrderResponseDTO[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [processingOrder, setProcessingOrder] = useState<number | null>(null);
+  const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
+  const [courierModalOpen, setCourierModalOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [availableCouriers, setAvailableCouriers] = useState<CourierInfo[]>([]);
+  const [selectedCourierId, setSelectedCourierId] = useState<number | null>(null);
+  const [isLoadingCouriers, setIsLoadingCouriers] = useState(false);
+  const [isAssigningCourier, setIsAssigningCourier] = useState(false);
   const navigate = useNavigate();
 
   // Helper function to map API response to our MenuItem type
@@ -214,6 +246,48 @@ const RestaurantDashboard: React.FC = () => {
     
     setFilteredItems(filtered);
   }, [menuItems, selectedCategory, searchQuery]);
+
+  // Load restaurant orders
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setIsLoadingOrders(true);
+        setError(null);
+        
+        // Get restaurant ID from user context or default to 1
+        const restaurantId = user && 'restaurantId' in user ? user.restaurantId : 1;
+        
+        // Fetch orders from API
+        console.log(`Fetching orders for restaurant ID: ${restaurantId}`);
+        const fetchedOrders = await getRestaurantOrders(restaurantId);
+        console.log('Orders loaded from API:', fetchedOrders);
+        
+        setOrders(fetchedOrders);
+      } catch (error: any) {
+        console.error('Error fetching orders:', error);
+        
+        let errorMessage = 'Failed to load orders.';
+        
+        // Check for authentication issues
+        if (error.response && error.response.status === 401) {
+          errorMessage = 'Authentication failed. Please log in again.';
+        } else if (error.response && error.response.status === 403) {
+          errorMessage = 'You do not have permission to view these orders.';
+        } else if (error.message) {
+          errorMessage = `Error: ${error.message}`;
+        }
+        
+        setError(errorMessage);
+      } finally {
+        setIsLoadingOrders(false);
+      }
+    };
+
+    // Only fetch orders when the active tab is for orders (index 1)
+    if (activeTab === 1) {
+      fetchOrders();
+    }
+  }, [activeTab, user]);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -483,8 +557,224 @@ const RestaurantDashboard: React.FC = () => {
     setShowStatusWarning(false);
   };
 
+  // Handle approving an order (changing status from PENDING to PROCESSING)
+  const handleApproveOrder = async (orderId: number) => {
+    try {
+      setProcessingOrder(orderId);
+      setError(null);
+      
+      console.log(`Approving order ${orderId}, changing status to PROCESSING`);
+      const updatedOrder = await updateOrderStatus(orderId, 'PROCESSING');
+      
+      // Update the orders state to reflect the new status
+      setOrders(orders.map(order => 
+        order.orderId === orderId 
+          ? { ...order, status: 'PROCESSING' }
+          : order
+      ));
+      
+      setSuccessMessage(`Order #${orderId} has been approved and is now processing`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error: any) {
+      console.error('Error approving order:', error);
+      
+      let errorMessage = 'Failed to approve order.';
+      
+      if (error.response && error.response.status === 401) {
+        errorMessage = 'Authentication failed. Please log in again.';
+      } else if (error.response && error.response.status === 403) {
+        errorMessage = 'You do not have permission to approve this order.';
+      } else if (error.message) {
+        errorMessage = `Error: ${error.message}`;
+      }
+      
+      setError(errorMessage);
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setProcessingOrder(null);
+    }
+  };
+
+  // Toggle order details expansion
+  const handleToggleOrderDetails = (orderId: number) => {
+    setExpandedOrder(expandedOrder === orderId ? null : orderId);
+  };
+
+  // Handle opening courier selection modal
+  const handleOpenCourierModal = async (orderId: number) => {
+    try {
+      // First check if any existing assignments for this order have expired
+      const anyExpired = await checkOrderAssignmentsExpired(orderId);
+      
+      if (anyExpired) {
+        console.log(`Some assignments for order ${orderId} have expired and been handled`);
+      }
+      
+      setSelectedOrderId(orderId);
+      setCourierModalOpen(true);
+      await fetchAvailableCouriers();
+    } catch (error) {
+      console.error("Error checking expired assignments:", error);
+      setError("Failed to check courier assignment status. Please try again.");
+      
+      // Still proceed with opening the modal
+      setSelectedOrderId(orderId);
+      setCourierModalOpen(true);
+      await fetchAvailableCouriers();
+    }
+  };
+
+  // Handle closing courier selection modal
+  const handleCloseCourierModal = () => {
+    setCourierModalOpen(false);
+    setSelectedOrderId(null);
+    setSelectedCourierId(null);
+  };
+
+  // Fetch available couriers
+  const fetchAvailableCouriers = async () => {
+    try {
+      setIsLoadingCouriers(true);
+      setError(null);
+      
+      // Get restaurant ID from user context or default to 1
+      const restaurantId = user && 'restaurantId' in user ? user.restaurantId : 1;
+      
+      // Fetch available couriers
+      console.log(`Fetching available couriers for restaurant ID: ${restaurantId}`);
+      const couriers = await getAvailableCouriers(restaurantId);
+      console.log('Available couriers:', couriers);
+      
+      setAvailableCouriers(couriers);
+      
+      if (couriers.length === 0) {
+        setError('No available couriers found. Please try again later.');
+      }
+    } catch (error: any) {
+      console.error('Error fetching available couriers:', error);
+      setError('Failed to load available couriers. Please try again.');
+    } finally {
+      setIsLoadingCouriers(false);
+    }
+  };
+
+  // Handle courier selection
+  const handleCourierChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedCourierId(Number(event.target.value));
+  };
+
+  // Handle courier assignment
+  const handleAssignCourier = async () => {
+    if (!selectedOrderId || !selectedCourierId) {
+      setError('Please select a courier.');
+      return;
+    }
+    
+    try {
+      setIsAssigningCourier(true);
+      setError(null);
+      
+      // Get restaurant ID from user context or default to 1
+      const currentRestaurantId = user && 'restaurantId' in user ? user.restaurantId : 1;
+      
+      // Assign courier to order
+      console.log(`Assigning courier ${selectedCourierId} to order ${selectedOrderId}`);
+      await requestCourierForOrder(currentRestaurantId, selectedOrderId, selectedCourierId);
+      
+      // Show success message
+      setSuccessMessage(`Courier request sent successfully for order #${selectedOrderId}`);
+      
+      // Close modal
+      handleCloseCourierModal();
+      
+      // Refresh orders to update UI
+      const updatedOrders = await getRestaurantOrders(currentRestaurantId);
+      setOrders(updatedOrders);
+      
+    } catch (error: any) {
+      console.error('Error assigning courier:', error);
+      
+      let errorMessage = 'Failed to assign courier.';
+      
+      if (error.response && error.response.status === 401) {
+        errorMessage = 'Authentication failed. Please log in again.';
+      } else if (error.response && error.response.status === 403) {
+        errorMessage = 'You do not have permission to assign couriers.';
+      } else if (error.response && error.response.status === 404) {
+        errorMessage = 'Courier or order not found.';
+      } else if (error.message) {
+        errorMessage = `Error: ${error.message}`;
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setIsAssigningCourier(false);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    }
+  };
+
+  // Helper function to render vehicle type icon
+  const getVehicleIcon = (vehicleType: string) => {
+    switch (vehicleType.toUpperCase()) {
+      case 'BICYCLE':
+        return <DirectionsBikeIcon fontSize="small" />;
+      case 'MOTORCYCLE':
+        return <TwoWheelerIcon fontSize="small" />;
+      case 'CAR':
+        return <DirectionsCarIcon fontSize="small" />;
+      default:
+        return <LocalShippingIcon fontSize="small" />;
+    }
+  };
+
+  // Periodically check for orders needing couriers (due to expired or rejected assignments)
+  useEffect(() => {
+    // Only run this when the orders tab is active
+    if (activeTab !== 1) return;
+    
+    const restaurantId = user && 'restaurantId' in user ? user.restaurantId : 1;
+    
+    // Function to check for orders needing couriers and update UI
+    const checkOrdersNeedingCouriers = async () => {
+      try {
+        // Get list of orders that need new courier assignments
+        const orderIds = await getOrdersNeedingCouriers(restaurantId);
+        
+        if (orderIds.length > 0) {
+          console.log("Orders needing new courier assignments:", orderIds);
+          
+          // Refresh orders to update UI
+          const updatedOrders = await getRestaurantOrders(restaurantId);
+          setOrders(updatedOrders);
+        }
+      } catch (error) {
+        console.error("Error checking orders needing couriers:", error);
+      }
+    };
+    
+    // Check immediately on first load
+    checkOrdersNeedingCouriers();
+    
+    // Set up interval to check every 30 seconds
+    const intervalId = setInterval(checkOrdersNeedingCouriers, 30000);
+    
+    // Clean up interval on unmount or tab change
+    return () => clearInterval(intervalId);
+  }, [activeTab, user]);
+
   return (
     <Box sx={{ minHeight: '100vh', py: 3, bgcolor: '#f8f9fa' }}>
+      {/* Full page loading indicator when processing an order */}
+      <Backdrop
+        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        open={processingOrder !== null}
+      >
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <FullPageCircularProgress color="inherit" />
+          <Typography sx={{ mt: 2 }}>Processing Order...</Typography>
+        </Box>
+      </Backdrop>
+      
       <Container maxWidth="lg">
         {/* Dashboard Header */}
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -737,14 +1027,313 @@ const RestaurantDashboard: React.FC = () => {
         )}
 
         {/* Orders Tab */}
-        {menuItems.length > 0 && (
-          <TabPanel value={activeTab} index={1}>
-            <Typography variant="h6" gutterBottom>Orders Management</Typography>
-            <Alert severity="info">
-              Orders management functionality will be implemented in a future update.
-            </Alert>
-          </TabPanel>
-        )}
+        <TabPanel value={activeTab} index={1}>
+          <Typography variant="h6" gutterBottom>Orders Management</Typography>
+          
+          {isLoadingOrders && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          )}
+          
+          {!isLoadingOrders && orders.length === 0 && (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>
+              <ReceiptIcon sx={{ fontSize: 60, color: 'text.secondary', opacity: 0.3, mb: 2 }} />
+              <Typography variant="h6" color="text.secondary">
+                No orders found
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                You don't have any orders yet. When customers place orders, they will appear here.
+              </Typography>
+            </Paper>
+          )}
+          
+          {!isLoadingOrders && orders.length > 0 && (
+            <>
+              {/* Pending Orders */}
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
+                  Pending Orders
+                  <Badge 
+                    badgeContent={orders.filter(order => order.status === 'PENDING').length} 
+                    color="error" 
+                    sx={{ ml: 2 }}
+                  />
+                </Typography>
+                
+                <Paper sx={{ borderRadius: 2 }}>
+                  <List sx={{ width: '100%' }}>
+                    {orders.filter(order => order.status === 'PENDING').length > 0 ? (
+                      orders
+                        .filter(order => order.status === 'PENDING')
+                        .map((order) => (
+                          <React.Fragment key={order.orderId}>
+                            <ListItem 
+                              secondaryAction={
+                                <Button
+                                  variant="contained"
+                                  color="success"
+                                  size="small"
+                                  startIcon={<CheckCircleIcon />}
+                                  onClick={() => handleApproveOrder(order.orderId)}
+                                >
+                                  Approve
+                                </Button>
+                              }
+                              sx={{ 
+                                borderBottom: expandedOrder === order.orderId ? 'none' : '1px solid', 
+                                borderColor: 'divider',
+                                '&:last-child': {
+                                  borderBottom: expandedOrder === order.orderId ? 'none' : 'none'
+                                }
+                              }}
+                              button
+                              onClick={() => handleToggleOrderDetails(order.orderId)}
+                            >
+                              <ListItemAvatar>
+                                <Avatar sx={{ bgcolor: 'primary.main' }}>
+                                  <ReceiptIcon />
+                                </Avatar>
+                              </ListItemAvatar>
+                              <ListItemText
+                                primary={
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Typography variant="subtitle2">
+                                      Order #{order.orderId}
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                      <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+                                        ${order.totalPrice.toFixed(2)}
+                                      </Typography>
+                                      {expandedOrder === order.orderId ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                                    </Box>
+                                  </Box>
+                                }
+                                secondary={
+                                  <>
+                                    <Typography variant="body2" component="span" color="text.primary">
+                                      {order.customer && order.customer.name} - {order.customer && order.customer.phoneNumber}
+                                    </Typography>
+                                    <br />
+                                    <Typography variant="caption" component="span">
+                                      {order.orderItems.length} item(s) • {new Date(order.createdAt).toLocaleString()}
+                                    </Typography>
+                                    <br />
+                                    <Typography variant="caption" component="span">
+                                      Address: {order.address.fullAddress || `${order.address.street}, ${order.address.city}`}
+                                    </Typography>
+                                  </>
+                                }
+                              />
+                            </ListItem>
+                            <Collapse in={expandedOrder === order.orderId} timeout="auto" unmountOnExit>
+                              <Box sx={{ p: 2, pl: 9, bgcolor: 'background.default' }}>
+                                <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                                  <ShoppingBasketIcon fontSize="small" sx={{ mr: 1 }} />
+                                  Order Items
+                                </Typography>
+                                <Divider sx={{ mb: 1 }} />
+                                <List dense disablePadding>
+                                  {order.orderItems.map((item) => (
+                                    <ListItem key={item.orderItemId} sx={{ py: 0.5 }}>
+                                      <ListItemText 
+                                        primary={
+                                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <Typography variant="body2" fontWeight="medium">
+                                              {item.quantity}x {item.menuItem.name}
+                                            </Typography>
+                                            <Typography variant="body2">
+                                              ${(item.subtotal).toFixed(2)}
+                                            </Typography>
+                                          </Box>
+                                        }
+                                        secondary={item.menuItem.description ? item.menuItem.description : null}
+                                        secondaryTypographyProps={{ 
+                                          variant: 'caption',
+                                          sx: { 
+                                            display: 'block',
+                                            color: 'text.secondary',
+                                            mt: 0.5
+                                          } 
+                                        }}
+                                      />
+                                    </ListItem>
+                                  ))}
+                                </List>
+                                <Divider sx={{ my: 1 }} />
+                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                                  <Typography variant="subtitle2">
+                                    Total: ${order.totalPrice.toFixed(2)}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            </Collapse>
+                            {expandedOrder === order.orderId && <Divider />}
+                          </React.Fragment>
+                        ))
+                    ) : (
+                      <ListItem>
+                        <ListItemText
+                          primary="No pending orders"
+                          secondary="All orders have been processed"
+                          sx={{ textAlign: 'center', py: 2 }}
+                        />
+                      </ListItem>
+                    )}
+                  </List>
+                </Paper>
+              </Box>
+              
+              {/* Processing Orders */}
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
+                  Processing Orders
+                  <Badge 
+                    badgeContent={orders.filter(order => order.status === 'PROCESSING').length} 
+                    color="primary" 
+                    sx={{ ml: 2 }}
+                  />
+                </Typography>
+                
+                <Paper sx={{ borderRadius: 2 }}>
+                  <List sx={{ width: '100%' }}>
+                    {orders.filter(order => order.status === 'PROCESSING').length > 0 ? (
+                      orders
+                        .filter(order => order.status === 'PROCESSING')
+                        .map((order) => (
+                          <React.Fragment key={order.orderId}>
+                            <ListItem 
+                              sx={{ 
+                                borderBottom: expandedOrder === order.orderId ? 'none' : '1px solid', 
+                                borderColor: 'divider',
+                                '&:last-child': {
+                                  borderBottom: expandedOrder === order.orderId ? 'none' : 'none'
+                                }
+                              }}
+                              button
+                              onClick={() => handleToggleOrderDetails(order.orderId)}
+                              secondaryAction={
+                                <Button
+                                  variant="contained"
+                                  color="primary"
+                                  size="small"
+                                  startIcon={<LocalShippingIcon />}
+                                  onClick={(e) => {
+                                    e.stopPropagation(); // Prevent triggering the ListItem onClick
+                                    handleOpenCourierModal(order.orderId);
+                                  }}
+                                  disabled={order.courierAssignments && 
+                                    order.courierAssignments.length > 0 && 
+                                    order.courierAssignments.some(assignment => 
+                                      assignment.status !== 'EXPIRED' && assignment.status !== 'REJECTED')}
+                                >
+                                  {order.courierAssignments && 
+                                   order.courierAssignments.some(assignment => assignment.status === 'ACCEPTED') 
+                                    ? 'Courier Assigned' 
+                                    : (order.courierAssignments && 
+                                       order.courierAssignments.some(assignment => assignment.status === 'REQUESTED')
+                                      ? 'Courier Requested'
+                                      : 'Assign Courier')
+                                  }
+                                </Button>
+                              }
+                            >
+                              <ListItemAvatar>
+                                <Avatar sx={{ bgcolor: 'primary.main' }}>
+                                  <ReceiptIcon />
+                                </Avatar>
+                              </ListItemAvatar>
+                              <ListItemText
+                                primary={
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Typography variant="subtitle2">
+                                      Order #{order.orderId}
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                      <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+                                        ${order.totalPrice.toFixed(2)}
+                                      </Typography>
+                                      {expandedOrder === order.orderId ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                                    </Box>
+                                  </Box>
+                                }
+                                secondary={
+                                  <>
+                                    <Typography variant="body2" component="span" color="text.primary">
+                                      {order.customer && order.customer.name} - {order.customer && order.customer.phoneNumber}
+                                    </Typography>
+                                    <br />
+                                    <Typography variant="caption" component="span">
+                                      {order.orderItems.length} item(s) • {new Date(order.createdAt).toLocaleString()}
+                                    </Typography>
+                                    <br />
+                                    <Typography variant="caption" component="span">
+                                      Address: {order.address.fullAddress || `${order.address.street}, ${order.address.city}`}
+                                    </Typography>
+                                  </>
+                                }
+                              />
+                            </ListItem>
+                            <Collapse in={expandedOrder === order.orderId} timeout="auto" unmountOnExit>
+                              <Box sx={{ p: 2, pl: 9, bgcolor: 'background.default' }}>
+                                <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                                  <ShoppingBasketIcon fontSize="small" sx={{ mr: 1 }} />
+                                  Order Items
+                                </Typography>
+                                <Divider sx={{ mb: 1 }} />
+                                <List dense disablePadding>
+                                  {order.orderItems.map((item) => (
+                                    <ListItem key={item.orderItemId} sx={{ py: 0.5 }}>
+                                      <ListItemText 
+                                        primary={
+                                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <Typography variant="body2" fontWeight="medium">
+                                              {item.quantity}x {item.menuItem.name}
+                                            </Typography>
+                                            <Typography variant="body2">
+                                              ${(item.subtotal).toFixed(2)}
+                                            </Typography>
+                                          </Box>
+                                        }
+                                        secondary={item.menuItem.description ? item.menuItem.description : null}
+                                        secondaryTypographyProps={{ 
+                                          variant: 'caption',
+                                          sx: { 
+                                            display: 'block',
+                                            color: 'text.secondary',
+                                            mt: 0.5
+                                          } 
+                                        }}
+                                      />
+                                    </ListItem>
+                                  ))}
+                                </List>
+                                <Divider sx={{ my: 1 }} />
+                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                                  <Typography variant="subtitle2">
+                                    Total: ${order.totalPrice.toFixed(2)}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            </Collapse>
+                            {expandedOrder === order.orderId && <Divider />}
+                          </React.Fragment>
+                        ))
+                    ) : (
+                      <ListItem>
+                        <ListItemText
+                          primary="No processing orders"
+                          secondary="There are no orders currently being processed"
+                          sx={{ textAlign: 'center', py: 2 }}
+                        />
+                      </ListItem>
+                    )}
+                  </List>
+                </Paper>
+              </Box>
+            </>
+          )}
+        </TabPanel>
 
         {/* Restaurant Info Tab */}
         {menuItems.length > 0 && (
@@ -898,6 +1487,121 @@ const RestaurantDashboard: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Courier Selection Modal */}
+      <Modal
+        open={courierModalOpen}
+        onClose={handleCloseCourierModal}
+        aria-labelledby="courier-selection-modal"
+        aria-describedby="select-courier-for-delivery"
+      >
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: { xs: '90%', sm: 500 },
+          bgcolor: 'background.paper',
+          boxShadow: 24,
+          p: 4,
+          borderRadius: 2,
+          maxHeight: '90vh',
+          overflow: 'auto'
+        }}>
+          <Typography id="courier-selection-modal" variant="h6" component="h2" gutterBottom>
+            Select a Courier for Order #{selectedOrderId}
+          </Typography>
+          
+          {isLoadingCouriers ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : availableCouriers.length === 0 ? (
+            <Alert severity="info" sx={{ my: 2 }}>
+              No couriers are currently available. Please try again later.
+            </Alert>
+          ) : (
+            <>
+              <FormControl component="fieldset" sx={{ width: '100%', mt: 2 }}>
+                <RadioGroup
+                  aria-label="courier"
+                  name="courier-selection"
+                  value={selectedCourierId || ''}
+                  onChange={handleCourierChange}
+                >
+                  {availableCouriers.map((courier) => (
+                    <Paper
+                      key={courier.courierId}
+                      elevation={selectedCourierId === courier.courierId ? 3 : 1}
+                      sx={{
+                        mb: 2,
+                        p: 2,
+                        border: selectedCourierId === courier.courierId ? 2 : 1,
+                        borderColor: selectedCourierId === courier.courierId ? 'primary.main' : 'divider',
+                        borderRadius: 2,
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <FormControlLabel
+                        value={courier.courierId}
+                        control={<Radio />}
+                        label={
+                          <Box sx={{ ml: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Typography variant="subtitle1" fontWeight="bold">
+                                {courier.name}
+                              </Typography>
+                              <Chip
+                                icon={getVehicleIcon(courier.vehicleType)}
+                                label={courier.vehicleType}
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                                sx={{ ml: 1 }}
+                              />
+                            </Box>
+                            <Typography variant="body2" color="text.secondary">
+                              {courier.phoneNumber}
+                            </Typography>
+                          </Box>
+                        }
+                        sx={{ 
+                          width: '100%', 
+                          m: 0,
+                          alignItems: 'flex-start'
+                        }}
+                      />
+                    </Paper>
+                  ))}
+                </RadioGroup>
+              </FormControl>
+              
+              {error && (
+                <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
+                  {error}
+                </Alert>
+              )}
+              
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3, gap: 2 }}>
+                <Button
+                  onClick={handleCloseCourierModal}
+                  variant="outlined"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAssignCourier}
+                  variant="contained"
+                  disabled={!selectedCourierId || isAssigningCourier}
+                  startIcon={isAssigningCourier ? <CircularProgress size={20} /> : <LocalShippingIcon />}
+                >
+                  {isAssigningCourier ? 'Sending Request...' : 'Request Courier'}
+                </Button>
+              </Box>
+            </>
+          )}
+        </Box>
+      </Modal>
     </Box>
   );
 };

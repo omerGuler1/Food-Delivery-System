@@ -16,6 +16,7 @@ export interface Address {
   latitude?: number;
   longitude?: number;
   isDefault: boolean;
+  fullAddress?: string;
 }
 
 export interface Customer extends User {
@@ -69,8 +70,6 @@ export interface RestaurantRegisterRequest {
   password: string;
   confirmPassword: string;
   cuisineType: string;
-  taxNumber: string;
-  restaurantType: string;
 }
 
 export interface CourierRegisterRequest {
@@ -133,4 +132,101 @@ export interface Cart {
   restaurantId: number | null;
   restaurantName: string | null;
   totalPrice: number;
+}
+
+// Order interfaces
+export interface CustomerInfo {
+  customerId: number;
+  name: string;
+  email: string;
+  phoneNumber: string;
+}
+
+export interface CourierInfo {
+  courierId: number;
+  name: string;
+  email: string;
+  phoneNumber: string;
+  vehicleType: string;
+  status: string;
+  earnings?: number;
+}
+
+export interface OrderItem {
+  orderItemId: number;
+  menuItem: MenuItem;
+  quantity: number;
+  subtotal: number;
+}
+
+export interface Order {
+  orderId: number;
+  address: Address;
+  totalPrice: number;
+  status: string;
+  createdAt: string;
+  deliveredAt: string | null;
+  payment: any | null;
+  orderItems: OrderItem[];
+  restaurant?: Restaurant;
+  customer?: CustomerInfo;
+}
+
+export interface OrderResponseDTO {
+  orderId: number;
+  address: Address;
+  totalPrice: number;
+  status: string;
+  createdAt: string;
+  deliveredAt: string | null;
+  payment: any | null;
+  orderItems: OrderItem[];
+  courierAssignments: any[];
+  customer: CustomerInfo;
+}
+
+// CourierAssignment interface
+export interface CourierAssignment {
+  assignmentId: number;
+  assignedAt: string;
+  pickedUpAt: string | null;
+  deliveredAt: string | null;
+  status: 'REQUESTED' | 'ACCEPTED' | 'REJECTED' | 'PICKED_UP' | 'DELIVERED' | 'CANCELLED' | 'EXPIRED';
+  order?: Order;
+  courier?: Courier;
+}
+
+// Courier Order History DTO
+export interface CourierOrderHistoryDTO {
+  orderId: number;
+  assignmentId: number;
+  restaurantName: string;
+  customerName: string;
+  deliveryAddress: string;
+  totalPrice: number;
+  orderStatus: string;
+  assignmentStatus: string;
+  assignedAt: string;
+  pickedUpAt: string | null;
+  deliveredAt: string | null;
+}
+
+// ActiveDeliveryOrder interface to match the API response
+export interface ActiveDeliveryOrder {
+  orderId: number;
+  address: Address;
+  totalPrice: number;
+  status: string;
+  createdAt: string;
+  deliveredAt: string | null;
+  payment: any | null;
+  orderItems: OrderItem[];
+  courierAssignments: CourierAssignment[];
+  restaurant?: Restaurant;
+  customer?: Customer;
+}
+
+// PendingDeliveryRequest interface
+export interface PendingDeliveryRequest extends CourierAssignment {
+  order: Order;
 } 

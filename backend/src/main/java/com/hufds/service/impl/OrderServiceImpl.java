@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.List;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -156,6 +157,24 @@ public class OrderServiceImpl implements OrderService {
         return orderRepository.save(order);
     }
 
+    @Override
+    public List<Order> getRestaurantOrders(Integer restaurantId, Order.OrderStatus status) {
+        // Validate restaurant exists
+        restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+        
+        return orderRepository.findByRestaurantRestaurantIdAndStatus(restaurantId, status);
+    }
+
+    @Override
+    public List<Order> getAllRestaurantOrders(Integer restaurantId) {
+        // Validate restaurant exists
+        restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+        
+        return orderRepository.findByRestaurantRestaurantId(restaurantId);
+    }
+
     private boolean isValidStatusTransition(Order.OrderStatus current, Order.OrderStatus next) {
         // Define valid status transitions
         switch (current) {
@@ -172,5 +191,25 @@ public class OrderServiceImpl implements OrderService {
 
     private boolean canBeCancelled(Order.OrderStatus status) {
         return status == Order.OrderStatus.PENDING;
+    }
+
+    @Override
+    public List<Order> getActiveCourierOrders(Integer courierId) {
+        // Get orders with OUT_FOR_DELIVERY status assigned to this courier
+        List<Order> orders = orderRepository.findByCourierCourierIdAndStatus(
+            courierId, Order.OrderStatus.OUT_FOR_DELIVERY);
+        
+        // Make sure restaurant and customer are loaded (eager fetch)
+        for (Order order : orders) {
+            // Initialize restaurant and customer details to ensure they're loaded
+            if (order.getRestaurant() != null) {
+                order.getRestaurant().getName(); // Ensure data is fetched
+            }
+            if (order.getCustomer() != null) {
+                order.getCustomer().getName(); // Ensure data is fetched
+            }
+        }
+        
+        return orders;
     }
 } 
