@@ -1,5 +1,6 @@
 package com.hufds.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
@@ -85,7 +86,7 @@ public class Restaurant {
     private Set<BusinessHours> businessHours;
 
     @OneToMany(mappedBy = "restaurant")
-    @JsonManagedReference
+    @JsonBackReference
     private Set<Order> orders;
 
     @OneToMany(mappedBy = "restaurant")

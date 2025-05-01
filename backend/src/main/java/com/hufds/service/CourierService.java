@@ -16,15 +16,13 @@ public interface CourierService {
     boolean isCourierAvailable(Integer courierId);
     
     // Order operations
-    List<Order> getAvailableOrders();
     List<Order> getActiveDeliveries(Integer courierId);
     List<Order> getPastDeliveries(Integer courierId);
-    Order acceptOrder(Integer courierId, Integer orderId);
     Order completeDelivery(Integer courierId, Integer orderId);
     Order cancelDelivery(Integer courierId, Integer orderId);
     
     // Earnings operations
-    Double getTotalEarnings(Integer courierId);
+    double getTotalEarnings(Integer courierId);
     
     // Password operations
     void updatePassword(Integer courierId, PasswordUpdateDTO passwordUpdateDTO);

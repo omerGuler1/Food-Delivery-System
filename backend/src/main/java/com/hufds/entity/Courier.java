@@ -1,5 +1,6 @@
 package com.hufds.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
@@ -38,13 +39,13 @@ public class Courier {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private CourierStatus status = CourierStatus.Unavailable;
+    private CourierStatus status = CourierStatus.UNAVAILABLE;
 
     @Column(precision = 10, scale = 2, nullable = false)
     private BigDecimal earnings = BigDecimal.ZERO;
 
     @OneToMany(mappedBy = "courier")
-    @JsonManagedReference
+    @JsonBackReference
     private Set<Order> orders;
 
     @OneToMany(mappedBy = "courier")
@@ -58,7 +59,7 @@ public class Courier {
     private LocalDateTime deletedAt;
 
     public enum CourierStatus {
-        Available, Unavailable
+        AVAILABLE, UNAVAILABLE
     }
 
     @PrePersist

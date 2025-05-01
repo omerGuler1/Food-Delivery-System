@@ -45,7 +45,7 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
         Courier courier = courierRepository.findById(assignmentDTO.getCourierId())
                 .orElseThrow(() -> new CustomException("Courier not found", HttpStatus.NOT_FOUND));
 
-        if (courier.getStatus() != Courier.CourierStatus.Available) {
+        if (courier.getStatus() != Courier.CourierStatus.AVAILABLE) {
             throw new CustomException("Courier is not available", HttpStatus.BAD_REQUEST);
         }
 
@@ -54,20 +54,80 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
             throw new CustomException("Order is already assigned to a courier", HttpStatus.BAD_REQUEST);
         }
 
-        // Create new assignment
+        // Create new assignment with REQUESTED status - store courier in database but don't associate with order yet
         CourierAssignment assignment = new CourierAssignment();
         assignment.setOrder(order);
+        // We temporarily store the courier here but it's not truly assigned until acceptance
         assignment.setCourier(courier);
-        assignment.setStatus(CourierAssignment.AssignmentStatus.ASSIGNED);
+        assignment.setStatus(CourierAssignment.AssignmentStatus.REQUESTED);
+
+        return assignmentRepository.save(assignment);
+    }
+
+    @Override
+    @Transactional
+    public CourierAssignment acceptDeliveryRequest(Integer assignmentId) {
+        CourierAssignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new CustomException("Assignment not found", HttpStatus.NOT_FOUND));
+
+        // Validate assignment status
+        if (assignment.getStatus() != CourierAssignment.AssignmentStatus.REQUESTED) {
+            throw new CustomException("Can only accept REQUESTED assignments", HttpStatus.BAD_REQUEST);
+        }
+
+        // Check if the request is too old (e.g., more than 5 minutes)
+        if (assignment.getAssignedAt().plusMinutes(5).isBefore(java.time.LocalDateTime.now())) {
+            throw new CustomException("This delivery request has expired", HttpStatus.BAD_REQUEST);
+        }
+
+        // Validate order status
+        Order order = assignment.getOrder();
+        if (order.getStatus() != Order.OrderStatus.PROCESSING) {
+            throw new CustomException("Order is no longer available for delivery", HttpStatus.BAD_REQUEST);
+        }
+
+        // Get courier from assignment
+        Courier courier = assignment.getCourier();
+        
+        // Validate courier is still available
+        if (courier.getStatus() != Courier.CourierStatus.AVAILABLE) {
+            throw new CustomException("Courier is no longer available", HttpStatus.BAD_REQUEST);
+        }
+
+        // Check if this order is already assigned to another courier with ACCEPTED status
+        List<CourierAssignment> acceptedAssignments = assignmentRepository.findByOrderOrderIdAndStatus(
+                order.getOrderId(), CourierAssignment.AssignmentStatus.ACCEPTED);
+        
+        if (!acceptedAssignments.isEmpty()) {
+            throw new CustomException("Order is already assigned to another courier", HttpStatus.BAD_REQUEST);
+        }
+
+        // Update assignment status
+        assignment.setStatus(CourierAssignment.AssignmentStatus.ACCEPTED);
 
         // Update order status
         order.setStatus(Order.OrderStatus.OUT_FOR_DELIVERY);
+        order.setCourier(courier);
         orderRepository.save(order);
 
         // Update courier status
-        courier.setStatus(Courier.CourierStatus.Unavailable);
+        courier.setStatus(Courier.CourierStatus.UNAVAILABLE);
         courierRepository.save(courier);
 
+        return assignmentRepository.save(assignment);
+    }
+
+    @Override
+    @Transactional
+    public CourierAssignment rejectDeliveryRequest(Integer assignmentId) {
+        CourierAssignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new CustomException("Assignment not found", HttpStatus.NOT_FOUND));
+
+        if (assignment.getStatus() != CourierAssignment.AssignmentStatus.REQUESTED) {
+            throw new CustomException("Can only reject REQUESTED assignments", HttpStatus.BAD_REQUEST);
+        }
+
+        assignment.setStatus(CourierAssignment.AssignmentStatus.REJECTED);
         return assignmentRepository.save(assignment);
     }
 
@@ -84,9 +144,13 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
 
         assignment.setStatus(status);
 
-        // Update timestamps based on status
+        // Update timestamps and related entities based on status
         if (status == CourierAssignment.AssignmentStatus.PICKED_UP) {
             assignment.setPickedUpAt(java.time.LocalDateTime.now());
+            // Set courier in the order
+            Order order = assignment.getOrder();
+            order.setCourier(assignment.getCourier());
+            orderRepository.save(order);
         } else if (status == CourierAssignment.AssignmentStatus.DELIVERED) {
             assignment.setDeliveredAt(java.time.LocalDateTime.now());
             // Update order status to DELIVERED
@@ -96,7 +160,7 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
             orderRepository.save(order);
             // Make courier available again
             Courier courier = assignment.getCourier();
-            courier.setStatus(Courier.CourierStatus.Available);
+            courier.setStatus(Courier.CourierStatus.AVAILABLE);
             courierRepository.save(courier);
         }
 
@@ -111,6 +175,12 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
 
     private boolean isValidStatusTransition(CourierAssignment.AssignmentStatus current, CourierAssignment.AssignmentStatus next) {
         switch (current) {
+            case REQUESTED:
+                return next == CourierAssignment.AssignmentStatus.ACCEPTED || 
+                       next == CourierAssignment.AssignmentStatus.REJECTED;
+            case ACCEPTED:
+                return next == CourierAssignment.AssignmentStatus.ASSIGNED || 
+                       next == CourierAssignment.AssignmentStatus.CANCELLED;
             case ASSIGNED:
                 return next == CourierAssignment.AssignmentStatus.PICKED_UP || 
                        next == CourierAssignment.AssignmentStatus.CANCELLED;
@@ -118,9 +188,9 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
                 return next == CourierAssignment.AssignmentStatus.DELIVERED || 
                        next == CourierAssignment.AssignmentStatus.CANCELLED;
             case DELIVERED:
-                return false; // Cannot transition from DELIVERED
+            case REJECTED:
             case CANCELLED:
-                return false; // Cannot transition from CANCELLED
+                return false; // Cannot transition from these states
             default:
                 return false;
         }
@@ -138,7 +208,7 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
 
         // Convert assignments to DTOs
         return assignments.stream()
-                .<CourierOrderHistoryDTO>map(assignment -> {
+                .map(assignment -> {
                     Order order = assignment.getOrder();
                     return CourierOrderHistoryDTO.builder()
                             .orderId(order.getOrderId())

@@ -36,11 +36,6 @@ public class CourierController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/orders/available")
-    public ResponseEntity<List<Order>> getAvailableOrders() {
-        return ResponseEntity.ok(courierService.getAvailableOrders());
-    }
-
     @GetMapping("/orders/active/{courierId}")
     public ResponseEntity<List<Order>> getActiveDeliveries(@PathVariable Integer courierId) {
         return ResponseEntity.ok(courierService.getActiveDeliveries(courierId));
@@ -49,13 +44,6 @@ public class CourierController {
     @GetMapping("/orders/past/{courierId}")
     public ResponseEntity<List<Order>> getPastDeliveries(@PathVariable Integer courierId) {
         return ResponseEntity.ok(courierService.getPastDeliveries(courierId));
-    }
-
-    @PostMapping("/orders/{orderId}/accept/{courierId}")
-    public ResponseEntity<Order> acceptOrder(
-            @PathVariable Integer orderId,
-            @PathVariable Integer courierId) {
-        return ResponseEntity.ok(courierService.acceptOrder(courierId, orderId));
     }
 
     @PostMapping("/orders/{orderId}/complete/{courierId}")
