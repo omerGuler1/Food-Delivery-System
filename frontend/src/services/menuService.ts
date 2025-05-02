@@ -109,26 +109,6 @@ export const getRestaurantMenuItems = async (
   restaurantId: number | string,
   options: MenuQueryOptions = {}
 ): Promise<MenuItem[]> => {
-  // Use mock data when in development or testing
-  if (USE_MOCK_DATA) {
-    console.log('Using mock menu data');
-    // Apply filters to mock data
-    let filteredItems = [...MOCK_MENU_ITEMS];
-    
-    if (options.availableOnly) {
-      filteredItems = filteredItems.filter(item => item.availability);
-    }
-    
-    if (options.category) {
-      filteredItems = filteredItems.filter(item => item.category === options.category);
-    }
-    
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    return filteredItems;
-  }
-  
   try {
     console.log(`Fetching real menu data for restaurant ID: ${restaurantId}`);
     // Build query parameters
@@ -146,16 +126,13 @@ export const getRestaurantMenuItems = async (
     const response = await axiosInstance.get(`/restaurant/menu-items/public/${restaurantId}`, { params });
     console.log('API response:', response.data);
     
-    // If no items are returned, fallback to mock data
-    if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
-      console.log('No menu items returned from API, using mock data as fallback');
-      return MOCK_MENU_ITEMS;
+    if (!response.data || !Array.isArray(response.data)) {
+      return [];
     }
     
     return response.data;
   } catch (error) {
     console.error('Error fetching restaurant menu items:', error);
-    console.log('Using mock data as fallback due to API error');
-    return MOCK_MENU_ITEMS;
+    throw error;
   }
 }; 

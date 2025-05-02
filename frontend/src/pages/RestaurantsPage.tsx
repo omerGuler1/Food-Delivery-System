@@ -36,7 +36,7 @@ const RestaurantsPage: React.FC = () => {
   
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
-  const categoryFilter = queryParams.get('category');
+  const categoryFilter = queryParams.get('cuisineType');
   const searchQuery = queryParams.get('search');
 
   useEffect(() => {
