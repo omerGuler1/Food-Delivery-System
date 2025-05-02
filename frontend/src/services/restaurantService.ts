@@ -120,9 +120,12 @@ export const updateMenuItem = async (
 export const deleteMenuItem = async (menuItemId: number, restaurantId: number): Promise<boolean> => {
   console.log(`API Call: Deleting menu item ${menuItemId} for restaurant ${restaurantId}`);
   try {
-    const response = await api.delete(`/restaurant/menu-items/${menuItemId}?restaurantId=${restaurantId}`);
-    console.log('API Response:', response.data);
-    return response.data?.success || false;
+    const response = await axiosInstance.delete(`/restaurant/menu-items/${menuItemId}`, {
+      params: { restaurantId }
+    });
+    console.log('API Response:', response.status);
+    // Return true if status is 204 (No Content)
+    return response.status === 204;
   } catch (error) {
     console.error('API Error in deleteMenuItem:', error);
     throw error;

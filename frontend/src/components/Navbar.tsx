@@ -13,7 +13,10 @@ import {
   MenuItem,
   Badge,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  Divider,
+  List,
+  ListItem
 } from '@mui/material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -23,15 +26,21 @@ import PersonIcon from '@mui/icons-material/Person';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, user, userType, logout } = useAuth();
+  const { cart, updateQuantity, removeFromCart } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   
   const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
+  const [anchorElCart, setAnchorElCart] = useState<null | HTMLElement>(null);
   
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
@@ -41,12 +50,20 @@ const Navbar: React.FC = () => {
     setAnchorElUser(event.currentTarget);
   };
   
+  const handleOpenCartMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorElCart(event.currentTarget);
+  };
+  
   const handleCloseNavMenu = () => {
     setAnchorElNav(null);
   };
   
   const handleCloseUserMenu = () => {
     setAnchorElUser(null);
+  };
+
+  const handleCloseCartMenu = () => {
+    setAnchorElCart(null);
   };
 
   const handleLogout = async () => {
@@ -97,6 +114,29 @@ const Navbar: React.FC = () => {
         { title: 'Logout', icon: <ExitToAppIcon fontSize="small" />, onClick: handleLogout }
       ]
     : [];
+
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    return `$${amount.toFixed(2)}`;
+  };
+
+  const handleCheckout = () => {
+    handleCloseCartMenu();
+    navigate('/checkout');
+  };
+
+  // Calculate total quantity of items in cart
+  const totalQuantity = cart.items.reduce((total, item) => total + item.quantity, 0);
+
+  // Constants for delivery and service fees
+  const DELIVERY_FEE = 15;
+  const SERVICE_FEE = 5;
+
+  // Calculate total with fees
+  const subtotal = cart.totalPrice || 0;
+  const deliveryFee = cart.items.length > 0 ? DELIVERY_FEE : 0;
+  const serviceFee = cart.items.length > 0 ? SERVICE_FEE : 0;
+  const orderTotal = subtotal + deliveryFee + serviceFee;
 
   return (
     <AppBar position="static">
@@ -211,13 +251,12 @@ const Navbar: React.FC = () => {
                 {/* Shopping cart icon (only for customers) */}
                 {userType === 'customer' && (
                   <IconButton 
-                    component={Link} 
-                    to="/cart" 
                     size="large" 
                     color="inherit"
                     sx={{ mr: 1 }}
+                    onClick={handleOpenCartMenu}
                   >
-                    <Badge badgeContent={0} color="error">
+                    <Badge badgeContent={totalQuantity} color="error">
                       <ShoppingCartIcon />
                     </Badge>
                   </IconButton>
@@ -255,6 +294,154 @@ const Navbar: React.FC = () => {
                       <ListItemText primary={setting.title} />
                     </MenuItem>
                   ))}
+                </Menu>
+
+                {/* Cart Menu */}
+                <Menu
+                  sx={{ mt: '45px' }}
+                  id="cart-menu"
+                  anchorEl={anchorElCart}
+                  anchorOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right',
+                  }}
+                  keepMounted
+                  transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right',
+                  }}
+                  open={Boolean(anchorElCart)}
+                  onClose={handleCloseCartMenu}
+                >
+                  <Box sx={{ width: 320, maxHeight: 400, overflow: 'auto', p: 2 }}>
+                    {cart.items.length === 0 ? (
+                      <Box sx={{ textAlign: 'center', py: 2 }}>
+                        <ShoppingCartIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
+                        <Typography variant="body1" color="text.secondary">
+                          Your cart is empty
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <>
+                        <Typography variant="h6" sx={{ mb: 2 }}>
+                          Your Cart
+                        </Typography>
+                        <List sx={{ mb: 2 }}>
+                          {cart.items.map((item) => (
+                            <ListItem key={item.menuItemId} sx={{ px: 0, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+                              <Box sx={{ width: '100%' }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                                    {item.name}
+                                  </Typography>
+                                  <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                                    {formatCurrency(item.price * item.quantity)}
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ 
+                                  display: 'flex', 
+                                  justifyContent: 'space-between', 
+                                  alignItems: 'center',
+                                  mt: 1 
+                                }}>
+                                  <Box sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center',
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    borderRadius: 1,
+                                    height: 32
+                                  }}>
+                                    <IconButton 
+                                      size="small" 
+                                      onClick={() => {
+                                        if (item.quantity > 1) {
+                                          updateQuantity(item.menuItemId, item.quantity - 1);
+                                        } else {
+                                          removeFromCart(item.menuItemId);
+                                        }
+                                      }}
+                                      sx={{ p: 0.5 }}
+                                    >
+                                      <RemoveIcon fontSize="small" />
+                                    </IconButton>
+                                    <Typography sx={{ mx: 1.5, fontWeight: 500, minWidth: 18, textAlign: 'center' }}>
+                                      {item.quantity}
+                                    </Typography>
+                                    <IconButton 
+                                      size="small"
+                                      onClick={() => updateQuantity(item.menuItemId, item.quantity + 1)}
+                                      sx={{ p: 0.5 }}
+                                    >
+                                      <AddIcon fontSize="small" />
+                                    </IconButton>
+                                  </Box>
+                                  <Tooltip title="Remove item">
+                                    <IconButton 
+                                      size="small" 
+                                      color="error"
+                                      onClick={() => removeFromCart(item.menuItemId)}
+                                      sx={{ p: 0.5 }}
+                                    >
+                                      <DeleteOutlineIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Box>
+                              </Box>
+                            </ListItem>
+                          ))}
+                        </List>
+                        <Divider sx={{ my: 2 }} />
+                        
+                        {/* Order Summary */}
+                        <Box sx={{ mb: 2 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Subtotal
+                            </Typography>
+                            <Typography variant="body2">
+                              {formatCurrency(subtotal)}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Delivery Fee
+                            </Typography>
+                            <Typography variant="body2">
+                              {formatCurrency(deliveryFee)}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Service Fee
+                            </Typography>
+                            <Typography variant="body2">
+                              {formatCurrency(serviceFee)}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        
+                        <Divider sx={{ my: 2 }} />
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                          <Typography variant="subtitle1" fontWeight="600">
+                            Total
+                          </Typography>
+                          <Typography variant="subtitle1" fontWeight="600" color="primary">
+                            {formatCurrency(orderTotal)}
+                          </Typography>
+                        </Box>
+                        <Button
+                          variant="contained"
+                          fullWidth
+                          onClick={handleCheckout}
+                          startIcon={<ShoppingCartIcon />}
+                        >
+                          Checkout
+                        </Button>
+                      </>
+                    )}
+                  </Box>
                 </Menu>
               </>
             ) : (

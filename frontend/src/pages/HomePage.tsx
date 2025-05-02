@@ -196,7 +196,7 @@ const HomePage: React.FC = () => {
                   }
                 }}
                 component={Link}
-                to={`/restaurants?category=${category.name}`}
+                to={`/restaurants?cuisineType=${category.name}`}
               >
                 <Box sx={{ mb: 2 }}>
                   {category.icon}

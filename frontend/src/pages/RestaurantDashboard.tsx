@@ -79,7 +79,8 @@ import {
   LocalShipping as LocalShippingIcon,
   DirectionsBike as DirectionsBikeIcon,
   TwoWheeler as TwoWheelerIcon,
-  DirectionsCar as DirectionsCarIcon
+  DirectionsCar as DirectionsCarIcon,
+  Remove as RemoveIcon
 } from '@mui/icons-material';
 import { mockMenuItems, foodCategories, restaurantInfo } from '../data/mockData';
 import { MenuItem as MenuItemType, FoodCategory, OrderResponseDTO, CourierInfo } from '../interfaces';
@@ -372,7 +373,7 @@ const RestaurantDashboard: React.FC = () => {
         
         // Prepare the data structure according to the API requirements
         const menuItemData = {
-          restaurantId: restaurantId, // Always use current restaurant ID
+          restaurantId: restaurantId,
           name: editingItem.name,
           description: editingItem.description,
           price: editingItem.price,
@@ -381,38 +382,31 @@ const RestaurantDashboard: React.FC = () => {
         };
 
         console.log(`Saving menu item for restaurant ID: ${restaurantId}`);
-        let result: MenuItemType;
+        
         // Check if it's a new item or updating an existing one
-        if (menuItems.some(item => item.menuItemId === editingItem.menuItemId)) {
+        if (editingItem.menuItemId !== 0) {
           // Update existing item
-          result = await updateMenuItem(editingItem.menuItemId, menuItemData) as MenuItemType;
+          const apiResult = await updateMenuItem(editingItem.menuItemId, menuItemData);
+          // Map API response to our local format using the helper function
+          const updatedItem = mapApiMenuItemToLocal(apiResult);
           
           // Update local state
-          setMenuItems(menuItems.map(item => 
-            item.menuItemId === editingItem.menuItemId ? {
-              ...item,
-              name: result.name,
-              description: result.description,
-              price: result.price,
-              available: result.available,
-              category: result.category
-            } : item
-          ));
+          setMenuItems(prevItems => 
+            prevItems.map(item => 
+              item.menuItemId === editingItem.menuItemId 
+                ? updatedItem
+                : item
+            )
+          );
           setSuccessMessage('Menu item updated successfully');
         } else {
           // Add new item
-          result = await addMenuItem(menuItemData);
+          const apiResult = await addMenuItem(menuItemData);
+          // Map API response to our local format using the helper function
+          const newItem = mapApiMenuItemToLocal(apiResult);
           
           // Add to local state with the returned ID from the server
-          setMenuItems([...menuItems, {
-            menuItemId: result.menuItemId || 0,
-            name: result.name,
-            description: result.description,
-            price: result.price,
-            category: result.category,
-            available: result.available,
-            restaurantId: restaurantId // Use the current restaurantId
-          }]);
+          setMenuItems(prevItems => [...prevItems, newItem]);
           setSuccessMessage('Menu item added successfully');
         }
         
@@ -432,7 +426,6 @@ const RestaurantDashboard: React.FC = () => {
           errorMessage = `Error: ${error.message}`;
         }
         
-        setSuccessMessage(null);
         setError(errorMessage);
         setTimeout(() => setError(null), 5000);
       } finally {
@@ -799,6 +792,17 @@ const RestaurantDashboard: React.FC = () => {
     // Clean up interval on unmount or tab change
     return () => clearInterval(intervalId);
   }, [activeTab, user]);
+
+  const handlePriceChange = (newPrice: number) => {
+    if (editingItem) {
+      // Ensure price is not negative and has max 2 decimal places
+      const validPrice = Math.max(0, Number(newPrice.toFixed(2)));
+      setEditingItem({
+        ...editingItem,
+        price: validPrice
+      });
+    }
+  };
 
   return (
     <Box sx={{ minHeight: '100vh', py: 3, bgcolor: '#f8f9fa' }}>
@@ -1284,26 +1288,138 @@ const RestaurantDashboard: React.FC = () => {
                   multiline
                   rows={2}
                   fullWidth
+                  required
                   value={editingItem.description}
                   onChange={handleItemChange}
                   size="small"
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  name="price"
-                  label="Price"
-                  type="number"
-                  fullWidth
-                  required
-                  value={editingItem.price}
-                  onChange={handleItemChange}
-                  size="small"
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                  }}
-                />
+                <FormControl margin="dense" fullWidth required>
+                  <InputLabel shrink>Price</InputLabel>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1,
+                    mt: 2
+                  }}>
+                    <Typography>$</Typography>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      border: '1px solid rgba(0, 0, 0, 0.23)',
+                      borderRadius: 1,
+                      p: 1,
+                      gap: 1
+                    }}>
+                      {/* Dollars part */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <IconButton 
+                          size="small"
+                          onClick={() => {
+                            const currentPrice = editingItem.price;
+                            const dollars = Math.floor(currentPrice);
+                            const cents = (currentPrice - dollars) * 100;
+                            handlePriceChange(Math.max(0, dollars - 1) + (cents / 100));
+                          }}
+                        >
+                          <RemoveIcon fontSize="small" />
+                        </IconButton>
+                        <TextField
+                          type="number"
+                          value={Math.floor(editingItem.price).toString()}
+                          onChange={(e) => {
+                            let inputValue = e.target.value.replace(/^0+/, ''); // Remove leading zeros
+                            const newDollars = Math.max(0, Number(inputValue) || 0);
+                            const cents = Math.round((editingItem.price % 1) * 100);
+                            handlePriceChange(Number(newDollars.toFixed(0)) + (cents / 100));
+                          }}
+                          onBlur={(e) => {
+                            const value = e.target.value;
+                            if (value === '') {
+                              const cents = Math.round((editingItem.price % 1) * 100);
+                              handlePriceChange(0 + (cents / 100));
+                            }
+                          }}
+                          inputProps={{
+                            min: 0,
+                            style: { 
+                              width: '65px',
+                              textAlign: 'center',
+                              padding: '4px'
+                            }
+                          }}
+                          variant="standard"
+                          sx={{ mx: 1 }}
+                        />
+                        <IconButton 
+                          size="small"
+                          onClick={() => {
+                            const currentPrice = editingItem.price;
+                            const dollars = Math.floor(currentPrice);
+                            const cents = Math.round((currentPrice - dollars) * 100);
+                            handlePriceChange(Number((dollars + 1).toFixed(0)) + (cents / 100));
+                          }}
+                        >
+                          <AddIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                      <Typography sx={{ mx: 1, userSelect: 'none' }}>.</Typography>
+                      {/* Cents part */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <IconButton 
+                          size="small"
+                          onClick={() => {
+                            const currentPrice = editingItem.price;
+                            const dollars = Math.floor(currentPrice);
+                            const cents = Math.round((currentPrice - dollars) * 100);
+                            handlePriceChange(dollars + (Math.max(0, cents - 1) / 100));
+                          }}
+                        >
+                          <RemoveIcon fontSize="small" />
+                        </IconButton>
+                        <TextField
+                          type="number"
+                          value={String(Math.round((editingItem.price % 1) * 100)).padStart(2, '0')}
+                          onChange={(e) => {
+                            const newCents = Math.min(99, Math.max(0, parseInt(e.target.value) || 0));
+                            const dollars = Math.floor(editingItem.price);
+                            handlePriceChange(Number(dollars.toFixed(0)) + (newCents / 100));
+                          }}
+                          onBlur={(e) => {
+                            const value = e.target.value;
+                            if (value === '') {
+                              const dollars = Math.floor(editingItem.price);
+                              handlePriceChange(dollars);
+                            }
+                          }}
+                          inputProps={{
+                            min: 0,
+                            max: 99,
+                            style: { 
+                              width: '45px',
+                              textAlign: 'center',
+                              padding: '4px'
+                            }
+                          }}
+                          variant="standard"
+                          sx={{ mx: 1 }}
+                        />
+                        <IconButton 
+                          size="small"
+                          onClick={() => {
+                            const currentPrice = editingItem.price;
+                            const dollars = Math.floor(currentPrice);
+                            const cents = Math.round((currentPrice - dollars) * 100);
+                            handlePriceChange(dollars + (Math.min(99, cents + 1) / 100));
+                          }}
+                        >
+                          <AddIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </Box>
+                  </Box>
+                </FormControl>
               </Grid>
               <Grid item xs={12}>
                 <FormControlLabel

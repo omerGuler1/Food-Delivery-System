@@ -125,8 +125,8 @@ const RestaurantMenu: React.FC<RestaurantMenuProps> = ({ restaurantId }) => {
                   </Typography>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Chip size="small" label={item.category} />
-                    <Typography variant="h6" color="primary">
-                      {item.price.toFixed(2)} ₺
+                    <Typography variant="h6" color="primary" sx={{ fontWeight: 600 }}>
+                      ${item.price.toFixed(2)}
                     </Typography>
                   </Box>
                 </CardContent>
