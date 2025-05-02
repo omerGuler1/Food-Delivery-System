@@ -69,10 +69,16 @@ public class OrderController {
     // CANCEL ORDER
     @PutMapping("/{id}/cancel")
     public ResponseEntity<Order> cancelOrder(@PathVariable Integer id, HttpServletRequest request) {
-        validateUserRole("customer");
         String token = extractToken(request);
-        Integer customerId = jwtService.extractUserId(token);
-        return ResponseEntity.ok(orderService.cancelOrder(id, customerId));
+        Integer userId = jwtService.extractUserId(token);
+        String userType = jwtService.extractUserType(token);
+
+        // Validate user is either a customer or restaurant
+        if (!userType.equalsIgnoreCase("customer") && !userType.equalsIgnoreCase("restaurant")) {
+            throw new CustomException("Only customers and restaurants can cancel orders", HttpStatus.FORBIDDEN);
+        }
+
+        return ResponseEntity.ok(orderService.cancelOrder(id, userId, userType));
     }
 
     // UTILITY: Extract token from header

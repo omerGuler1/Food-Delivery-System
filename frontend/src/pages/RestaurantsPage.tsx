@@ -78,7 +78,7 @@ const RestaurantsPage: React.FC = () => {
           data = data.filter(restaurant => 
             restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             restaurant.cuisineType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            restaurant.city?.toLowerCase().includes(searchQuery.toLowerCase())
+            restaurant.address?.city?.toLowerCase().includes(searchQuery.toLowerCase())
           );
         }
         
@@ -103,6 +103,16 @@ const RestaurantsPage: React.FC = () => {
   const handleSortChange = (event: SelectChangeEvent) => {
     setSortBy(event.target.value);
   };
+
+  // Filter restaurants based on search query
+  const filteredRestaurants = restaurants.filter(restaurant => {
+    if (!searchQuery) return true;
+    return (
+      restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      restaurant.cuisineType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      restaurant.address?.city?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
 
   return (
     <Container maxWidth="lg" sx={{ py: 5 }}>
@@ -191,11 +201,11 @@ const RestaurantsPage: React.FC = () => {
                     </Box>
                   )}
                   
-                  {restaurant.city && (
+                  {restaurant.address?.city && (
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                       <PlaceIcon fontSize="small" color="action" sx={{ mr: 1 }} />
                       <Typography variant="body2" color="text.secondary">
-                        {restaurant.city}{restaurant.state ? `, ${restaurant.state}` : ''}
+                        {restaurant.address.city}{restaurant.address.state ? `, ${restaurant.address.state}` : ''}
                       </Typography>
                     </Box>
                   )}

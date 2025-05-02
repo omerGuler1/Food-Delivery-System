@@ -28,26 +28,31 @@ export const getRestaurantById = async (restaurantId: number | string): Promise<
     
     // Create a mock restaurant as fallback
     console.log('Using mock restaurant data as fallback');
-    const mockRestaurant: Restaurant = {
-      restaurantId: typeof restaurantId === 'string' ? parseInt(restaurantId, 10) : restaurantId,
-      name: "Sample Restaurant",
-      email: "contact@sample.com",
-      phoneNumber: "+90 555 123 4567",
-      token: "",
-      cuisineType: "Mixed Cuisine",
-      rating: 4.5,
-      isOpen: true,
-      city: "Istanbul",
-      street: "123 Sample Street",
-      state: "",
-      country: "Turkey",
-      deliveryRangeKm: 5,
-      estimatedDeliveryTime: "30-45 min",
-      averagePrice: 75,
-      profileImageUrl: `https://source.unsplash.com/random/800x400/?restaurant,food`
-    };
+    const mockRestaurants: Restaurant[] = [
+      {
+        restaurantId: 1,
+        name: "Italian Delight",
+        email: "contact@italiandelight.com",
+        phoneNumber: "+1234567890",
+        token: "mock-token",
+        cuisineType: "Italian",
+        rating: 4.5,
+        isOpen: true,
+        address: {
+          street: "123 Sample Street",
+          city: "Istanbul",
+          state: "",
+          zipCode: "",
+          country: "Turkey"
+        },
+        deliveryRangeKm: 5,
+        estimatedDeliveryTime: "30-45 min",
+        averagePrice: 25,
+        profileImageUrl: "https://example.com/restaurant1.jpg"
+      }
+    ];
     
-    return mockRestaurant;
+    return mockRestaurants.find(r => r.restaurantId === (typeof restaurantId === 'string' ? parseInt(restaurantId, 10) : restaurantId)) || null;
   }
 };
 

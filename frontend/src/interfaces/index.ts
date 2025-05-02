@@ -30,11 +30,13 @@ export interface Restaurant extends User {
   rating?: number;
   profileImageUrl?: string;
   isOpen?: boolean;
-  street?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  country?: string;
+  address?: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
   latitude?: number;
   longitude?: number;
   deliveryRangeKm?: number;
@@ -114,7 +116,6 @@ export interface MenuItem {
 }
 
 export interface RestaurantDetails extends Restaurant {
-  address?: string;
   description?: string;
   openingHours?: string;
   menuItems?: MenuItem[];
@@ -183,6 +184,7 @@ export interface OrderResponseDTO {
   orderItems: OrderItem[];
   courierAssignments: any[];
   customer: CustomerInfo;
+  restaurant: Restaurant;
 }
 
 // CourierAssignment interface

@@ -139,12 +139,15 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public Order cancelOrder(Integer id, Integer customerId) {
+    public Order cancelOrder(Integer id, Integer userId, String userType) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
-        // Validate customer owns the order
-        if (!order.getCustomer().getCustomerId().equals(customerId)) {
+        // Validate user has permission to cancel
+        if (userType.equals("CUSTOMER") && !order.getCustomer().getCustomerId().equals(userId)) {
+            throw new RuntimeException("Access denied");
+        }
+        if (userType.equals("RESTAURANT") && !order.getRestaurant().getRestaurantId().equals(userId)) {
             throw new RuntimeException("Access denied");
         }
 

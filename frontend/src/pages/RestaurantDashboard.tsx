@@ -84,7 +84,7 @@ import {
 import { mockMenuItems, foodCategories, restaurantInfo } from '../data/mockData';
 import { MenuItem as MenuItemType, FoodCategory, OrderResponseDTO, CourierInfo } from '../interfaces';
 import { addMenuItem, updateMenuItem, deleteMenuItem, getRestaurantMenuItems, updateRestaurantStatus } from '../services/restaurantService';
-import { getRestaurantOrders, updateOrderStatus, getAvailableCouriers, requestCourierForOrder, checkOrderAssignmentsExpired, getOrdersNeedingCouriers } from '../services/orderService';
+import { getRestaurantOrders, updateOrderStatus, getAvailableCouriers, requestCourierForOrder, checkOrderAssignmentsExpired, getOrdersNeedingCouriers, cancelOrder } from '../services/orderService';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatDate, formatDateTime } from '../utils/dateUtils';
@@ -595,6 +595,44 @@ const RestaurantDashboard: React.FC = () => {
     }
   };
 
+  // Handle cancelling an order
+  const handleCancelOrder = async (orderId: number) => {
+    try {
+      setProcessingOrder(orderId);
+      setError(null);
+      
+      console.log(`Cancelling order ${orderId}`);
+      await cancelOrder(orderId);
+      
+      // Update the orders state to reflect the new status
+      setOrders(orders.map(order => 
+        order.orderId === orderId 
+          ? { ...order, status: 'CANCELLED' }
+          : order
+      ));
+      
+      setSuccessMessage(`Order #${orderId} has been cancelled`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error: any) {
+      console.error('Error cancelling order:', error);
+      
+      let errorMessage = 'Failed to cancel order.';
+      
+      if (error.response && error.response.status === 401) {
+        errorMessage = 'Authentication failed. Please log in again.';
+      } else if (error.response && error.response.status === 403) {
+        errorMessage = 'You do not have permission to cancel this order.';
+      } else if (error.message) {
+        errorMessage = `Error: ${error.message}`;
+      }
+      
+      setError(errorMessage);
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setProcessingOrder(null);
+    }
+  };
+
   // Toggle order details expansion
   const handleToggleOrderDetails = (orderId: number) => {
     setExpandedOrder(expandedOrder === orderId ? null : orderId);
@@ -1067,109 +1105,43 @@ const RestaurantDashboard: React.FC = () => {
                       orders
                         .filter(order => order.status === 'PENDING')
                         .map((order) => (
-                          <React.Fragment key={order.orderId}>
-                            <ListItem 
-                              secondaryAction={
-                                <Button
-                                  variant="contained"
-                                  color="success"
-                                  size="small"
-                                  startIcon={<CheckCircleIcon />}
-                                  onClick={() => handleApproveOrder(order.orderId)}
-                                >
-                                  Approve
-                                </Button>
-                              }
-                              sx={{ 
-                                borderBottom: expandedOrder === order.orderId ? 'none' : '1px solid', 
-                                borderColor: 'divider',
-                                '&:last-child': {
-                                  borderBottom: expandedOrder === order.orderId ? 'none' : 'none'
-                                }
-                              }}
-                              button
-                              onClick={() => handleToggleOrderDetails(order.orderId)}
-                            >
-                              <ListItemAvatar>
-                                <Avatar sx={{ bgcolor: 'primary.main' }}>
-                                  <ReceiptIcon />
-                                </Avatar>
-                              </ListItemAvatar>
-                              <ListItemText
-                                primary={
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Typography variant="subtitle2">
-                                      Order #{order.orderId}
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                      <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
-                                        ${order.totalPrice.toFixed(2)}
-                                      </Typography>
-                                      {expandedOrder === order.orderId ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                                    </Box>
-                                  </Box>
-                                }
-                                secondary={
-                                  <>
-                                    <Typography variant="body2" component="span" color="text.primary">
-                                      {order.customer && order.customer.name} - {order.customer && order.customer.phoneNumber}
-                                    </Typography>
-                                    <br />
-                                    <Typography variant="caption" component="span">
-                                      {order.orderItems.length} item(s) • {new Date(order.createdAt).toLocaleString()}
-                                    </Typography>
-                                    <br />
-                                    <Typography variant="caption" component="span">
-                                      Address: {order.address.fullAddress || `${order.address.street}, ${order.address.city}`}
-                                    </Typography>
-                                  </>
-                                }
-                              />
-                            </ListItem>
-                            <Collapse in={expandedOrder === order.orderId} timeout="auto" unmountOnExit>
-                              <Box sx={{ p: 2, pl: 9, bgcolor: 'background.default' }}>
-                                <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                                  <ShoppingBasketIcon fontSize="small" sx={{ mr: 1 }} />
-                                  Order Items
-                                </Typography>
-                                <Divider sx={{ mb: 1 }} />
-                                <List dense disablePadding>
-                                  {order.orderItems.map((item) => (
-                                    <ListItem key={item.orderItemId} sx={{ py: 0.5 }}>
-                                      <ListItemText 
-                                        primary={
-                                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <Typography variant="body2" fontWeight="medium">
-                                              {item.quantity}x {item.menuItem.name}
-                                            </Typography>
-                                            <Typography variant="body2">
-                                              ${(item.subtotal).toFixed(2)}
-                                            </Typography>
-                                          </Box>
-                                        }
-                                        secondary={item.menuItem.description ? item.menuItem.description : null}
-                                        secondaryTypographyProps={{ 
-                                          variant: 'caption',
-                                          sx: { 
-                                            display: 'block',
-                                            color: 'text.secondary',
-                                            mt: 0.5
-                                          } 
-                                        }}
-                                      />
-                                    </ListItem>
-                                  ))}
-                                </List>
-                                <Divider sx={{ my: 1 }} />
-                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-                                  <Typography variant="subtitle2">
+                          <ListItem>
+                            <ListItemText
+                              primary={`Order #${order.orderId}`}
+                              secondary={
+                                <>
+                                  <Typography variant="body2" color="textSecondary">
+                                    Status: {order.status}
+                                  </Typography>
+                                  <Typography variant="body2" color="textSecondary">
                                     Total: ${order.totalPrice.toFixed(2)}
                                   </Typography>
-                                </Box>
+                                </>
+                              }
+                            />
+                            {order.status === 'PENDING' && (
+                              <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Button
+                                  variant="contained"
+                                  color="primary"
+                                  size="small"
+                                  onClick={() => handleApproveOrder(order.orderId)}
+                                  disabled={processingOrder === order.orderId}
+                                >
+                                  Approve Order
+                                </Button>
+                                <Button
+                                  variant="outlined"
+                                  color="error"
+                                  size="small"
+                                  onClick={() => handleCancelOrder(order.orderId)}
+                                  disabled={processingOrder === order.orderId}
+                                >
+                                  Cancel Order
+                                </Button>
                               </Box>
-                            </Collapse>
-                            {expandedOrder === order.orderId && <Divider />}
-                          </React.Fragment>
+                            )}
+                          </ListItem>
                         ))
                     ) : (
                       <ListItem>
@@ -1201,123 +1173,34 @@ const RestaurantDashboard: React.FC = () => {
                       orders
                         .filter(order => order.status === 'PROCESSING')
                         .map((order) => (
-                          <React.Fragment key={order.orderId}>
-                            <ListItem 
-                              sx={{ 
-                                borderBottom: expandedOrder === order.orderId ? 'none' : '1px solid', 
-                                borderColor: 'divider',
-                                '&:last-child': {
-                                  borderBottom: expandedOrder === order.orderId ? 'none' : 'none'
-                                }
-                              }}
-                              button
-                              onClick={() => handleToggleOrderDetails(order.orderId)}
-                              secondaryAction={
+                          <ListItem>
+                            <ListItemText
+                              primary={`Order #${order.orderId}`}
+                              secondary={
+                                <>
+                                  <Typography variant="body2" color="textSecondary">
+                                    Status: {order.status}
+                                  </Typography>
+                                  <Typography variant="body2" color="textSecondary">
+                                    Total: ${order.totalPrice.toFixed(2)}
+                                  </Typography>
+                                </>
+                              }
+                            />
+                            {order.status === 'PROCESSING' && (
+                              <Box sx={{ display: 'flex', gap: 1 }}>
                                 <Button
                                   variant="contained"
                                   color="primary"
                                   size="small"
-                                  startIcon={<LocalShippingIcon />}
-                                  onClick={(e) => {
-                                    e.stopPropagation(); // Prevent triggering the ListItem onClick
-                                    handleOpenCourierModal(order.orderId);
-                                  }}
-                                  disabled={order.courierAssignments && 
-                                    order.courierAssignments.length > 0 && 
-                                    order.courierAssignments.some(assignment => 
-                                      assignment.status !== 'EXPIRED' && assignment.status !== 'REJECTED')}
+                                  onClick={() => handleOpenCourierModal(order.orderId)}
+                                  disabled={processingOrder === order.orderId}
                                 >
-                                  {order.courierAssignments && 
-                                   order.courierAssignments.some(assignment => assignment.status === 'ACCEPTED') 
-                                    ? 'Courier Assigned' 
-                                    : (order.courierAssignments && 
-                                       order.courierAssignments.some(assignment => assignment.status === 'REQUESTED')
-                                      ? 'Courier Requested'
-                                      : 'Assign Courier')
-                                  }
+                                  Assign Courier
                                 </Button>
-                              }
-                            >
-                              <ListItemAvatar>
-                                <Avatar sx={{ bgcolor: 'primary.main' }}>
-                                  <ReceiptIcon />
-                                </Avatar>
-                              </ListItemAvatar>
-                              <ListItemText
-                                primary={
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Typography variant="subtitle2">
-                                      Order #{order.orderId}
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                      <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
-                                        ${order.totalPrice.toFixed(2)}
-                                      </Typography>
-                                      {expandedOrder === order.orderId ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                                    </Box>
-                                  </Box>
-                                }
-                                secondary={
-                                  <>
-                                    <Typography variant="body2" component="span" color="text.primary">
-                                      {order.customer && order.customer.name} - {order.customer && order.customer.phoneNumber}
-                                    </Typography>
-                                    <br />
-                                    <Typography variant="caption" component="span">
-                                      {order.orderItems.length} item(s) • {new Date(order.createdAt).toLocaleString()}
-                                    </Typography>
-                                    <br />
-                                    <Typography variant="caption" component="span">
-                                      Address: {order.address.fullAddress || `${order.address.street}, ${order.address.city}`}
-                                    </Typography>
-                                  </>
-                                }
-                              />
-                            </ListItem>
-                            <Collapse in={expandedOrder === order.orderId} timeout="auto" unmountOnExit>
-                              <Box sx={{ p: 2, pl: 9, bgcolor: 'background.default' }}>
-                                <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                                  <ShoppingBasketIcon fontSize="small" sx={{ mr: 1 }} />
-                                  Order Items
-                                </Typography>
-                                <Divider sx={{ mb: 1 }} />
-                                <List dense disablePadding>
-                                  {order.orderItems.map((item) => (
-                                    <ListItem key={item.orderItemId} sx={{ py: 0.5 }}>
-                                      <ListItemText 
-                                        primary={
-                                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <Typography variant="body2" fontWeight="medium">
-                                              {item.quantity}x {item.menuItem.name}
-                                            </Typography>
-                                            <Typography variant="body2">
-                                              ${(item.subtotal).toFixed(2)}
-                                            </Typography>
-                                          </Box>
-                                        }
-                                        secondary={item.menuItem.description ? item.menuItem.description : null}
-                                        secondaryTypographyProps={{ 
-                                          variant: 'caption',
-                                          sx: { 
-                                            display: 'block',
-                                            color: 'text.secondary',
-                                            mt: 0.5
-                                          } 
-                                        }}
-                                      />
-                                    </ListItem>
-                                  ))}
-                                </List>
-                                <Divider sx={{ my: 1 }} />
-                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-                                  <Typography variant="subtitle2">
-                                    Total: ${order.totalPrice.toFixed(2)}
-                                  </Typography>
-                                </Box>
                               </Box>
-                            </Collapse>
-                            {expandedOrder === order.orderId && <Divider />}
-                          </React.Fragment>
+                            )}
+                          </ListItem>
                         ))
                     ) : (
                       <ListItem>

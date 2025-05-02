@@ -44,22 +44,25 @@ import { Restaurant } from '../interfaces';
 import { useCart } from '../contexts/CartContext';
 
 // Mock data for development and testing
-const MOCK_RESTAURANT: Restaurant = {
+const mockRestaurant: Restaurant = {
   restaurantId: 1,
-  name: "Delicious Kitchen",
-  email: "contact@delicious.com",
-  phoneNumber: "+90 555 123 4567",
-  token: "",
-  cuisineType: "International",
+  name: "Sample Restaurant",
+  email: "sample@restaurant.com",
+  phoneNumber: "+1234567890",
+  token: "mock-token",
+  cuisineType: "Italian",
   rating: 4.7,
   isOpen: true,
-  city: "Istanbul",
-  street: "123 Main Street",
-  state: "",
-  country: "Turkey",
+  address: {
+    street: "123 Main Street",
+    city: "Istanbul",
+    state: "",
+    zipCode: "",
+    country: "Turkey"
+  },
   deliveryRangeKm: 5,
   estimatedDeliveryTime: "30-45 min",
-  averagePrice: 85
+  averagePrice: 25
 };
 
 // For simplicity, use MenuServiceItem type for the component
@@ -216,11 +219,11 @@ const RestaurantDetailPage: React.FC = () => {
 
   // Get full address from restaurant data
   const fullAddress = [
-    restaurant.street,
-    restaurant.city,
-    restaurant.state,
-    restaurant.zipCode,
-    restaurant.country
+    restaurant.address?.street,
+    restaurant.address?.city,
+    restaurant.address?.state,
+    restaurant.address?.zipCode,
+    restaurant.address?.country
   ].filter(Boolean).join(', ');
 
   // Get restaurant image from profile or placeholder

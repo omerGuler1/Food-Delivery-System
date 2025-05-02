@@ -12,7 +12,7 @@ public interface OrderService {
     Order placeOrder(PlaceOrderRequestDTO dto);
     Optional<Order> getOrderById(Integer id, Integer userId, String userType);
     Order updateOrderStatus(Integer id, OrderStatus status, Integer userId, String userType);
-    Order cancelOrder(Integer id, Integer customerId);
+    Order cancelOrder(Integer id, Integer userId, String userType);
     List<Order> getRestaurantOrders(Integer restaurantId, OrderStatus status);
     List<Order> getAllRestaurantOrders(Integer restaurantId);
     
