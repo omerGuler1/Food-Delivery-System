@@ -79,12 +79,13 @@ import {
   LocalShipping as LocalShippingIcon,
   DirectionsBike as DirectionsBikeIcon,
   TwoWheeler as TwoWheelerIcon,
-  DirectionsCar as DirectionsCarIcon
+  DirectionsCar as DirectionsCarIcon,
+  Remove as RemoveIcon
 } from '@mui/icons-material';
 import { mockMenuItems, foodCategories, restaurantInfo } from '../data/mockData';
 import { MenuItem as MenuItemType, FoodCategory, OrderResponseDTO, CourierInfo } from '../interfaces';
 import { addMenuItem, updateMenuItem, deleteMenuItem, getRestaurantMenuItems, updateRestaurantStatus } from '../services/restaurantService';
-import { getRestaurantOrders, updateOrderStatus, getAvailableCouriers, requestCourierForOrder, checkOrderAssignmentsExpired, getOrdersNeedingCouriers } from '../services/orderService';
+import { getRestaurantOrders, updateOrderStatus, getAvailableCouriers, requestCourierForOrder, checkOrderAssignmentsExpired, getOrdersNeedingCouriers, cancelOrder } from '../services/orderService';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatDate, formatDateTime } from '../utils/dateUtils';
@@ -372,7 +373,7 @@ const RestaurantDashboard: React.FC = () => {
         
         // Prepare the data structure according to the API requirements
         const menuItemData = {
-          restaurantId: restaurantId, // Always use current restaurant ID
+          restaurantId: restaurantId,
           name: editingItem.name,
           description: editingItem.description,
           price: editingItem.price,
@@ -381,38 +382,31 @@ const RestaurantDashboard: React.FC = () => {
         };
 
         console.log(`Saving menu item for restaurant ID: ${restaurantId}`);
-        let result: MenuItemType;
+        
         // Check if it's a new item or updating an existing one
-        if (menuItems.some(item => item.menuItemId === editingItem.menuItemId)) {
+        if (editingItem.menuItemId !== 0) {
           // Update existing item
-          result = await updateMenuItem(editingItem.menuItemId, menuItemData) as MenuItemType;
+          const apiResult = await updateMenuItem(editingItem.menuItemId, menuItemData);
+          // Map API response to our local format using the helper function
+          const updatedItem = mapApiMenuItemToLocal(apiResult);
           
           // Update local state
-          setMenuItems(menuItems.map(item => 
-            item.menuItemId === editingItem.menuItemId ? {
-              ...item,
-              name: result.name,
-              description: result.description,
-              price: result.price,
-              available: result.available,
-              category: result.category
-            } : item
-          ));
+          setMenuItems(prevItems => 
+            prevItems.map(item => 
+              item.menuItemId === editingItem.menuItemId 
+                ? updatedItem
+                : item
+            )
+          );
           setSuccessMessage('Menu item updated successfully');
         } else {
           // Add new item
-          result = await addMenuItem(menuItemData);
+          const apiResult = await addMenuItem(menuItemData);
+          // Map API response to our local format using the helper function
+          const newItem = mapApiMenuItemToLocal(apiResult);
           
           // Add to local state with the returned ID from the server
-          setMenuItems([...menuItems, {
-            menuItemId: result.menuItemId || 0,
-            name: result.name,
-            description: result.description,
-            price: result.price,
-            category: result.category,
-            available: result.available,
-            restaurantId: restaurantId // Use the current restaurantId
-          }]);
+          setMenuItems(prevItems => [...prevItems, newItem]);
           setSuccessMessage('Menu item added successfully');
         }
         
@@ -432,7 +426,6 @@ const RestaurantDashboard: React.FC = () => {
           errorMessage = `Error: ${error.message}`;
         }
         
-        setSuccessMessage(null);
         setError(errorMessage);
         setTimeout(() => setError(null), 5000);
       } finally {
@@ -584,6 +577,44 @@ const RestaurantDashboard: React.FC = () => {
         errorMessage = 'Authentication failed. Please log in again.';
       } else if (error.response && error.response.status === 403) {
         errorMessage = 'You do not have permission to approve this order.';
+      } else if (error.message) {
+        errorMessage = `Error: ${error.message}`;
+      }
+      
+      setError(errorMessage);
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setProcessingOrder(null);
+    }
+  };
+
+  // Handle cancelling an order
+  const handleCancelOrder = async (orderId: number) => {
+    try {
+      setProcessingOrder(orderId);
+      setError(null);
+      
+      console.log(`Cancelling order ${orderId}`);
+      await cancelOrder(orderId);
+      
+      // Update the orders state to reflect the new status
+      setOrders(orders.map(order => 
+        order.orderId === orderId 
+          ? { ...order, status: 'CANCELLED' }
+          : order
+      ));
+      
+      setSuccessMessage(`Order #${orderId} has been cancelled`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error: any) {
+      console.error('Error cancelling order:', error);
+      
+      let errorMessage = 'Failed to cancel order.';
+      
+      if (error.response && error.response.status === 401) {
+        errorMessage = 'Authentication failed. Please log in again.';
+      } else if (error.response && error.response.status === 403) {
+        errorMessage = 'You do not have permission to cancel this order.';
       } else if (error.message) {
         errorMessage = `Error: ${error.message}`;
       }
@@ -761,6 +792,17 @@ const RestaurantDashboard: React.FC = () => {
     // Clean up interval on unmount or tab change
     return () => clearInterval(intervalId);
   }, [activeTab, user]);
+
+  const handlePriceChange = (newPrice: number) => {
+    if (editingItem) {
+      // Ensure price is not negative and has max 2 decimal places
+      const validPrice = Math.max(0, Number(newPrice.toFixed(2)));
+      setEditingItem({
+        ...editingItem,
+        price: validPrice
+      });
+    }
+  };
 
   return (
     <Box sx={{ minHeight: '100vh', py: 3, bgcolor: '#f8f9fa' }}>
@@ -1067,109 +1109,43 @@ const RestaurantDashboard: React.FC = () => {
                       orders
                         .filter(order => order.status === 'PENDING')
                         .map((order) => (
-                          <React.Fragment key={order.orderId}>
-                            <ListItem 
-                              secondaryAction={
-                                <Button
-                                  variant="contained"
-                                  color="success"
-                                  size="small"
-                                  startIcon={<CheckCircleIcon />}
-                                  onClick={() => handleApproveOrder(order.orderId)}
-                                >
-                                  Approve
-                                </Button>
-                              }
-                              sx={{ 
-                                borderBottom: expandedOrder === order.orderId ? 'none' : '1px solid', 
-                                borderColor: 'divider',
-                                '&:last-child': {
-                                  borderBottom: expandedOrder === order.orderId ? 'none' : 'none'
-                                }
-                              }}
-                              button
-                              onClick={() => handleToggleOrderDetails(order.orderId)}
-                            >
-                              <ListItemAvatar>
-                                <Avatar sx={{ bgcolor: 'primary.main' }}>
-                                  <ReceiptIcon />
-                                </Avatar>
-                              </ListItemAvatar>
-                              <ListItemText
-                                primary={
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Typography variant="subtitle2">
-                                      Order #{order.orderId}
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                      <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
-                                        ${order.totalPrice.toFixed(2)}
-                                      </Typography>
-                                      {expandedOrder === order.orderId ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                                    </Box>
-                                  </Box>
-                                }
-                                secondary={
-                                  <>
-                                    <Typography variant="body2" component="span" color="text.primary">
-                                      {order.customer && order.customer.name} - {order.customer && order.customer.phoneNumber}
-                                    </Typography>
-                                    <br />
-                                    <Typography variant="caption" component="span">
-                                      {order.orderItems.length} item(s) • {new Date(order.createdAt).toLocaleString()}
-                                    </Typography>
-                                    <br />
-                                    <Typography variant="caption" component="span">
-                                      Address: {order.address.fullAddress || `${order.address.street}, ${order.address.city}`}
-                                    </Typography>
-                                  </>
-                                }
-                              />
-                            </ListItem>
-                            <Collapse in={expandedOrder === order.orderId} timeout="auto" unmountOnExit>
-                              <Box sx={{ p: 2, pl: 9, bgcolor: 'background.default' }}>
-                                <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                                  <ShoppingBasketIcon fontSize="small" sx={{ mr: 1 }} />
-                                  Order Items
-                                </Typography>
-                                <Divider sx={{ mb: 1 }} />
-                                <List dense disablePadding>
-                                  {order.orderItems.map((item) => (
-                                    <ListItem key={item.orderItemId} sx={{ py: 0.5 }}>
-                                      <ListItemText 
-                                        primary={
-                                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <Typography variant="body2" fontWeight="medium">
-                                              {item.quantity}x {item.menuItem.name}
-                                            </Typography>
-                                            <Typography variant="body2">
-                                              ${(item.subtotal).toFixed(2)}
-                                            </Typography>
-                                          </Box>
-                                        }
-                                        secondary={item.menuItem.description ? item.menuItem.description : null}
-                                        secondaryTypographyProps={{ 
-                                          variant: 'caption',
-                                          sx: { 
-                                            display: 'block',
-                                            color: 'text.secondary',
-                                            mt: 0.5
-                                          } 
-                                        }}
-                                      />
-                                    </ListItem>
-                                  ))}
-                                </List>
-                                <Divider sx={{ my: 1 }} />
-                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-                                  <Typography variant="subtitle2">
+                          <ListItem>
+                            <ListItemText
+                              primary={`Order #${order.orderId}`}
+                              secondary={
+                                <>
+                                  <Typography variant="body2" color="textSecondary">
+                                    Status: {order.status}
+                                  </Typography>
+                                  <Typography variant="body2" color="textSecondary">
                                     Total: ${order.totalPrice.toFixed(2)}
                                   </Typography>
-                                </Box>
+                                </>
+                              }
+                            />
+                            {order.status === 'PENDING' && (
+                              <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Button
+                                  variant="contained"
+                                  color="primary"
+                                  size="small"
+                                  onClick={() => handleApproveOrder(order.orderId)}
+                                  disabled={processingOrder === order.orderId}
+                                >
+                                  Approve Order
+                                </Button>
+                                <Button
+                                  variant="outlined"
+                                  color="error"
+                                  size="small"
+                                  onClick={() => handleCancelOrder(order.orderId)}
+                                  disabled={processingOrder === order.orderId}
+                                >
+                                  Cancel Order
+                                </Button>
                               </Box>
-                            </Collapse>
-                            {expandedOrder === order.orderId && <Divider />}
-                          </React.Fragment>
+                            )}
+                          </ListItem>
                         ))
                     ) : (
                       <ListItem>
@@ -1201,123 +1177,34 @@ const RestaurantDashboard: React.FC = () => {
                       orders
                         .filter(order => order.status === 'PROCESSING')
                         .map((order) => (
-                          <React.Fragment key={order.orderId}>
-                            <ListItem 
-                              sx={{ 
-                                borderBottom: expandedOrder === order.orderId ? 'none' : '1px solid', 
-                                borderColor: 'divider',
-                                '&:last-child': {
-                                  borderBottom: expandedOrder === order.orderId ? 'none' : 'none'
-                                }
-                              }}
-                              button
-                              onClick={() => handleToggleOrderDetails(order.orderId)}
-                              secondaryAction={
+                          <ListItem>
+                            <ListItemText
+                              primary={`Order #${order.orderId}`}
+                              secondary={
+                                <>
+                                  <Typography variant="body2" color="textSecondary">
+                                    Status: {order.status}
+                                  </Typography>
+                                  <Typography variant="body2" color="textSecondary">
+                                    Total: ${order.totalPrice.toFixed(2)}
+                                  </Typography>
+                                </>
+                              }
+                            />
+                            {order.status === 'PROCESSING' && (
+                              <Box sx={{ display: 'flex', gap: 1 }}>
                                 <Button
                                   variant="contained"
                                   color="primary"
                                   size="small"
-                                  startIcon={<LocalShippingIcon />}
-                                  onClick={(e) => {
-                                    e.stopPropagation(); // Prevent triggering the ListItem onClick
-                                    handleOpenCourierModal(order.orderId);
-                                  }}
-                                  disabled={order.courierAssignments && 
-                                    order.courierAssignments.length > 0 && 
-                                    order.courierAssignments.some(assignment => 
-                                      assignment.status !== 'EXPIRED' && assignment.status !== 'REJECTED')}
+                                  onClick={() => handleOpenCourierModal(order.orderId)}
+                                  disabled={processingOrder === order.orderId}
                                 >
-                                  {order.courierAssignments && 
-                                   order.courierAssignments.some(assignment => assignment.status === 'ACCEPTED') 
-                                    ? 'Courier Assigned' 
-                                    : (order.courierAssignments && 
-                                       order.courierAssignments.some(assignment => assignment.status === 'REQUESTED')
-                                      ? 'Courier Requested'
-                                      : 'Assign Courier')
-                                  }
+                                  Assign Courier
                                 </Button>
-                              }
-                            >
-                              <ListItemAvatar>
-                                <Avatar sx={{ bgcolor: 'primary.main' }}>
-                                  <ReceiptIcon />
-                                </Avatar>
-                              </ListItemAvatar>
-                              <ListItemText
-                                primary={
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Typography variant="subtitle2">
-                                      Order #{order.orderId}
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                      <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
-                                        ${order.totalPrice.toFixed(2)}
-                                      </Typography>
-                                      {expandedOrder === order.orderId ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                                    </Box>
-                                  </Box>
-                                }
-                                secondary={
-                                  <>
-                                    <Typography variant="body2" component="span" color="text.primary">
-                                      {order.customer && order.customer.name} - {order.customer && order.customer.phoneNumber}
-                                    </Typography>
-                                    <br />
-                                    <Typography variant="caption" component="span">
-                                      {order.orderItems.length} item(s) • {new Date(order.createdAt).toLocaleString()}
-                                    </Typography>
-                                    <br />
-                                    <Typography variant="caption" component="span">
-                                      Address: {order.address.fullAddress || `${order.address.street}, ${order.address.city}`}
-                                    </Typography>
-                                  </>
-                                }
-                              />
-                            </ListItem>
-                            <Collapse in={expandedOrder === order.orderId} timeout="auto" unmountOnExit>
-                              <Box sx={{ p: 2, pl: 9, bgcolor: 'background.default' }}>
-                                <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                                  <ShoppingBasketIcon fontSize="small" sx={{ mr: 1 }} />
-                                  Order Items
-                                </Typography>
-                                <Divider sx={{ mb: 1 }} />
-                                <List dense disablePadding>
-                                  {order.orderItems.map((item) => (
-                                    <ListItem key={item.orderItemId} sx={{ py: 0.5 }}>
-                                      <ListItemText 
-                                        primary={
-                                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <Typography variant="body2" fontWeight="medium">
-                                              {item.quantity}x {item.menuItem.name}
-                                            </Typography>
-                                            <Typography variant="body2">
-                                              ${(item.subtotal).toFixed(2)}
-                                            </Typography>
-                                          </Box>
-                                        }
-                                        secondary={item.menuItem.description ? item.menuItem.description : null}
-                                        secondaryTypographyProps={{ 
-                                          variant: 'caption',
-                                          sx: { 
-                                            display: 'block',
-                                            color: 'text.secondary',
-                                            mt: 0.5
-                                          } 
-                                        }}
-                                      />
-                                    </ListItem>
-                                  ))}
-                                </List>
-                                <Divider sx={{ my: 1 }} />
-                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-                                  <Typography variant="subtitle2">
-                                    Total: ${order.totalPrice.toFixed(2)}
-                                  </Typography>
-                                </Box>
                               </Box>
-                            </Collapse>
-                            {expandedOrder === order.orderId && <Divider />}
-                          </React.Fragment>
+                            )}
+                          </ListItem>
                         ))
                     ) : (
                       <ListItem>
@@ -1401,26 +1288,138 @@ const RestaurantDashboard: React.FC = () => {
                   multiline
                   rows={2}
                   fullWidth
+                  required
                   value={editingItem.description}
                   onChange={handleItemChange}
                   size="small"
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  name="price"
-                  label="Price"
-                  type="number"
-                  fullWidth
-                  required
-                  value={editingItem.price}
-                  onChange={handleItemChange}
-                  size="small"
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                  }}
-                />
+                <FormControl margin="dense" fullWidth required>
+                  <InputLabel shrink>Price</InputLabel>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1,
+                    mt: 2
+                  }}>
+                    <Typography>$</Typography>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      border: '1px solid rgba(0, 0, 0, 0.23)',
+                      borderRadius: 1,
+                      p: 1,
+                      gap: 1
+                    }}>
+                      {/* Dollars part */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <IconButton 
+                          size="small"
+                          onClick={() => {
+                            const currentPrice = editingItem.price;
+                            const dollars = Math.floor(currentPrice);
+                            const cents = (currentPrice - dollars) * 100;
+                            handlePriceChange(Math.max(0, dollars - 1) + (cents / 100));
+                          }}
+                        >
+                          <RemoveIcon fontSize="small" />
+                        </IconButton>
+                        <TextField
+                          type="number"
+                          value={Math.floor(editingItem.price).toString()}
+                          onChange={(e) => {
+                            let inputValue = e.target.value.replace(/^0+/, ''); // Remove leading zeros
+                            const newDollars = Math.max(0, Number(inputValue) || 0);
+                            const cents = Math.round((editingItem.price % 1) * 100);
+                            handlePriceChange(Number(newDollars.toFixed(0)) + (cents / 100));
+                          }}
+                          onBlur={(e) => {
+                            const value = e.target.value;
+                            if (value === '') {
+                              const cents = Math.round((editingItem.price % 1) * 100);
+                              handlePriceChange(0 + (cents / 100));
+                            }
+                          }}
+                          inputProps={{
+                            min: 0,
+                            style: { 
+                              width: '65px',
+                              textAlign: 'center',
+                              padding: '4px'
+                            }
+                          }}
+                          variant="standard"
+                          sx={{ mx: 1 }}
+                        />
+                        <IconButton 
+                          size="small"
+                          onClick={() => {
+                            const currentPrice = editingItem.price;
+                            const dollars = Math.floor(currentPrice);
+                            const cents = Math.round((currentPrice - dollars) * 100);
+                            handlePriceChange(Number((dollars + 1).toFixed(0)) + (cents / 100));
+                          }}
+                        >
+                          <AddIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                      <Typography sx={{ mx: 1, userSelect: 'none' }}>.</Typography>
+                      {/* Cents part */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <IconButton 
+                          size="small"
+                          onClick={() => {
+                            const currentPrice = editingItem.price;
+                            const dollars = Math.floor(currentPrice);
+                            const cents = Math.round((currentPrice - dollars) * 100);
+                            handlePriceChange(dollars + (Math.max(0, cents - 1) / 100));
+                          }}
+                        >
+                          <RemoveIcon fontSize="small" />
+                        </IconButton>
+                        <TextField
+                          type="number"
+                          value={String(Math.round((editingItem.price % 1) * 100)).padStart(2, '0')}
+                          onChange={(e) => {
+                            const newCents = Math.min(99, Math.max(0, parseInt(e.target.value) || 0));
+                            const dollars = Math.floor(editingItem.price);
+                            handlePriceChange(Number(dollars.toFixed(0)) + (newCents / 100));
+                          }}
+                          onBlur={(e) => {
+                            const value = e.target.value;
+                            if (value === '') {
+                              const dollars = Math.floor(editingItem.price);
+                              handlePriceChange(dollars);
+                            }
+                          }}
+                          inputProps={{
+                            min: 0,
+                            max: 99,
+                            style: { 
+                              width: '45px',
+                              textAlign: 'center',
+                              padding: '4px'
+                            }
+                          }}
+                          variant="standard"
+                          sx={{ mx: 1 }}
+                        />
+                        <IconButton 
+                          size="small"
+                          onClick={() => {
+                            const currentPrice = editingItem.price;
+                            const dollars = Math.floor(currentPrice);
+                            const cents = Math.round((currentPrice - dollars) * 100);
+                            handlePriceChange(dollars + (Math.min(99, cents + 1) / 100));
+                          }}
+                        >
+                          <AddIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </Box>
+                  </Box>
+                </FormControl>
               </Grid>
               <Grid item xs={12}>
                 <FormControlLabel

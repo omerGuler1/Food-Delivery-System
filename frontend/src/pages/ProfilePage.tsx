@@ -44,7 +44,7 @@ import {
   Warning,
   ArrowBack
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Customer, Restaurant, Courier, Address } from '../interfaces';
 import {
@@ -91,9 +91,13 @@ function TabPanel(props: TabPanelProps) {
 const ProfilePage: React.FC = () => {
   const { userType, user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   // State
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(() => {
+    // If coming from checkout page, open addresses tab
+    return location.state?.fromCheckout ? 1 : 0;
+  });
   const [profileData, setProfileData] = useState<Customer | Restaurant | Courier | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);

@@ -25,7 +25,15 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Badge
+  Badge,
+  Switch,
+  FormControlLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow
 } from '@mui/material';
 import {
   Person,
@@ -38,12 +46,14 @@ import {
   Restaurant as RestaurantIcon,
   LocationOn as LocationIcon,
   Info as InfoIcon,
-  ArrowBack
+  ArrowBack,
+  AccessTime as AccessTimeIcon,
+  Add as AddIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Restaurant } from '../interfaces';
-import { getRestaurantProfile, updateProfile, uploadProfileImage } from '../services/profileService';
+import { getRestaurantProfile, updateRestaurantProfile, uploadProfileImage } from '../services/profileService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -89,6 +99,24 @@ const cuisineTypes = [
   'Vietnamese'
 ];
 
+interface BusinessHours {
+  id?: number;
+  dayOfWeek: string;
+  openTime: string;
+  closeTime: string;
+  isClosed: boolean;
+}
+
+const DAYS_OF_WEEK = [
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
+  'SUNDAY'
+];
+
 const RestaurantProfile: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -120,13 +148,43 @@ const RestaurantProfile: React.FC = () => {
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [openImageDialog, setOpenImageDialog] = useState(false);
   
+  // Business Hours
+  const [businessHours, setBusinessHours] = useState<BusinessHours[]>([]);
+  const [selectedDay, setSelectedDay] = useState<string>('');
+  const [openTime, setOpenTime] = useState<string>('');
+  const [closeTime, setCloseTime] = useState<string>('');
+  const [isClosed, setIsClosed] = useState<boolean>(false);
+  const [openBusinessHoursDialog, setOpenBusinessHoursDialog] = useState(false);
+  const [editingHoursId, setEditingHoursId] = useState<number | null>(null);
+  
   // Fetch profile data
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
         setLoading(true);
         const data = await getRestaurantProfile();
-        setProfileData(data);
+        console.log('Profile data from API:', data);
+        
+        // Get restaurant ID from user object in localStorage
+        const userStr = localStorage.getItem('user');
+        if (!userStr) {
+          throw new Error('No user data found');
+        }
+        
+        const userData = JSON.parse(userStr);
+        console.log('User data from localStorage:', userData);
+        
+        if (!userData.restaurantId) {
+          throw new Error('No restaurant ID found in user data');
+        }
+        
+        // Set profile data with restaurant ID
+        const profileWithId = {
+          ...data,
+          restaurantId: userData.restaurantId
+        };
+        console.log('Profile data with ID:', profileWithId);
+        setProfileData(profileWithId);
         
         // Set form values from profile data
         setFormValues({
@@ -134,11 +192,11 @@ const RestaurantProfile: React.FC = () => {
           email: data.email || '',
           phoneNumber: data.phoneNumber || '',
           cuisineType: data.cuisineType || '',
-          street: '', // These would come from a nested address object in real data
-          city: '',
-          state: '',
-          zipCode: '',
-          country: ''
+          street: data.address?.street || '',
+          city: data.address?.city || '',
+          state: data.address?.state || '',
+          zipCode: data.address?.zipCode || '',
+          country: data.address?.country || ''
         });
         
         // Set profile image URL if it exists
@@ -156,6 +214,43 @@ const RestaurantProfile: React.FC = () => {
 
     fetchProfileData();
   }, []);
+
+  // Update the fetch URL in useEffect
+  useEffect(() => {
+    const fetchBusinessHours = async () => {
+      try {
+        console.log('Fetching business hours for restaurant:', profileData?.restaurantId);
+        const url = `http://localhost:8080/api/restaurants/${profileData?.restaurantId}/business-hours`;
+        console.log('Fetch URL:', url);
+        
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Fetched business hours:', data);
+          setBusinessHours(data);
+        } else {
+          const errorData = await response.json().catch(() => null);
+          console.error('Failed to fetch business hours:', response.status, errorData);
+          throw new Error('Failed to fetch business hours');
+        }
+      } catch (err) {
+        console.error('Error fetching business hours:', err);
+        setError('Failed to load business hours');
+      }
+    };
+
+    if (profileData?.restaurantId) {
+      console.log('Profile data loaded, restaurant ID:', profileData.restaurantId);
+      fetchBusinessHours();
+    } else {
+      console.log('No restaurant ID available yet');
+    }
+  }, [profileData?.restaurantId]);
 
   // Handlers
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -200,18 +295,28 @@ const RestaurantProfile: React.FC = () => {
     try {
       setLoading(true);
       
-      // Create update data object
+      // Always include the required fields
       const updateData = {
         name: formValues.name,
+        email: formValues.email,
         phoneNumber: formValues.phoneNumber,
         cuisineType: formValues.cuisineType,
-        // Address would be included in a nested object
+        // Add address fields if we're on the location tab
+        ...(activeTab === 1 && {
+          address: {
+            street: formValues.street,
+            city: formValues.city,
+            state: formValues.state,
+            zipCode: formValues.zipCode,
+            country: formValues.country
+          }
+        })
       };
       
-      const updatedProfile = await updateProfile(updateData);
+      const updatedProfile = await updateRestaurantProfile(updateData);
       setProfileData(updatedProfile as Restaurant);
       setEditMode(false);
-      setSuccessMessage('Profile updated successfully');
+      setSuccessMessage(activeTab === 1 ? 'Address updated successfully' : 'Profile updated successfully');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       setError(err.message || 'Failed to update profile. Please try again.');
@@ -294,6 +399,124 @@ const RestaurantProfile: React.FC = () => {
       setTimeout(() => setError(null), 3000);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenBusinessHoursDialog = (hours?: BusinessHours) => {
+    if (hours) {
+      setSelectedDay(hours.dayOfWeek);
+      setOpenTime(hours.openTime);
+      setCloseTime(hours.closeTime);
+      setIsClosed(hours.isClosed);
+      setEditingHoursId(hours.id ?? null);
+    } else {
+      setSelectedDay('');
+      setOpenTime('');
+      setCloseTime('');
+      setIsClosed(false);
+      setEditingHoursId(null);
+    }
+    setOpenBusinessHoursDialog(true);
+  };
+
+  const handleCloseBusinessHoursDialog = () => {
+    setOpenBusinessHoursDialog(false);
+    setSelectedDay('');
+    setOpenTime('');
+    setCloseTime('');
+    setIsClosed(false);
+    setEditingHoursId(null);
+  };
+
+  const handleSaveBusinessHours = async () => {
+    try {
+      if (!profileData?.restaurantId) {
+        throw new Error('Restaurant ID not available');
+      }
+
+      if (!selectedDay) {
+        throw new Error('Please select a day of the week');
+      }
+
+      if (!openTime || !closeTime) {
+        throw new Error('Please select both open and close times');
+      }
+
+      // Format times to match LocalTime format (HH:mm:ss)
+      const formatTime = (time: string) => {
+        const [hours, minutes] = time.split(':');
+        return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+      };
+
+      const hoursData = {
+        dayOfWeek: selectedDay,
+        openTime: formatTime(openTime),
+        closeTime: formatTime(closeTime),
+        isClosed
+      };
+
+      console.log('Sending business hours data:', hoursData);
+
+      const url = editingHoursId
+        ? `http://localhost:8080/api/restaurants/${profileData.restaurantId}/business-hours/${editingHoursId}`
+        : `http://localhost:8080/api/restaurants/${profileData.restaurantId}/business-hours`;
+
+      console.log('Sending request to:', url);
+      console.log('With data:', hoursData);
+      console.log('Restaurant ID:', profileData.restaurantId);
+
+      const response = await fetch(url, {
+        method: editingHoursId ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(hoursData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.error('Server response:', response.status, errorData);
+        throw new Error(errorData?.message || `Failed to update business hours: ${response.status}`);
+      }
+
+      const updatedHours = await response.json();
+      console.log('Updated hours:', updatedHours);
+      
+      setBusinessHours(prev => {
+        if (editingHoursId) {
+          return prev.map(h => h.id === editingHoursId ? updatedHours : h);
+        }
+        return [...prev, updatedHours];
+      });
+      setSuccessMessage('Business hours updated successfully');
+      handleCloseBusinessHoursDialog();
+    } catch (err: any) {
+      console.error('Error updating business hours:', err);
+      setError(err.message || 'Failed to update business hours');
+    }
+  };
+
+  const handleDeleteBusinessHours = async (hoursId: number) => {
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/restaurants/${profileData?.restaurantId}/business-hours/${hoursId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+
+      if (response.ok) {
+        setBusinessHours(prev => prev.filter(h => h.id !== hoursId));
+        setSuccessMessage('Business hours deleted successfully');
+      } else {
+        throw new Error('Failed to delete business hours');
+      }
+    } catch (err) {
+      setError('Failed to delete business hours');
     }
   };
 
@@ -417,6 +640,7 @@ const RestaurantProfile: React.FC = () => {
               >
                 <Tab icon={<Person />} label="Profile Information" iconPosition="start" />
                 <Tab icon={<LocationIcon />} label="Location" iconPosition="start" />
+                <Tab icon={<AccessTimeIcon />} label="Business Hours" iconPosition="start" />
                 <Tab icon={<InfoIcon />} label="Restaurant Details" iconPosition="start" />
               </Tabs>
             </Box>
@@ -526,100 +750,163 @@ const RestaurantProfile: React.FC = () => {
             
             {/* Location Tab */}
             <TabPanel value={activeTab} index={1}>
-              <Typography variant="h5" component="h2" fontWeight="bold" sx={{ mb: 4 }}>
-                Restaurant Location
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+                <Typography variant="h5" component="h2" fontWeight="bold">
+                  Restaurant Location
+                </Typography>
+                <Button 
+                  variant={editMode ? "outlined" : "contained"}
+                  color={editMode ? "error" : "primary"}
+                  startIcon={editMode ? <DeleteIcon /> : <EditIcon />}
+                  onClick={handleEditToggle}
+                >
+                  {editMode ? 'Cancel' : 'Edit Location'}
+                </Button>
+              </Box>
               
               <Alert severity="info" sx={{ mb: 3 }}>
                 Your location information is used to help customers find your restaurant.
               </Alert>
               
-              <Grid container spacing={3}>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Street Address"
-                    name="street"
-                    value={formValues.street}
-                    onChange={handleInputChange}
-                    disabled={!editMode}
-                    InputProps={{
-                      startAdornment: <LocationIcon color="action" sx={{ mr: 1 }} />
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="City"
-                    name="city"
-                    value={formValues.city}
-                    onChange={handleInputChange}
-                    disabled={!editMode}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="State/Province"
-                    name="state"
-                    value={formValues.state}
-                    onChange={handleInputChange}
-                    disabled={!editMode}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Postal Code"
-                    name="zipCode"
-                    value={formValues.zipCode}
-                    onChange={handleInputChange}
-                    disabled={!editMode}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Country"
-                    name="country"
-                    value={formValues.country}
-                    onChange={handleInputChange}
-                    disabled={!editMode}
-                  />
-                </Grid>
-                
-                {/* Map Component Placeholder */}
-                <Grid item xs={12}>
-                  <Card variant="outlined" sx={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <CardContent>
-                      <Typography variant="body1" color="text.secondary">
-                        Map will be displayed here when location is set
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                
-                {/* Save Button - only shown in edit mode */}
-                {editMode && (
+              <form onSubmit={handleProfileSubmit}>
+                <Grid container spacing={3}>
                   <Grid item xs={12}>
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        startIcon={<SaveIcon />}
-                        onClick={handleProfileSubmit}
-                      >
-                        Save Location
-                      </Button>
-                    </Box>
+                    <TextField
+                      fullWidth
+                      label="Street Address"
+                      name="street"
+                      value={formValues.street}
+                      onChange={handleInputChange}
+                      disabled={!editMode}
+                      required
+                      InputProps={{
+                        startAdornment: <LocationIcon color="action" sx={{ mr: 1 }} />
+                      }}
+                    />
                   </Grid>
-                )}
-              </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="City"
+                      name="city"
+                      value={formValues.city}
+                      onChange={handleInputChange}
+                      disabled={!editMode}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="State/Province"
+                      name="state"
+                      value={formValues.state}
+                      onChange={handleInputChange}
+                      disabled={!editMode}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Postal Code"
+                      name="zipCode"
+                      value={formValues.zipCode}
+                      onChange={handleInputChange}
+                      disabled={!editMode}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Country"
+                      name="country"
+                      value={formValues.country}
+                      onChange={handleInputChange}
+                      disabled={!editMode}
+                      required
+                    />
+                  </Grid>
+                  
+                  {/* Save Button - only shown in edit mode */}
+                  {editMode && (
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+                        <Button
+                          type="submit"
+                          variant="contained"
+                          color="primary"
+                          startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
+                          disabled={loading}
+                        >
+                          Save Address
+                        </Button>
+                      </Box>
+                    </Grid>
+                  )}
+                </Grid>
+              </form>
+            </TabPanel>
+            
+            {/* Business Hours Tab */}
+            <TabPanel value={activeTab} index={2}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+                <Typography variant="h5" component="h2" fontWeight="bold">
+                  Business Hours
+                </Typography>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<AddIcon />}
+                  onClick={() => handleOpenBusinessHoursDialog()}
+                >
+                  Add Hours
+                </Button>
+              </Box>
+
+              <TableContainer component={Paper} sx={{ mt: 2 }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Day</TableCell>
+                      <TableCell>Open Time</TableCell>
+                      <TableCell>Close Time</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {businessHours.map((hours) => (
+                      <TableRow key={hours.id}>
+                        <TableCell>{hours.dayOfWeek}</TableCell>
+                        <TableCell>{hours.openTime}</TableCell>
+                        <TableCell>{hours.closeTime}</TableCell>
+                        <TableCell>{hours.isClosed ? 'Closed' : 'Open'}</TableCell>
+                        <TableCell>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleOpenBusinessHoursDialog(hours)}
+                            sx={{ mr: 1 }}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => hours.id && handleDeleteBusinessHours(hours.id)}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </TabPanel>
             
             {/* Restaurant Details Tab */}
-            <TabPanel value={activeTab} index={2}>
+            <TabPanel value={activeTab} index={3}>
               <Typography variant="h5" component="h2" fontWeight="bold" sx={{ mb: 4 }}>
                 Restaurant Details
               </Typography>
@@ -676,6 +963,65 @@ const RestaurantProfile: React.FC = () => {
             disabled={!profileImage || loading}
           >
             {loading ? <CircularProgress size={24} /> : 'Upload'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Business Hours Dialog */}
+      <Dialog open={openBusinessHoursDialog} onClose={handleCloseBusinessHoursDialog}>
+        <DialogTitle>
+          {editingHoursId ? 'Edit Business Hours' : 'Add Business Hours'}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel>Day of Week</InputLabel>
+              <Select
+                value={selectedDay}
+                onChange={(e) => setSelectedDay(e.target.value)}
+                label="Day of Week"
+              >
+                {DAYS_OF_WEEK.map((day) => (
+                  <MenuItem key={day} value={day}>{day}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <TextField
+              label="Open Time"
+              type="time"
+              value={openTime}
+              onChange={(e) => setOpenTime(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ step: 300 }}
+              fullWidth
+            />
+
+            <TextField
+              label="Close Time"
+              type="time"
+              value={closeTime}
+              onChange={(e) => setCloseTime(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ step: 300 }}
+              fullWidth
+            />
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isClosed}
+                  onChange={(e) => setIsClosed(e.target.checked)}
+                />
+              }
+              label="Closed on this day"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseBusinessHoursDialog}>Cancel</Button>
+          <Button onClick={handleSaveBusinessHours} variant="contained" color="primary">
+            Save
           </Button>
         </DialogActions>
       </Dialog>

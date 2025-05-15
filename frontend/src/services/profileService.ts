@@ -23,6 +23,12 @@ export const getCourierProfile = async (): Promise<Courier> => {
   return response.data;
 };
 
+// Update restaurant profile
+export const updateRestaurantProfile = async (profileData: Partial<Restaurant>): Promise<Restaurant> => {
+  const response = await api.put('/profile/restaurant', profileData);
+  return response.data;
+};
+
 // Update user profile
 export const updateProfile = async (profileData: Partial<Customer | Restaurant | Courier>): Promise<Customer | Restaurant | Courier> => {
   const response = await api.put('/profile', profileData);

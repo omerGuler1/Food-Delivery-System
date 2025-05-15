@@ -21,6 +21,7 @@ import CourierProfile from './pages/CourierProfile';
 import RestaurantsPage from './pages/RestaurantsPage';
 import RestaurantDetailPage from './pages/RestaurantDetailPage';
 import CheckoutPage from './pages/CheckoutPage';
+import CustomerOrdersPage from './pages/CustomerOrdersPage';
 
 // Protected route component
 interface ProtectedRouteProps {
@@ -284,6 +285,11 @@ const App: React.FC = () => {
                 {/* Add the checkout route */}
                 <Route path="/checkout" element={
                   <ProtectedRoute userType="customer" element={<CheckoutPage />} />
+                } />
+
+                {/* Add the customer orders route */}
+                <Route path="/orders" element={
+                  <ProtectedRoute userType="customer" element={<CustomerOrdersPage />} />
                 } />
                 
                 {/* Fallback route */}

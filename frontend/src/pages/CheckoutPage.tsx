@@ -139,7 +139,7 @@ const CheckoutPage: React.FC = () => {
   
   // Format currency
   const formatCurrency = (amount: number) => {
-    return `${amount.toFixed(2)} ₺`;
+    return `$${amount.toFixed(2)}`;
   };
   
   // Handle next step
@@ -375,7 +375,7 @@ const CheckoutPage: React.FC = () => {
                     <Button 
                       startIcon={<AddIcon />} 
                       sx={{ mt: 2 }}
-                      onClick={() => navigate('/profile/addresses')}
+                      onClick={() => navigate('/profile', { state: { fromCheckout: true } })}
                     >
                       Add New Address
                     </Button>
@@ -443,7 +443,7 @@ const CheckoutPage: React.FC = () => {
                     <Button
                       startIcon={<AddIcon />}
                       sx={{ mt: 1 }}
-                      onClick={() => navigate('/profile/addresses')}
+                      onClick={() => navigate('/profile', { state: { fromCheckout: true } })}
                     >
                       Add New Address
                     </Button>

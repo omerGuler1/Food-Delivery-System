@@ -209,4 +209,28 @@ export const getOrdersNeedingCouriers = async (restaurantId: number): Promise<nu
     console.error('Error getting orders needing couriers:', error);
     throw error;
   }
+};
+
+// Get all orders for the current customer
+export const getCustomerOrders = async (): Promise<OrderResponseDTO[]> => {
+  try {
+    const response = await axios.get(
+      `${API_URL}/profile/orders`,
+      { headers: getAuthHeader() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching customer orders:', error);
+    throw error;
+  }
+};
+
+export const cancelOrder = async (orderId: number): Promise<OrderResponseDTO> => {
+  try {
+    const response = await api.put(`${API_URL}/orders/${orderId}/cancel`);
+    return response.data;
+  } catch (error) {
+    console.error('Error cancelling order:', error);
+    throw error;
+  }
 }; 
