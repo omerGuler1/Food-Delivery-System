@@ -11,4 +11,10 @@ import java.util.Optional;
 public interface CourierRepository extends JpaRepository<Courier, Integer> {
     Optional<Courier> findByEmail(String email);
     List<Courier> findByStatus(Courier.CourierStatus status);
+    
+    // Find all non-deleted couriers
+    List<Courier> findAllByDeletedAtIsNull();
+    
+    // Find active couriers (not deleted and with specific status)
+    List<Courier> findByStatusAndDeletedAtIsNull(Courier.CourierStatus status);
 }

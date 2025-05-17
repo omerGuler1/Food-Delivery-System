@@ -240,4 +240,36 @@ export interface ActiveDeliveryOrder {
 // PendingDeliveryRequest interface
 export interface PendingDeliveryRequest extends CourierAssignment {
   order: Order;
+}
+
+// Admin Edit DTOs
+export interface AdminEditCustomerRequest {
+  customerId: number;
+  name?: string;
+  email?: string;
+  phoneNumber?: string;
+  newPassword?: string;
+}
+
+export interface AdminEditRestaurantRequest {
+  restaurantId: number;
+  name?: string;
+  email?: string;
+  phoneNumber?: string;
+  cuisineType?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+  newPassword?: string;
+}
+
+export interface AdminEditCourierRequest {
+  courierId: number;
+  name?: string;
+  email?: string;
+  phoneNumber?: string;
+  vehicleType?: string;
+  newPassword?: string;
 } 

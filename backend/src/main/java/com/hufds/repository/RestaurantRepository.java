@@ -14,6 +14,9 @@ import java.util.Optional;
 public interface RestaurantRepository extends JpaRepository<Restaurant, Integer> {
     Optional<Restaurant> findByEmail(String email);
     
+    // Find all non-deleted restaurants
+    List<Restaurant> findAllByDeletedAtIsNull();
+    
     // Search methods
     List<Restaurant> findByNameContainingIgnoreCase(String name);
     List<Restaurant> findByCuisineTypeContainingIgnoreCase(String cuisineType);
@@ -25,7 +28,8 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Integer>
     @Query("SELECT r FROM Restaurant r WHERE " +
            "6371 * acos(cos(radians(:latitude)) * cos(radians(r.latitude)) * " +
            "cos(radians(r.longitude) - radians(:longitude)) + " +
-           "sin(radians(:latitude)) * sin(radians(r.latitude))) <= :maxDistance")
+           "sin(radians(:latitude)) * sin(radians(r.latitude))) <= :maxDistance " +
+           "AND r.deletedAt IS NULL")
     List<Restaurant> findByLocationWithinDistance(
         @Param("latitude") BigDecimal latitude,
         @Param("longitude") BigDecimal longitude,
