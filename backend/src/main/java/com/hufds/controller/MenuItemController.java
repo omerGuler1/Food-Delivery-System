@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -91,6 +92,15 @@ public class MenuItemController {
             HttpServletRequest request) {
         Integer restaurantId = jwtService.extractUserId(getToken(request));
         return ResponseEntity.ok(menuItemService.toggleAvailability(menuItemId, restaurantId));
+    }
+
+    @PostMapping("/{menuItemId}/image")
+    public ResponseEntity<MenuItem> uploadMenuItemImage(
+            @PathVariable Integer menuItemId,
+            @RequestParam("image") MultipartFile image,
+            HttpServletRequest request) {
+        Integer restaurantId = jwtService.extractUserId(getToken(request));
+        return ResponseEntity.ok(menuItemService.uploadMenuItemImage(menuItemId, image, restaurantId));
     }
 
     private String getToken(HttpServletRequest request) {

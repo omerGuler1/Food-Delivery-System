@@ -1,49 +1,42 @@
-package com.hufds.service;
+package com.hufds.service.impl;
 
 import com.hufds.dto.*;
 import com.hufds.entity.*;
 import com.hufds.exception.CustomException;
 import com.hufds.repository.CustomerRepository;
-import com.hufds.repository.AddressRepository;
-import lombok.RequiredArgsConstructor;
+import com.hufds.service.IProfileService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
-public class ProfileService implements IProfileService {
+public class ProfileServiceImpl implements IProfileService {
 
-    private final CustomerRepository customerRepository;
-    private final AddressRepository addressRepository;
-    private final PasswordEncoder passwordEncoder;
+    @Autowired
+    private CustomerRepository customerRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Override
     public CustomerProfileDTO getCurrentProfile() {
-        String email = getCurrentUserEmail();
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Customer customer = customerRepository.findByEmailAndDeletedAtIsNull(email)
             .orElseThrow(() -> new CustomException("User not found or account is deleted", HttpStatus.NOT_FOUND));
         return CustomerProfileDTO.fromEntity(customer);
     }
 
-    private String getCurrentUserEmail() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof UserDetails userDetails) {
-            return userDetails.getUsername();
-        } else if (principal instanceof String stringEmail) {
-            return stringEmail;
-        }
-        throw new CustomException("Not authenticated", HttpStatus.UNAUTHORIZED);
+    private Customer getCurrentCustomer() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return customerRepository.findByEmailAndDeletedAtIsNull(email)
+            .orElseThrow(() -> new CustomException("User not found or account is deleted", HttpStatus.NOT_FOUND));
     }
 
     @Override
@@ -157,10 +150,4 @@ public class ProfileService implements IProfileService {
         customer.getAddresses().remove(address);
         customerRepository.save(customer);
     }
-
-    private Customer getCurrentCustomer() {
-        String email = getCurrentUserEmail();
-        return customerRepository.findByEmailAndDeletedAtIsNull(email)
-            .orElseThrow(() -> new CustomException("User not found or account is deleted", HttpStatus.NOT_FOUND));
-    }
-}
+} 

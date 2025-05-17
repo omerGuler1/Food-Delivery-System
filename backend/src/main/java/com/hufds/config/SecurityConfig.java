@@ -61,6 +61,8 @@ public class SecurityConfig {
                         // Public endpoints for restaurant data must be before role-restricted endpoints
                         .requestMatchers("/api/restaurant/menu-items/public/**").permitAll()
                         .requestMatchers("/api/restaurants/**").permitAll()
+                        // Allow public access to uploaded images
+                        .requestMatchers("/uploads/**").permitAll()
                         // Customer and Courier listing endpoints for admin
                         .requestMatchers("/api/customers").hasRole("admin")
                         .requestMatchers("/api/couriers").hasRole("admin")

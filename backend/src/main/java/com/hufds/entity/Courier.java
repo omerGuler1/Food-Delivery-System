@@ -45,11 +45,11 @@ public class Courier {
     private BigDecimal earnings = BigDecimal.ZERO;
 
     @OneToMany(mappedBy = "courier")
-    @JsonBackReference
+    @JsonBackReference("courier-orders")
     private Set<Order> orders;
 
     @OneToMany(mappedBy = "courier")
-    @JsonManagedReference
+    @JsonManagedReference("courier-assignments")
     private Set<CourierAssignment> assignments;
 
     @Column(name = "created_at", nullable = false)

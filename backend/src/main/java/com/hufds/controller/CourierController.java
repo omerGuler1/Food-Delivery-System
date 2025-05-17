@@ -5,6 +5,8 @@ import com.hufds.entity.Order;
 import com.hufds.service.CourierService;
 import com.hufds.service.OrderService;
 import com.hufds.service.JwtService;
+import com.hufds.dto.CourierProfileDTO;
+import com.hufds.dto.PasswordUpdateDTO;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -28,15 +30,37 @@ public class CourierController {
     private JwtService jwtService;
 
     @GetMapping("/profile/{courierId}")
-    public ResponseEntity<Courier> getCourierProfile(@PathVariable Integer courierId) {
-        return ResponseEntity.ok(courierService.getCourierProfile(courierId));
+    public ResponseEntity<CourierProfileDTO> getCourierProfile(@PathVariable Integer courierId) {
+        Courier courier = courierService.getCourierProfile(courierId);
+        CourierProfileDTO dto = CourierProfileDTO.builder()
+            .courierId(courier.getCourierId())
+            .name(courier.getName())
+            .email(courier.getEmail())
+            .phoneNumber(courier.getPhoneNumber())
+            .vehicleType(courier.getVehicleType())
+            .status(courier.getStatus())
+            .earnings(courier.getEarnings())
+            .orderHistory(null) // or fetch if needed
+            .build();
+        return ResponseEntity.ok(dto);
     }
 
     @PutMapping("/profile/{courierId}")
-    public ResponseEntity<Courier> updateCourierProfile(
+    public ResponseEntity<CourierProfileDTO> updateCourierProfile(
             @PathVariable Integer courierId,
-            @RequestBody Courier courier) {
-        return ResponseEntity.ok(courierService.updateCourierProfile(courierId, courier));
+            @RequestBody CourierProfileDTO dto) {
+        Courier updated = courierService.updateCourierProfileFromDTO(courierId, dto);
+        CourierProfileDTO response = CourierProfileDTO.builder()
+            .courierId(updated.getCourierId())
+            .name(updated.getName())
+            .email(updated.getEmail())
+            .phoneNumber(updated.getPhoneNumber())
+            .vehicleType(updated.getVehicleType())
+            .status(updated.getStatus())
+            .earnings(updated.getEarnings())
+            .orderHistory(null)
+            .build();
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/status/{courierId}")
@@ -44,6 +68,14 @@ public class CourierController {
             @PathVariable Integer courierId,
             @RequestParam Courier.CourierStatus status) {
         courierService.updateCourierStatus(courierId, status);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/profile/{courierId}/password")
+    public ResponseEntity<?> updateCourierPassword(
+            @PathVariable Integer courierId,
+            @RequestBody PasswordUpdateDTO passwordUpdateDTO) {
+        courierService.updatePassword(courierId, passwordUpdateDTO);
         return ResponseEntity.ok().build();
     }
 
@@ -98,6 +130,12 @@ public class CourierController {
     @GetMapping("/earnings/{courierId}")
     public ResponseEntity<Double> getTotalEarnings(@PathVariable Integer courierId) {
         return ResponseEntity.ok(courierService.getTotalEarnings(courierId));
+    }
+
+    @DeleteMapping("/profile/{courierId}")
+    public ResponseEntity<?> deleteCourierAccount(@PathVariable Integer courierId) {
+        courierService.deleteCourierAccount(courierId);
+        return ResponseEntity.ok().build();
     }
     
     private String extractToken(HttpServletRequest request) {

@@ -18,8 +18,8 @@ export const getRestaurantProfile = async (): Promise<Restaurant> => {
   return response.data;
 };
 
-export const getCourierProfile = async (): Promise<Courier> => {
-  const response = await api.get('/profile/courier');
+export const getCourierProfile = async (courierId: number): Promise<Courier> => {
+  const response = await api.get(`/courier/profile/${courierId}`);
   return response.data;
 };
 
@@ -94,6 +94,30 @@ export const deleteAddress = async (addressId: number): Promise<any> => {
 // Upload profile image
 export const uploadProfileImage = async (formData: FormData): Promise<{ imageUrl: string }> => {
   const response = await api.post('/profile/image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+  return response.data;
+};
+
+export const updateCourierProfile = async (courierId: number, profileData: Partial<Courier>): Promise<Courier> => {
+  const response = await api.put(`/courier/profile/${courierId}`, profileData);
+  return response.data;
+};
+
+export const updateCourierPassword = async (courierId: number, passwordData: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
+  const response = await api.put(`/courier/profile/${courierId}/password`, passwordData);
+  return response.data;
+};
+
+export const deleteCourierAccount = async (courierId: number) => {
+  const response = await api.delete(`/courier/profile/${courierId}`);
+  return response.data;
+};
+
+export const uploadRestaurantProfileImage = async (formData: FormData): Promise<{ imageUrl: string }> => {
+  const response = await api.post('/profile/restaurant/image', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }

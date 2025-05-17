@@ -125,4 +125,22 @@ public class CourierServiceImpl implements CourierService {
         courier.setPassword(passwordEncoder.encode(passwordUpdateDTO.getNewPassword()));
         courierRepository.save(courier);
     }
+
+    @Override
+    public Courier updateCourierProfileFromDTO(Integer courierId, com.hufds.dto.CourierProfileDTO dto) {
+        Courier existing = getCourierProfile(courierId);
+        existing.setName(dto.getName());
+        existing.setPhoneNumber(dto.getPhoneNumber());
+        existing.setVehicleType(dto.getVehicleType());
+        // Do not update email, status, or earnings here unless explicitly allowed
+        return courierRepository.save(existing);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCourierAccount(Integer courierId) {
+        Courier courier = getCourierProfile(courierId);
+        courier.setDeletedAt(java.time.LocalDateTime.now());
+        courierRepository.save(courier);
+    }
 } 

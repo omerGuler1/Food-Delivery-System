@@ -53,7 +53,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Restaurant } from '../interfaces';
-import { getRestaurantProfile, updateRestaurantProfile, uploadProfileImage } from '../services/profileService';
+import { getRestaurantProfile, updateRestaurantProfile, uploadRestaurantProfileImage } from '../services/profileService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -232,7 +232,11 @@ const RestaurantProfile: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           console.log('Fetched business hours:', data);
-          setBusinessHours(data);
+          // Normalize: ensure each item has an 'id' property
+          setBusinessHours(data.map((item: any) => ({
+            ...item,
+            id: item.id ?? item.hoursId
+          })));
         } else {
           const errorData = await response.json().catch(() => null);
           console.error('Failed to fetch business hours:', response.status, errorData);
@@ -371,17 +375,13 @@ const RestaurantProfile: React.FC = () => {
     try {
       setLoading(true);
       
-      // Create a FormData object to send the file
       const formData = new FormData();
       formData.append('profileImage', profileImage);
       
-      // Upload the image using the API service
-      const response = await uploadProfileImage(formData);
+      const response = await uploadRestaurantProfileImage(formData);
       
-      // Update profile image URL with the returned URL from the server
       setProfileImageUrl(response.imageUrl);
       
-      // Update local state
       if (profileData) {
         setProfileData({
           ...profileData,
@@ -391,8 +391,6 @@ const RestaurantProfile: React.FC = () => {
       
       setSuccessMessage('Profile image uploaded successfully');
       setTimeout(() => setSuccessMessage(null), 3000);
-      
-      // Close the dialog
       setOpenImageDialog(false);
     } catch (err: any) {
       setError(err.message || 'Failed to upload profile image. Please try again.');
@@ -404,12 +402,16 @@ const RestaurantProfile: React.FC = () => {
 
   const handleOpenBusinessHoursDialog = (hours?: BusinessHours) => {
     if (hours) {
+      // We're editing existing hours
+      console.log('Editing hours:', hours); // Debug log
       setSelectedDay(hours.dayOfWeek);
-      setOpenTime(hours.openTime);
-      setCloseTime(hours.closeTime);
+      setOpenTime(hours.openTime || '');
+      setCloseTime(hours.closeTime || '');
       setIsClosed(hours.isClosed);
       setEditingHoursId(hours.id ?? null);
     } else {
+      // We're adding new hours
+      console.log('Adding new hours'); // Debug log
       setSelectedDay('');
       setOpenTime('');
       setCloseTime('');
@@ -428,6 +430,44 @@ const RestaurantProfile: React.FC = () => {
     setEditingHoursId(null);
   };
 
+  const handleDeleteBusinessHours = async (hoursId: number) => {
+    console.log('handleDeleteBusinessHours called with id:', hoursId); // Debug log
+    try {
+      if (!profileData?.restaurantId) {
+        throw new Error('Restaurant ID not available');
+      }
+
+      const url = `http://localhost:8080/api/restaurants/${profileData.restaurantId}/business-hours/${hoursId}`;
+      console.log('Sending DELETE request to:', url); // Debug log
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      console.log('Delete response status:', response.status); // Debug log
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.error('Delete error response:', errorData); // Debug log
+        throw new Error(errorData?.message || 'Failed to delete business hours');
+      }
+
+      // Update the business hours state by removing the deleted hours
+      setBusinessHours(prevHours => {
+        const updatedHours = prevHours.filter(h => h.id !== hoursId);
+        console.log('Updated hours after delete:', updatedHours); // Debug log
+        return updatedHours;
+      });
+      setSuccessMessage('Business hours deleted successfully');
+    } catch (err: any) {
+      console.error('Error deleting business hours:', err);
+      setError(err.message || 'Failed to delete business hours');
+    }
+  };
+
   const handleSaveBusinessHours = async () => {
     try {
       if (!profileData?.restaurantId) {
@@ -438,32 +478,43 @@ const RestaurantProfile: React.FC = () => {
         throw new Error('Please select a day of the week');
       }
 
-      if (!openTime || !closeTime) {
-        throw new Error('Please select both open and close times');
+      // Only validate times if the business is not closed
+      if (!isClosed) {
+        if (!openTime || !closeTime) {
+          throw new Error('Please select both open and close times');
+        }
       }
 
       // Format times to match LocalTime format (HH:mm:ss)
       const formatTime = (time: string) => {
+        if (!time) return null;
         const [hours, minutes] = time.split(':');
         return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
       };
 
       const hoursData = {
         dayOfWeek: selectedDay,
-        openTime: formatTime(openTime),
-        closeTime: formatTime(closeTime),
+        openTime: isClosed ? null : formatTime(openTime),
+        closeTime: isClosed ? null : formatTime(closeTime),
         isClosed
       };
 
-      console.log('Sending business hours data:', hoursData);
+      console.log('Sending hours data:', hoursData);
+
+      // Check for existing hours before sending request
+      const existingHoursForDay = businessHours.find(h => 
+        h.dayOfWeek === selectedDay && (!editingHoursId || h.id !== editingHoursId)
+      );
+
+      if (existingHoursForDay) {
+        throw new Error('Business hours already exist for this day. Please choose a different day or edit the existing hours.');
+      }
 
       const url = editingHoursId
         ? `http://localhost:8080/api/restaurants/${profileData.restaurantId}/business-hours/${editingHoursId}`
         : `http://localhost:8080/api/restaurants/${profileData.restaurantId}/business-hours`;
 
       console.log('Sending request to:', url);
-      console.log('With data:', hoursData);
-      console.log('Restaurant ID:', profileData.restaurantId);
 
       const response = await fetch(url, {
         method: editingHoursId ? 'PUT' : 'POST',
@@ -477,46 +528,31 @@ const RestaurantProfile: React.FC = () => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         console.error('Server response:', response.status, errorData);
-        throw new Error(errorData?.message || `Failed to update business hours: ${response.status}`);
+        if (response.status === 409) {
+          throw new Error('Business hours already exist for this day. Please choose a different day or edit the existing hours.');
+        }
+        throw new Error(errorData?.message || `Failed to ${editingHoursId ? 'update' : 'add'} business hours: ${response.status}`);
       }
 
       const updatedHours = await response.json();
-      console.log('Updated hours:', updatedHours);
+      console.log('Received updated hours:', updatedHours);
       
-      setBusinessHours(prev => {
+      // Update the business hours state
+      setBusinessHours(prevHours => {
         if (editingHoursId) {
-          return prev.map(h => h.id === editingHoursId ? updatedHours : h);
+          // Update existing hours
+          return prevHours.map(h => h.id === editingHoursId ? updatedHours : h);
+        } else {
+          // Add new hours
+          return [...prevHours, updatedHours];
         }
-        return [...prev, updatedHours];
       });
-      setSuccessMessage('Business hours updated successfully');
+
+      setSuccessMessage(`Business hours ${editingHoursId ? 'updated' : 'added'} successfully`);
       handleCloseBusinessHoursDialog();
     } catch (err: any) {
-      console.error('Error updating business hours:', err);
-      setError(err.message || 'Failed to update business hours');
-    }
-  };
-
-  const handleDeleteBusinessHours = async (hoursId: number) => {
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/restaurants/${profileData?.restaurantId}/business-hours/${hoursId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-
-      if (response.ok) {
-        setBusinessHours(prev => prev.filter(h => h.id !== hoursId));
-        setSuccessMessage('Business hours deleted successfully');
-      } else {
-        throw new Error('Failed to delete business hours');
-      }
-    } catch (err) {
-      setError('Failed to delete business hours');
+      console.error('Error saving business hours:', err);
+      setError(err.message || 'Failed to save business hours');
     }
   };
 
@@ -893,7 +929,20 @@ const RestaurantProfile: React.FC = () => {
                           </IconButton>
                           <IconButton
                             size="small"
-                            onClick={() => hours.id && handleDeleteBusinessHours(hours.id)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (hours.id) {
+                                const confirmed = window.confirm('Are you sure you want to delete these business hours?');
+                                if (confirmed) {
+                                  console.log('Delete confirmed for hours:', hours); // Debug log
+                                  handleDeleteBusinessHours(hours.id);
+                                }
+                              } else {
+                                console.log('No id found for hours:', hours); // Debug log
+                              }
+                            }}
+                            color="error"
                           >
                             <DeleteIcon />
                           </IconButton>
@@ -968,7 +1017,12 @@ const RestaurantProfile: React.FC = () => {
       </Dialog>
 
       {/* Business Hours Dialog */}
-      <Dialog open={openBusinessHoursDialog} onClose={handleCloseBusinessHoursDialog}>
+      <Dialog 
+        open={openBusinessHoursDialog} 
+        onClose={handleCloseBusinessHoursDialog}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>
           {editingHoursId ? 'Edit Business Hours' : 'Add Business Hours'}
         </DialogTitle>
@@ -980,6 +1034,7 @@ const RestaurantProfile: React.FC = () => {
                 value={selectedDay}
                 onChange={(e) => setSelectedDay(e.target.value)}
                 label="Day of Week"
+                disabled={editingHoursId !== null} // Disable day selection when editing
               >
                 {DAYS_OF_WEEK.map((day) => (
                   <MenuItem key={day} value={day}>{day}</MenuItem>
@@ -987,41 +1042,58 @@ const RestaurantProfile: React.FC = () => {
               </Select>
             </FormControl>
 
-            <TextField
-              label="Open Time"
-              type="time"
-              value={openTime}
-              onChange={(e) => setOpenTime(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              inputProps={{ step: 300 }}
-              fullWidth
-            />
-
-            <TextField
-              label="Close Time"
-              type="time"
-              value={closeTime}
-              onChange={(e) => setCloseTime(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              inputProps={{ step: 300 }}
-              fullWidth
-            />
-
             <FormControlLabel
               control={
                 <Switch
                   checked={isClosed}
-                  onChange={(e) => setIsClosed(e.target.checked)}
+                  onChange={(e) => {
+                    setIsClosed(e.target.checked);
+                    if (e.target.checked) {
+                      setOpenTime('');
+                      setCloseTime('');
+                    }
+                  }}
                 />
               }
               label="Closed on this day"
             />
+
+            {!isClosed && (
+              <>
+                <TextField
+                  label="Open Time"
+                  type="time"
+                  value={openTime}
+                  onChange={(e) => setOpenTime(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ step: 300 }}
+                  fullWidth
+                  required
+                />
+
+                <TextField
+                  label="Close Time"
+                  type="time"
+                  value={closeTime}
+                  onChange={(e) => setCloseTime(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ step: 300 }}
+                  fullWidth
+                  required
+                />
+              </>
+            )}
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseBusinessHoursDialog}>Cancel</Button>
-          <Button onClick={handleSaveBusinessHours} variant="contained" color="primary">
-            Save
+          <Button 
+            onClick={handleSaveBusinessHours} 
+            variant="contained" 
+            color="primary"
+            disabled={!selectedDay || (!isClosed && (!openTime || !closeTime))}
+          >
+            {editingHoursId ? 'Update' : 'Add'}
           </Button>
         </DialogActions>
       </Dialog>

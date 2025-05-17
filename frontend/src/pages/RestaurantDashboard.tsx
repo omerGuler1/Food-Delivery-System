@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Container,
@@ -84,7 +84,7 @@ import {
 } from '@mui/icons-material';
 import { mockMenuItems, foodCategories, restaurantInfo } from '../data/mockData';
 import { MenuItem as MenuItemType, FoodCategory, OrderResponseDTO, CourierInfo } from '../interfaces';
-import { addMenuItem, updateMenuItem, deleteMenuItem, getRestaurantMenuItems, updateRestaurantStatus } from '../services/restaurantService';
+import { addMenuItem, updateMenuItem, deleteMenuItem, getRestaurantMenuItems, updateRestaurantStatus, uploadMenuItemImage } from '../services/restaurantService';
 import { getRestaurantOrders, updateOrderStatus, getAvailableCouriers, requestCourierForOrder, checkOrderAssignmentsExpired, getOrdersNeedingCouriers, cancelOrder } from '../services/orderService';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -140,6 +140,9 @@ const RestaurantDashboard: React.FC = () => {
   const [selectedCourierId, setSelectedCourierId] = useState<number | null>(null);
   const [isLoadingCouriers, setIsLoadingCouriers] = useState(false);
   const [isAssigningCourier, setIsAssigningCourier] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   // Helper function to map API response to our MenuItem type
@@ -361,6 +364,35 @@ const RestaurantDashboard: React.FC = () => {
   const handleDialogClose = () => {
     setOpenDialog(false);
     setEditingItem(null);
+    setSelectedImage(null);
+    setImagePreviewUrl(null);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size must be less than 5MB');
+        setTimeout(() => setError(null), 3000);
+        return;
+      }
+      
+      // Validate file type
+      if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+        setError('Only JPEG, PNG and JPG images are supported');
+        setTimeout(() => setError(null), 3000);
+        return;
+      }
+      
+      setSelectedImage(file);
+      setImagePreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleImageUploadClick = () => {
+    fileInputRef.current?.click();
   };
 
   const handleSaveItem = async () => {
@@ -383,12 +415,19 @@ const RestaurantDashboard: React.FC = () => {
 
         console.log(`Saving menu item for restaurant ID: ${restaurantId}`);
         
+        let updatedItem: MenuItemType;
+        
         // Check if it's a new item or updating an existing one
         if (editingItem.menuItemId !== 0) {
           // Update existing item
           const apiResult = await updateMenuItem(editingItem.menuItemId, menuItemData);
-          // Map API response to our local format using the helper function
-          const updatedItem = mapApiMenuItemToLocal(apiResult);
+          updatedItem = mapApiMenuItemToLocal(apiResult);
+          
+          // Upload image if selected
+          if (selectedImage) {
+            const itemWithImage = await uploadMenuItemImage(editingItem.menuItemId, selectedImage);
+            updatedItem = mapApiMenuItemToLocal(itemWithImage);
+          }
           
           // Update local state
           setMenuItems(prevItems => 
@@ -402,17 +441,24 @@ const RestaurantDashboard: React.FC = () => {
         } else {
           // Add new item
           const apiResult = await addMenuItem(menuItemData);
-          // Map API response to our local format using the helper function
-          const newItem = mapApiMenuItemToLocal(apiResult);
+          updatedItem = mapApiMenuItemToLocal(apiResult);
+          
+          // Upload image if selected
+          if (selectedImage) {
+            const itemWithImage = await uploadMenuItemImage(updatedItem.menuItemId, selectedImage);
+            updatedItem = mapApiMenuItemToLocal(itemWithImage);
+          }
           
           // Add to local state with the returned ID from the server
-          setMenuItems(prevItems => [...prevItems, newItem]);
+          setMenuItems(prevItems => [...prevItems, updatedItem]);
           setSuccessMessage('Menu item added successfully');
         }
         
         setTimeout(() => setSuccessMessage(null), 3000);
         setOpenDialog(false);
         setEditingItem(null);
+        setSelectedImage(null);
+        setImagePreviewUrl(null);
       } catch (error: any) {
         console.error('Error saving menu item:', error);
         
@@ -1249,6 +1295,72 @@ const RestaurantDashboard: React.FC = () => {
         <DialogContent dividers>
           {editingItem && (
             <Grid container spacing={2}>
+              {/* Image Upload Section */}
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
+                  <Box
+                    sx={{
+                      width: 200,
+                      height: 200,
+                      border: '2px dashed',
+                      borderColor: 'divider',
+                      borderRadius: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      '&:hover': {
+                        borderColor: 'primary.main',
+                      },
+                    }}
+                    onClick={handleImageUploadClick}
+                  >
+                    {imagePreviewUrl ? (
+                      <img
+                        src={imagePreviewUrl}
+                        alt="Preview"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                    ) : editingItem.imageUrl ? (
+                      <img
+                        src={editingItem.imageUrl}
+                        alt={editingItem.name}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <ImageIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
+                        <Typography variant="body2" color="text.secondary" align="center">
+                          Click to upload image
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" align="center">
+                          (JPEG, PNG, JPG, max 5MB)
+                        </Typography>
+                      </>
+                    )}
+                  </Box>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                    accept="image/jpeg, image/png, image/jpg"
+                    onChange={handleImageChange}
+                  />
+                </Box>
+              </Grid>
+
+              {/* Existing form fields */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   autoFocus

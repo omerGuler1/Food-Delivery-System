@@ -149,4 +149,24 @@ export const updateRestaurantStatus = async (restaurantId: number, isOpen: boole
 export const getRestaurantsSorted = async (sortBy: string): Promise<Restaurant[]> => {
   const response = await api.get<Restaurant[]>(`/restaurants?sortBy=${sortBy}`);
   return response.data;
+};
+
+// Upload menu item image
+export const uploadMenuItemImage = async (
+  menuItemId: number,
+  image: File
+): Promise<MenuItem> => {
+  const formData = new FormData();
+  formData.append('image', image);
+
+  const response = await api.post<MenuItem>(
+    `/restaurant/menu-items/${menuItemId}/image`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+  return response.data;
 }; 

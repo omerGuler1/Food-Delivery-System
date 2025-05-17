@@ -32,6 +32,8 @@ public class RestaurantProfileDTO {
     private AddressDTO address;
     private LocationDTO location;
 
+    private String profileImageUrl;
+
     @Data
     @Builder
     @NoArgsConstructor

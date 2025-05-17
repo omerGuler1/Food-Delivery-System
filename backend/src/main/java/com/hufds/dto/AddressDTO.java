@@ -1,31 +1,35 @@
 package com.hufds.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import com.hufds.entity.Address;
+import lombok.Builder;
 import lombok.Data;
 
 @Data
+@Builder
 public class AddressDTO {
     private Integer addressId;
-
-    @NotBlank(message = "Street is required")
     private String street;
-
-    @NotBlank(message = "City is required")
     private String city;
-
-    @NotBlank(message = "State is required")
     private String state;
-
-    @NotBlank(message = "Zip code is required")
     private String zipCode;
-
-    @NotBlank(message = "Country is required")
     private String country;
-
     private Double latitude;
     private Double longitude;
-
-    @NotNull(message = "isDefault field is required")
     private Boolean isDefault;
+    private String fullAddress;
+
+    public static AddressDTO fromEntity(Address address) {
+        return AddressDTO.builder()
+            .addressId(address.getAddressId())
+            .street(address.getStreet())
+            .city(address.getCity())
+            .state(address.getState())
+            .zipCode(address.getZipCode())
+            .country(address.getCountry())
+            .latitude(address.getLatitude() != null ? address.getLatitude().doubleValue() : null)
+            .longitude(address.getLongitude() != null ? address.getLongitude().doubleValue() : null)
+            .isDefault(address.getIsDefault())
+            .fullAddress(address.getFullAddress())
+            .build();
+    }
 }

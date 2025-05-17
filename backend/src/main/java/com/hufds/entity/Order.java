@@ -33,7 +33,7 @@ public class Order {
 
     @ManyToOne
     @JoinColumn(name = "courier_id")
-    @JsonBackReference
+    @JsonManagedReference("courier-orders")
     private Courier courier;
 
     @ManyToOne

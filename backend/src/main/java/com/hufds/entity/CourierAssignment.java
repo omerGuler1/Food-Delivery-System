@@ -27,7 +27,7 @@ public class CourierAssignment {
 
     @ManyToOne
     @JoinColumn(name = "courier_id")
-    @JsonBackReference
+    @JsonBackReference("courier-assignments")
     private Courier courier;
 
     @Column(name = "assigned_at", nullable = false)

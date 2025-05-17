@@ -43,7 +43,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Courier } from '../types/courier';
-import { getCourierProfile, updateProfile, uploadProfileImage } from '../services/profileService';
+import { getCourierProfile, updateProfile, uploadProfileImage, updateCourierProfile, updateCourierPassword, deleteCourierAccount } from '../services/profileService';
 
 // Define CourierWithProfileImage interface
 interface CourierWithProfileImage extends Courier {
@@ -86,6 +86,11 @@ const vehicleTypes = [
   'On Foot'
 ];
 
+// Type guard for courier
+function isCourier(user: any): user is { courierId: number } {
+  return user && typeof user.courierId === 'number';
+}
+
 const CourierProfile: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -112,27 +117,36 @@ const CourierProfile: React.FC = () => {
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [openImageDialog, setOpenImageDialog] = useState(false);
   
+  // Add state for password change and delete dialog
+  const [passwordValues, setPasswordValues] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
   // Fetch profile data
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
         setLoading(true);
-        const data = await getCourierProfile() as CourierWithProfileImage;
+        if (!isCourier(user)) {
+          setError('Courier ID not found');
+          setLoading(false);
+          return;
+        }
+        const courierId = user.courierId;
+        const data = await getCourierProfile(courierId) as CourierWithProfileImage;
         setProfileData(data);
-        
-        // Set form values from profile data
         setFormValues({
           name: data.name || '',
           email: data.email || '',
           phoneNumber: data.phoneNumber || '',
           vehicleType: data.vehicleType || ''
         });
-        
-        // Set profile image URL if it exists
         if (data.profileImageUrl) {
           setProfileImageUrl(data.profileImageUrl);
         }
-        
       } catch (err: any) {
         console.error('Error fetching profile:', err);
         setError(err.message || 'Failed to load profile data. Please try again later.');
@@ -140,9 +154,8 @@ const CourierProfile: React.FC = () => {
         setLoading(false);
       }
     };
-
     fetchProfileData();
-  }, []);
+  }, [user]);
 
   // Handlers
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -181,15 +194,17 @@ const CourierProfile: React.FC = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      
-      // Create update data object
+      if (!isCourier(user)) {
+        setError('Courier ID not found');
+        setLoading(false);
+        return;
+      }
       const updateData = {
         name: formValues.name,
         phoneNumber: formValues.phoneNumber,
         vehicleType: formValues.vehicleType
       };
-      
-      const updatedProfile = await updateProfile(updateData);
+      const updatedProfile = await updateCourierProfile(user.courierId, updateData);
       setProfileData(updatedProfile as CourierWithProfileImage);
       setEditMode(false);
       setSuccessMessage('Profile updated successfully');
@@ -275,6 +290,62 @@ const CourierProfile: React.FC = () => {
       setTimeout(() => setError(null), 3000);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Add handlers for password change and account delete
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordValues({
+      ...passwordValues,
+      [name]: value
+    });
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordValues.newPassword !== passwordValues.confirmPassword) {
+      setError('New passwords do not match');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+    try {
+      setLoading(true);
+      if (!isCourier(user)) {
+        setError('Courier ID not found');
+        setLoading(false);
+        return;
+      }
+      // Call backend API for password update (implement in profileService if not present)
+      await updateCourierPassword(user.courierId, passwordValues);
+      setPasswordValues({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setSuccessMessage('Password updated successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to update password. Please try again.');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAccountDelete = async () => {
+    try {
+      setLoading(true);
+      if (!isCourier(user)) {
+        setError('Courier ID not found');
+        setLoading(false);
+        return;
+      }
+      await deleteCourierAccount(user.courierId);
+      await logout();
+      navigate('/');
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete account. Please try again.');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setLoading(false);
+      setShowDeleteDialog(false);
     }
   };
 
@@ -365,7 +436,7 @@ const CourierProfile: React.FC = () => {
                   border: '4px solid rgba(255, 255, 255, 0.2)'
                 }}
               >
-                {profileData?.name.charAt(0).toUpperCase()}
+                {profileData?.name ? profileData.name.charAt(0).toUpperCase() : ''}
               </Avatar>
             </Badge>
             
@@ -523,56 +594,99 @@ const CourierProfile: React.FC = () => {
               <Typography variant="h5" fontWeight="bold" gutterBottom>
                 Account Settings
               </Typography>
-              
-              <Card 
-                elevation={0} 
-                sx={{ 
-                  mb: 3, 
-                  borderRadius: 2, 
-                  border: '1px solid rgba(0,0,0,0.08)'
-                }}
-              >
+              <Card elevation={0} sx={{ mb: 3, borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
                 <CardContent>
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="h6" gutterBottom>
                       Change Password
                     </Typography>
                     <Divider sx={{ mb: 2 }} />
-                    <Button 
-                      variant="outlined"
-                      color="primary"
-                      onClick={() => {
-                        // Password change functionality would go here
-                        alert('Password change functionality would be implemented here');
-                      }}
-                    >
-                      Change Password
-                    </Button>
+                    <form onSubmit={handlePasswordSubmit}>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={4}>
+                          <TextField
+                            fullWidth
+                            label="Current Password"
+                            name="currentPassword"
+                            type="password"
+                            value={passwordValues.currentPassword}
+                            onChange={handlePasswordChange}
+                            required
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <TextField
+                            fullWidth
+                            label="New Password"
+                            name="newPassword"
+                            type="password"
+                            value={passwordValues.newPassword}
+                            onChange={handlePasswordChange}
+                            required
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <TextField
+                            fullWidth
+                            label="Confirm New Password"
+                            name="confirmPassword"
+                            type="password"
+                            value={passwordValues.confirmPassword}
+                            onChange={handlePasswordChange}
+                            required
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <Button
+                            type="submit"
+                            variant="contained"
+                            color="primary"
+                            disabled={loading}
+                          >
+                            {loading ? <CircularProgress size={24} /> : 'Update Password'}
+                          </Button>
+                        </Grid>
+                      </Grid>
+                    </form>
                   </Box>
-                  
                   <Box>
                     <Typography variant="h6" color="error" gutterBottom>
                       Delete Account
                     </Typography>
                     <Divider sx={{ mb: 2 }} />
                     <Typography variant="body2" color="text.secondary" paragraph>
-                      Deleting your account will permanently remove all your data from our systems.
-                      This action cannot be undone.
+                      Deleting your account will permanently remove all your data from our systems. This action cannot be undone.
                     </Typography>
-                    <Button 
+                    <Button
                       variant="outlined"
                       color="error"
                       startIcon={<DeleteIcon />}
-                      onClick={() => {
-                        // Account deletion functionality would go here
-                        alert('Account deletion functionality would be implemented here');
-                      }}
+                      onClick={() => setShowDeleteDialog(true)}
                     >
                       Delete Account
                     </Button>
                   </Box>
                 </CardContent>
               </Card>
+              <Dialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)}>
+                <DialogTitle sx={{ color: 'error.main' }}>Delete Account</DialogTitle>
+                <DialogContent>
+                  <Typography>
+                    Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently lost.
+                  </Typography>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
+                  <Button
+                    variant="contained"
+                    color="error"
+                    onClick={handleAccountDelete}
+                    disabled={loading}
+                  >
+                    {loading ? <CircularProgress size={24} /> : 'Delete My Account'}
+                  </Button>
+                </DialogActions>
+              </Dialog>
             </TabPanel>
           </Box>
         </Box>
@@ -601,7 +715,7 @@ const CourierProfile: React.FC = () => {
                 mb: 2
               }}
             >
-              {profileData?.name.charAt(0).toUpperCase()}
+              {profileData?.name ? profileData.name.charAt(0).toUpperCase() : ''}
             </Avatar>
             <Button
               variant="contained"

@@ -17,4 +17,5 @@ public class RestaurantResponseDTO {
     private String phoneNumber;
     private String cuisineType;
     private float rating;
+    private String profileImageUrl;
 }

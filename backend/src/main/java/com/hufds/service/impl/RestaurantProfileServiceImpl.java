@@ -5,16 +5,19 @@ import com.hufds.entity.Restaurant;
 import com.hufds.exception.CustomException;
 import com.hufds.repository.RestaurantRepository;
 import com.hufds.service.RestaurantProfileService;
+import com.hufds.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
 public class RestaurantProfileServiceImpl implements RestaurantProfileService {
 
     private final RestaurantRepository restaurantRepository;
+    private final FileStorageService fileStorageService;
 
     @Override
     public RestaurantProfileDTO getProfile(Integer restaurantId) {
@@ -62,6 +65,26 @@ public class RestaurantProfileServiceImpl implements RestaurantProfileService {
         restaurantRepository.save(restaurant);
     }
 
+    @Override
+    @Transactional
+    public String uploadProfileImage(Integer restaurantId, MultipartFile image) {
+        Restaurant restaurant = getRestaurantById(restaurantId);
+        if (image.isEmpty()) {
+            throw new CustomException("Please select an image to upload", HttpStatus.BAD_REQUEST);
+        }
+        String contentType = image.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new CustomException("Only image files are allowed", HttpStatus.BAD_REQUEST);
+        }
+        if (image.getSize() > 5 * 1024 * 1024) {
+            throw new CustomException("Image size must be less than 5MB", HttpStatus.BAD_REQUEST);
+        }
+        String imageUrl = fileStorageService.storeFile(image, "restaurant-profiles");
+        restaurant.setProfileImageUrl(imageUrl);
+        restaurantRepository.save(restaurant);
+        return imageUrl;
+    }
+
     private Restaurant getRestaurantById(Integer restaurantId) {
         return restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new CustomException("Restaurant not found", HttpStatus.NOT_FOUND));
@@ -107,6 +130,7 @@ public class RestaurantProfileServiceImpl implements RestaurantProfileService {
                 .cuisineType(restaurant.getCuisineType())
                 .address(addressDTO)
                 .location(locationDTO)
+                .profileImageUrl(restaurant.getProfileImageUrl())
                 .build();
     }
 } 
