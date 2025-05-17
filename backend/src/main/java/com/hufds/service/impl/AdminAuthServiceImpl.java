@@ -35,6 +35,7 @@ public class AdminAuthServiceImpl implements AdminAuthService {
         admin.setName(registerDTO.getName());
         admin.setEmail(registerDTO.getEmail());
         admin.setPassword(passwordEncoder.encode(registerDTO.getPassword()));
+        admin.setPhoneNumber(registerDTO.getPhoneNumber());
 
         AdminUser savedAdmin = adminRepository.save(admin);
 
@@ -46,6 +47,7 @@ public class AdminAuthServiceImpl implements AdminAuthService {
                 .adminId(savedAdmin.getAdminId())
                 .name(savedAdmin.getName())
                 .email(savedAdmin.getEmail())
+                .phoneNumber(savedAdmin.getPhoneNumber())
                 .build();
     }
 
@@ -65,6 +67,7 @@ public class AdminAuthServiceImpl implements AdminAuthService {
                 .adminId(admin.getAdminId())
                 .name(admin.getName())
                 .email(admin.getEmail())
+                .phoneNumber(admin.getPhoneNumber())
                 .build();
     }
 } 

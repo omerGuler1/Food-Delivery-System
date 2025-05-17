@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Customer, Restaurant, Courier } from '../interfaces';
+import { Customer, Restaurant, Courier, Admin } from '../interfaces';
 import { 
   isAuthenticated as checkAuthenticated, 
   getCurrentUser, 
@@ -7,8 +7,8 @@ import {
   logout as logoutService 
 } from '../services/authService';
 
-type UserType = 'customer' | 'restaurant' | 'courier' | null;
-type User = Customer | Restaurant | Courier | null;
+type UserType = 'customer' | 'restaurant' | 'courier' | 'admin' | null;
+type User = Customer | Restaurant | Courier | Admin | null;
 
 interface AuthContextType {
   isAuthenticated: boolean;

@@ -22,6 +22,9 @@ import RestaurantsPage from './pages/RestaurantsPage';
 import RestaurantDetailPage from './pages/RestaurantDetailPage';
 import CheckoutPage from './pages/CheckoutPage';
 import CustomerOrdersPage from './pages/CustomerOrdersPage';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminProfile from './pages/AdminProfile';
+import AdminPromotions from './pages/AdminPromotions';
 
 // Protected route component
 interface ProtectedRouteProps {
@@ -92,6 +95,32 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <Typography variant="h4" color="error" gutterBottom>Access Denied</Typography>
         <Typography variant="body1" mb={3}>
           Only couriers can access the courier dashboard.
+        </Typography>
+        <Button 
+          variant="contained" 
+          component={Link} 
+          to="/"
+        >
+          Back to Home
+        </Button>
+      </Box>
+    );
+  }
+  
+  // If user is not an admin and trying to access admin dashboard, show an error or redirect
+  if (isDashboardPage && location.pathname.includes('/admin/dashboard') && userType !== 'admin') {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        minHeight: '100vh',
+        justifyContent: 'center',
+        alignItems: 'center',
+        p: 3
+      }}>
+        <Typography variant="h4" color="error" gutterBottom>Access Denied</Typography>
+        <Typography variant="body1" mb={3}>
+          Only administrators can access the admin dashboard.
         </Typography>
         <Button 
           variant="contained" 
@@ -280,6 +309,17 @@ const App: React.FC = () => {
                 } />
                 <Route path="/courier/profile" element={
                   <ProtectedRoute userType="courier" element={<CourierProfile />} />
+                } />
+                
+                {/* Admin routes */}
+                <Route path="/admin/dashboard" element={
+                  <ProtectedRoute userType="admin" element={<AdminDashboard />} />
+                } />
+                <Route path="/admin/profile" element={
+                  <ProtectedRoute userType="admin" element={<AdminProfile />} />
+                } />
+                <Route path="/admin/promotions" element={
+                  <ProtectedRoute userType="admin" element={<AdminPromotions />} />
                 } />
                 
                 {/* Add the checkout route */}

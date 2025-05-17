@@ -15,12 +15,16 @@ import {
   Alert,
   IconButton,
   InputAdornment,
-  CircularProgress
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
-import { Visibility, VisibilityOff, Home } from '@mui/icons-material';
-import { LoginRequest } from '../interfaces';
-import { customerLogin, restaurantLogin, courierLogin } from '../services/authService';
+import { Visibility, VisibilityOff, Home, AdminPanelSettings } from '@mui/icons-material';
+import { LoginRequest, AdminLoginRequest } from '../interfaces';
+import { customerLogin, restaurantLogin, courierLogin, adminLogin } from '../services/authService';
 import { useAuth } from '../contexts/AuthContext';
 
 interface TabPanelProps {
@@ -72,6 +76,16 @@ const LoginPage: React.FC = () => {
     email: '',
     password: ''
   });
+
+  // Admin modal state
+  const [adminModalOpen, setAdminModalOpen] = useState(false);
+  const [adminFormData, setAdminFormData] = useState<AdminLoginRequest>({
+    email: '',
+    password: ''
+  });
+  const [adminShowPassword, setAdminShowPassword] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminError, setAdminError] = useState<string | null>(null);
   
   // UI state
   const [rememberMe, setRememberMe] = useState(false);
@@ -156,6 +170,63 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  const handleAdminModalOpen = () => {
+    setAdminModalOpen(true);
+    setAdminError(null);
+    setAdminFormData({ email: '', password: '' });
+  };
+
+  const handleAdminModalClose = () => {
+    setAdminModalOpen(false);
+  };
+
+  const handleAdminInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAdminFormData({
+      ...adminFormData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const toggleAdminPasswordVisibility = () => {
+    setAdminShowPassword(!adminShowPassword);
+  };
+
+  const handleAdminSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminLoading(true);
+    setAdminError(null);
+    
+    try {
+      const response = await adminLogin(adminFormData);
+      
+      // Update context with admin data
+      login(response, 'admin');
+      
+      // Close modal and redirect to admin dashboard
+      setAdminModalOpen(false);
+      navigate('/admin/dashboard');
+      
+    } catch (err: any) {
+      let message = 'Admin login failed. Please try again.';
+      
+      if (err.userMessage) {
+        message = err.userMessage;
+      } else if (err.response && err.response.data && err.response.data.message) {
+        message = err.response.data.message;
+      } else if (err.message) {
+        message = err.message;
+      }
+      
+      if (err.response && err.response.status === 401) {
+        message = 'Invalid email or password. Please try again.';
+      }
+      
+      setAdminError(message);
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -209,6 +280,108 @@ const LoginPage: React.FC = () => {
       >
         Return to Home
       </Button>
+
+      {/* Admin Button - moved to the right of Home button */}
+      <Button
+        startIcon={<AdminPanelSettings />}
+        variant="contained"
+        onClick={handleAdminModalOpen}
+        sx={{
+          position: 'absolute',
+          top: 20,
+          left: 220,
+          zIndex: 1000,
+          bgcolor: 'rgba(255, 255, 255, 0.9)',
+          color: 'primary.main',
+          '&:hover': {
+            bgcolor: 'white',
+            transform: 'translateY(-2px)'
+          },
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          fontWeight: 'bold',
+          py: 1,
+          px: 2,
+          transition: 'all 0.2s ease-in-out'
+        }}
+        aria-label="Admin Login"
+      >
+        Admin
+      </Button>
+
+      {/* Admin Login Modal */}
+      <Dialog open={adminModalOpen} onClose={handleAdminModalClose} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          <Typography variant="h5" component="div" fontWeight="bold" color="primary" align="center">
+            Admin Login
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Box component="form" onSubmit={handleAdminSubmit} noValidate sx={{ mt: 1 }}>
+            {adminError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {adminError}
+              </Alert>
+            )}
+            
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="adminEmail"
+              label="Email Address"
+              name="email"
+              autoComplete="email"
+              autoFocus
+              value={adminFormData.email}
+              onChange={handleAdminInputChange}
+            />
+            
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="password"
+              label="Password"
+              type={adminShowPassword ? 'text' : 'password'}
+              id="adminPassword"
+              autoComplete="current-password"
+              value={adminFormData.password}
+              onChange={handleAdminInputChange}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={toggleAdminPasswordVisibility}
+                      edge="end"
+                    >
+                      {adminShowPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button 
+            onClick={handleAdminModalClose}
+            variant="outlined"
+            color="primary"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleAdminSubmit}
+            variant="contained"
+            color="primary"
+            disabled={adminLoading}
+          >
+            {adminLoading ? <CircularProgress size={24} /> : 'Login'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Container maxWidth="sm" sx={{ position: 'relative', py: 4, zIndex: 1, mb: 10 }}>
         <Paper 
           elevation={6} 

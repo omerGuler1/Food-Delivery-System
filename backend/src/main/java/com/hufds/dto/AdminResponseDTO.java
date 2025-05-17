@@ -10,4 +10,5 @@ public class AdminResponseDTO {
     private Integer adminId;
     private String name;
     private String email;
+    private String phoneNumber;
 }
