@@ -6,6 +6,10 @@ export interface User {
   token: string;
 }
 
+export interface Admin extends User {
+  adminId: number;
+}
+
 export interface Address {
   addressId: number;
   street: string;
@@ -53,6 +57,11 @@ export interface Courier extends User {
 
 // Auth interfaces
 export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface AdminLoginRequest {
   email: string;
   password: string;
 }

@@ -1,12 +1,14 @@
 import api from './api';
 import { 
   LoginRequest, 
+  AdminLoginRequest,
   CustomerRegisterRequest,
   RestaurantRegisterRequest,
   CourierRegisterRequest,
   Customer,
   Restaurant, 
-  Courier
+  Courier,
+  Admin
 } from '../interfaces';
 
 // Customer authentication
@@ -100,6 +102,22 @@ export const courierRegister = async (data: CourierRegisterRequest) => {
     return response.data;
   } catch (error: any) {
     console.error('Courier register error:', error);
+    throw error;
+  }
+};
+
+// Admin authentication
+export const adminLogin = async (data: AdminLoginRequest) => {
+  try {
+    const response = await api.post<Admin>('/admin/login', data);
+    if (response.status === 200) {
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data));
+      localStorage.setItem('userType', 'admin');
+    }
+    return response.data;
+  } catch (error: any) {
+    console.error('Admin login error:', error);
     throw error;
   }
 };

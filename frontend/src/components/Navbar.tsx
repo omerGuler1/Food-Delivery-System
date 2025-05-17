@@ -29,6 +29,8 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 
@@ -88,6 +90,12 @@ const Navbar: React.FC = () => {
     pages = [
       { title: 'Dashboard', path: '/courier/dashboard', icon: <DashboardIcon sx={{ mr: 0.5 }} /> }
     ];
+  } else if (isAuthenticated && userType === 'admin') {
+    // For admin users, show dashboard and promotions
+    pages = [
+      { title: 'Dashboard', path: '/admin/dashboard', icon: <DashboardIcon sx={{ mr: 0.5 }} /> },
+      { title: 'Promotions & Coupons', path: '/admin/promotions', icon: <LocalOfferIcon sx={{ mr: 0.5 }} /> }
+    ];
   } else {
     // For other users, show regular navigation
     pages = [
@@ -105,6 +113,8 @@ const Navbar: React.FC = () => {
             navigate('/restaurant/profile');
           } else if (userType === 'courier') {
             navigate('/courier/profile');
+          } else if (userType === 'admin') {
+            navigate('/admin/profile');
           } else {
             navigate('/profile');
           }
