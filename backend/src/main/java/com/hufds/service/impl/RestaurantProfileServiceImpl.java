@@ -107,6 +107,7 @@ public class RestaurantProfileServiceImpl implements RestaurantProfileService {
                 .cuisineType(restaurant.getCuisineType())
                 .address(addressDTO)
                 .location(locationDTO)
+                .profileImageUrl(restaurant.getProfileImageUrl())
                 .build();
     }
 } 

@@ -1,11 +1,15 @@
 package com.hufds.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -13,6 +17,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Entity
 @Table(name = "menuitem")
+@JsonIgnoreProperties({"restaurant.menuItems", "restaurant.orders", "restaurant.businessHours", "restaurant.favoritedByCustomers", "orderItems.order"})
 public class MenuItem {
 
     @Id
@@ -22,7 +27,7 @@ public class MenuItem {
 
     @ManyToOne
     @JoinColumn(name = "restaurant_id", nullable = false)
-    @JsonBackReference
+    @JsonBackReference(value = "restaurant-menu-items")
     private Restaurant restaurant;
 
     @Column(length = 50)
@@ -51,6 +56,10 @@ public class MenuItem {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    @OneToMany(mappedBy = "menuItem")
+    @JsonManagedReference(value = "menu-item-orders")
+    private Set<OrderItem> orderItems = new HashSet<>();
 
     @PrePersist
     protected void onCreate() {

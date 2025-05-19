@@ -11,7 +11,6 @@ public class ProfileUpdateDTO {
     @Email(message = "Invalid email format")
     private String email;
 
-    @Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*()\\-_=+{};:,<.>?])(?=\\S+$).{8,}$",
-            message = "If phone number is provided, it must be in valid format")
+    @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format")
     private String phoneNumber;
 }

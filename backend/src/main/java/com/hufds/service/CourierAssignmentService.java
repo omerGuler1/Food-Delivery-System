@@ -1,13 +1,14 @@
 package com.hufds.service;
 
 import com.hufds.dto.CourierAssignmentDTO;
+import com.hufds.dto.CourierAssignmentRequestDTO;
 import com.hufds.dto.CourierOrderHistoryDTO;
 import com.hufds.entity.CourierAssignment;
 
 import java.util.List;
 
 public interface CourierAssignmentService {
-    CourierAssignment assignOrderToCourier(CourierAssignmentDTO assignmentDTO);
+    CourierAssignment assignOrderToCourier(CourierAssignmentRequestDTO assignmentDTO);
     CourierAssignment acceptDeliveryRequest(Integer assignmentId);
     CourierAssignment rejectDeliveryRequest(Integer assignmentId);
     CourierAssignment updateAssignmentStatus(Integer assignmentId, CourierAssignment.AssignmentStatus status);
@@ -21,7 +22,7 @@ public interface CourierAssignmentService {
      * @param courierId The courier ID
      * @return List of pending courier assignments
      */
-    List<CourierAssignment> getPendingRequestsForCourier(Integer courierId);
+    List<CourierAssignmentDTO> getPendingRequestsForCourier(Integer courierId);
     
     /**
      * Get all assignments for a courier regardless of status.
@@ -29,7 +30,7 @@ public interface CourierAssignmentService {
      * @param courierId The courier ID
      * @return List of all courier assignments
      */
-    List<CourierAssignment> getAllAssignmentsForCourier(Integer courierId);
+    List<CourierAssignmentDTO> getAllAssignmentsForCourier(Integer courierId);
     
     /**
      * Check if a delivery request has expired (older than 5 minutes).

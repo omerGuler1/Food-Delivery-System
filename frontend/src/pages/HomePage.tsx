@@ -242,7 +242,7 @@ const HomePage: React.FC = () => {
                     <CardMedia
                       component="img"
                       height="180"
-                      image={restaurantImages[restaurant.name] || restaurantImages.default}
+                      image={restaurant.profileImageUrl || restaurantImages[restaurant.name] || restaurantImages.default}
                       alt={restaurant.name}
                     />
                     <CardContent sx={{ flexGrow: 1 }}>

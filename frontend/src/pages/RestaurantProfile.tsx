@@ -100,7 +100,7 @@ const cuisineTypes = [
 ];
 
 interface BusinessHours {
-  id?: number;
+  hoursId?: number;
   dayOfWeek: string;
   openTime: string;
   closeTime: string;
@@ -118,7 +118,7 @@ const DAYS_OF_WEEK = [
 ];
 
 const RestaurantProfile: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, userType, setUser } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -157,11 +157,23 @@ const RestaurantProfile: React.FC = () => {
   const [openBusinessHoursDialog, setOpenBusinessHoursDialog] = useState(false);
   const [editingHoursId, setEditingHoursId] = useState<number | null>(null);
   
-  // Fetch profile data
+  // Combined loading state for both profile and business hours
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [isBusinessHoursLoading, setIsBusinessHoursLoading] = useState(true);
+  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
+  const [businessHoursLoadError, setBusinessHoursLoadError] = useState<string | null>(null);
+
+  // Single useEffect to handle all data loading
   useEffect(() => {
-    const fetchProfileData = async () => {
+    const loadAllData = async () => {
       try {
-        setLoading(true);
+        setIsProfileLoading(true);
+        setIsBusinessHoursLoading(true);
+        setProfileLoadError(null);
+        setBusinessHoursLoadError(null);
+
+        // Step 1: Load profile data
+        console.log('Loading restaurant profile data...');
         const data = await getRestaurantProfile();
         console.log('Profile data from API:', data);
         
@@ -184,6 +196,7 @@ const RestaurantProfile: React.FC = () => {
           restaurantId: userData.restaurantId
         };
         console.log('Profile data with ID:', profileWithId);
+        console.log('Profile image URL from API:', data.profileImageUrl);
         setProfileData(profileWithId);
         
         // Set form values from profile data
@@ -201,27 +214,20 @@ const RestaurantProfile: React.FC = () => {
         
         // Set profile image URL if it exists
         if (data.profileImageUrl) {
+          console.log('Setting profile image URL:', data.profileImageUrl);
           setProfileImageUrl(data.profileImageUrl);
+        } else {
+          console.log('No profile image URL in API response');
         }
         
-      } catch (err: any) {
-        console.error('Error fetching profile:', err);
-        setError(err.message || 'Failed to load profile data. Please try again later.');
-      } finally {
+        setIsProfileLoading(false);
         setLoading(false);
-      }
-    };
 
-    fetchProfileData();
-  }, []);
-
-  // Update the fetch URL in useEffect
-  useEffect(() => {
-    const fetchBusinessHours = async () => {
-      try {
-        console.log('Fetching business hours for restaurant:', profileData?.restaurantId);
-        const url = `http://localhost:8080/api/restaurants/${profileData?.restaurantId}/business-hours`;
-        console.log('Fetch URL:', url);
+        // Step 2: Load business hours only after profile is loaded
+        if (profileWithId.restaurantId) {
+          try {
+            const url = `http://localhost:8080/api/restaurants/${profileWithId.restaurantId}/business-hours`;
+            console.log('Fetching business hours from:', url);
         
         const response = await fetch(url, {
           headers: {
@@ -230,9 +236,9 @@ const RestaurantProfile: React.FC = () => {
         });
         
         if (response.ok) {
-          const data = await response.json();
-          console.log('Fetched business hours:', data);
-          setBusinessHours(data);
+              const hoursData = await response.json();
+              console.log('Fetched business hours:', hoursData);
+              setBusinessHours(hoursData);
         } else {
           const errorData = await response.json().catch(() => null);
           console.error('Failed to fetch business hours:', response.status, errorData);
@@ -240,17 +246,21 @@ const RestaurantProfile: React.FC = () => {
         }
       } catch (err) {
         console.error('Error fetching business hours:', err);
-        setError('Failed to load business hours');
+            setBusinessHoursLoadError(err instanceof Error ? err.message : 'Failed to load business hours');
+          } finally {
+            setIsBusinessHoursLoading(false);
+          }
+        }
+      } catch (error: any) {
+        console.error('Error loading profile data:', error);
+        setProfileLoadError(error.message || 'Failed to load profile data');
+        setIsProfileLoading(false);
+        setLoading(false);
       }
     };
 
-    if (profileData?.restaurantId) {
-      console.log('Profile data loaded, restaurant ID:', profileData.restaurantId);
-      fetchBusinessHours();
-    } else {
-      console.log('No restaurant ID available yet');
-    }
-  }, [profileData?.restaurantId]);
+    loadAllData();
+  }, []); // Only run once on component mount
 
   // Handlers
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -292,9 +302,10 @@ const RestaurantProfile: React.FC = () => {
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[DEBUG] handleProfileSubmit called');
     try {
       setLoading(true);
-      
+      console.log('[DEBUG] setLoading(true)');
       // Always include the required fields
       const updateData = {
         name: formValues.name,
@@ -312,17 +323,20 @@ const RestaurantProfile: React.FC = () => {
           }
         })
       };
-      
+      console.log('[DEBUG] updateData:', updateData);
       const updatedProfile = await updateRestaurantProfile(updateData);
+      console.log('[DEBUG] updateRestaurantProfile response:', updatedProfile);
       setProfileData(updatedProfile as Restaurant);
       setEditMode(false);
       setSuccessMessage(activeTab === 1 ? 'Address updated successfully' : 'Profile updated successfully');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
+      console.error('[DEBUG] Error in handleProfileSubmit:', err);
       setError(err.message || 'Failed to update profile. Please try again.');
       setTimeout(() => setError(null), 3000);
     } finally {
       setLoading(false);
+      console.log('[DEBUG] setLoading(false)');
     }
   };
 
@@ -366,35 +380,31 @@ const RestaurantProfile: React.FC = () => {
   };
 
   const handleUploadProfileImage = async () => {
-    if (!profileImage) return;
-    
+    if (!profileImage || !profileData?.restaurantId) return;
     try {
       setLoading(true);
+      console.log('Uploading profile image for restaurant:', profileData.restaurantId);
+      const updated = await uploadProfileImage(profileData.restaurantId, profileImage);
+      console.log('Profile image upload response:', updated);
+      console.log('New profile image URL:', updated.profileImageUrl);
       
-      // Create a FormData object to send the file
-      const formData = new FormData();
-      formData.append('profileImage', profileImage);
-      
-      // Upload the image using the API service
-      const response = await uploadProfileImage(formData);
-      
-      // Update profile image URL with the returned URL from the server
-      setProfileImageUrl(response.imageUrl);
-      
-      // Update local state
-      if (profileData) {
-        setProfileData({
-          ...profileData,
-          profileImageUrl: response.imageUrl
-        });
-      }
+      setProfileImageUrl(updated.profileImageUrl || null);
+      setProfileData(prev => {
+        const newData = prev ? { ...prev, profileImageUrl: updated.profileImageUrl } : null;
+        // Update global user context and localStorage
+        if (userType === 'restaurant' && setUser) setUser(newData);
+        if (userType === 'restaurant') {
+          localStorage.setItem('user', JSON.stringify({ ...user, profileImageUrl: updated.profileImageUrl }));
+        }
+        console.log('Updated profile data:', newData);
+        return newData;
+      });
       
       setSuccessMessage('Profile image uploaded successfully');
       setTimeout(() => setSuccessMessage(null), 3000);
-      
-      // Close the dialog
       setOpenImageDialog(false);
     } catch (err: any) {
+      console.error('Error uploading profile image:', err);
       setError(err.message || 'Failed to upload profile image. Please try again.');
       setTimeout(() => setError(null), 3000);
     } finally {
@@ -408,7 +418,7 @@ const RestaurantProfile: React.FC = () => {
       setOpenTime(hours.openTime);
       setCloseTime(hours.closeTime);
       setIsClosed(hours.isClosed);
-      setEditingHoursId(hours.id ?? null);
+      setEditingHoursId(hours.hoursId ?? null);
     } else {
       setSelectedDay('');
       setOpenTime('');
@@ -438,8 +448,9 @@ const RestaurantProfile: React.FC = () => {
         throw new Error('Please select a day of the week');
       }
 
-      if (!openTime || !closeTime) {
-        throw new Error('Please select both open and close times');
+      // Only validate open/close times if the restaurant is not closed
+      if (!isClosed && (!openTime || !closeTime)) {
+        throw new Error('Please select both open and close times when the restaurant is open');
       }
 
       // Format times to match LocalTime format (HH:mm:ss)
@@ -449,9 +460,9 @@ const RestaurantProfile: React.FC = () => {
       };
 
       const hoursData = {
-        dayOfWeek: selectedDay,
-        openTime: formatTime(openTime),
-        closeTime: formatTime(closeTime),
+        dayOfWeek: selectedDay.toUpperCase(),
+        openTime: isClosed ? null : formatTime(openTime),
+        closeTime: isClosed ? null : formatTime(closeTime),
         isClosed
       };
 
@@ -485,7 +496,7 @@ const RestaurantProfile: React.FC = () => {
       
       setBusinessHours(prev => {
         if (editingHoursId) {
-          return prev.map(h => h.id === editingHoursId ? updatedHours : h);
+          return prev.map(h => h.hoursId === editingHoursId ? updatedHours : h);
         }
         return [...prev, updatedHours];
       });
@@ -510,7 +521,7 @@ const RestaurantProfile: React.FC = () => {
       );
 
       if (response.ok) {
-        setBusinessHours(prev => prev.filter(h => h.id !== hoursId));
+        setBusinessHours(prev => prev.filter(h => h.hoursId !== hoursId));
         setSuccessMessage('Business hours deleted successfully');
       } else {
         throw new Error('Failed to delete business hours');
@@ -520,7 +531,7 @@ const RestaurantProfile: React.FC = () => {
     }
   };
 
-  if (loading && !profileData) {
+  if (isProfileLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
         <CircularProgress />
@@ -546,6 +557,12 @@ const RestaurantProfile: React.FC = () => {
         </Button>
       </Box>
 
+      {profileLoadError && (
+        <Alert severity="error" sx={{ mb: 2 }}>{profileLoadError}</Alert>
+      )}
+      {businessHoursLoadError && (
+        <Alert severity="error" sx={{ mb: 2 }}>{businessHoursLoadError}</Alert>
+      )}
       {successMessage && (
         <Alert severity="success" sx={{ mb: 2 }}>{successMessage}</Alert>
       )}
@@ -860,11 +877,17 @@ const RestaurantProfile: React.FC = () => {
                   color="primary"
                   startIcon={<AddIcon />}
                   onClick={() => handleOpenBusinessHoursDialog()}
+                  disabled={isBusinessHoursLoading || !profileData?.restaurantId}
                 >
                   Add Hours
                 </Button>
               </Box>
 
+              {isBusinessHoursLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                  <CircularProgress />
+                </Box>
+              ) : (
               <TableContainer component={Paper} sx={{ mt: 2 }}>
                 <Table>
                   <TableHead>
@@ -878,7 +901,7 @@ const RestaurantProfile: React.FC = () => {
                   </TableHead>
                   <TableBody>
                     {businessHours.map((hours) => (
-                      <TableRow key={hours.id}>
+                      <TableRow key={hours.hoursId}>
                         <TableCell>{hours.dayOfWeek}</TableCell>
                         <TableCell>{hours.openTime}</TableCell>
                         <TableCell>{hours.closeTime}</TableCell>
@@ -893,7 +916,7 @@ const RestaurantProfile: React.FC = () => {
                           </IconButton>
                           <IconButton
                             size="small"
-                            onClick={() => hours.id && handleDeleteBusinessHours(hours.id)}
+                            onClick={() => hours.hoursId && handleDeleteBusinessHours(hours.hoursId)}
                           >
                             <DeleteIcon />
                           </IconButton>
@@ -903,6 +926,7 @@ const RestaurantProfile: React.FC = () => {
                   </TableBody>
                 </Table>
               </TableContainer>
+              )}
             </TabPanel>
             
             {/* Restaurant Details Tab */}
@@ -987,6 +1011,25 @@ const RestaurantProfile: React.FC = () => {
               </Select>
             </FormControl>
 
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isClosed}
+                  onChange={(e) => {
+                    setIsClosed(e.target.checked);
+                    // Clear times when switching to closed
+                    if (e.target.checked) {
+                      setOpenTime('');
+                      setCloseTime('');
+                    }
+                  }}
+                />
+              }
+              label="Closed on this day"
+            />
+
+            {!isClosed && (
+              <>
             <TextField
               label="Open Time"
               type="time"
@@ -995,6 +1038,7 @@ const RestaurantProfile: React.FC = () => {
               InputLabelProps={{ shrink: true }}
               inputProps={{ step: 300 }}
               fullWidth
+                  required
             />
 
             <TextField
@@ -1005,17 +1049,10 @@ const RestaurantProfile: React.FC = () => {
               InputLabelProps={{ shrink: true }}
               inputProps={{ step: 300 }}
               fullWidth
-            />
-
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={isClosed}
-                  onChange={(e) => setIsClosed(e.target.checked)}
+                  required
                 />
-              }
-              label="Closed on this day"
-            />
+              </>
+            )}
           </Box>
         </DialogContent>
         <DialogActions>

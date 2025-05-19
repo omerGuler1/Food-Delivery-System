@@ -19,7 +19,16 @@ export const getRestaurantProfile = async (): Promise<Restaurant> => {
 };
 
 export const getCourierProfile = async (): Promise<Courier> => {
-  const response = await api.get('/profile/courier');
+  const userStr = localStorage.getItem('user');
+  if (!userStr) {
+    throw new Error('No user data found');
+  }
+  const userData = JSON.parse(userStr);
+  if (!userData.courierId) {
+    throw new Error('No courier ID found in user data');
+  }
+  
+  const response = await api.get(`/courier/profile/${userData.courierId}`);
   return response.data;
 };
 
@@ -29,8 +38,34 @@ export const updateRestaurantProfile = async (profileData: Partial<Restaurant>):
   return response.data;
 };
 
+// Update courier profile
+export const updateCourierProfile = async (profileData: Partial<Courier>): Promise<Courier> => {
+  const userStr = localStorage.getItem('user');
+  if (!userStr) {
+    throw new Error('No user data found');
+  }
+  const userData = JSON.parse(userStr);
+  if (!userData.courierId) {
+    throw new Error('No courier ID found in user data');
+  }
+  
+  const response = await api.put(`/courier/profile/${userData.courierId}`, profileData);
+  return response.data;
+};
+
 // Update user profile
 export const updateProfile = async (profileData: Partial<Customer | Restaurant | Courier>): Promise<Customer | Restaurant | Courier> => {
+  const userStr = localStorage.getItem('user');
+  if (!userStr) {
+    throw new Error('No user data found');
+  }
+  const userData = JSON.parse(userStr);
+  const userType = localStorage.getItem('userType');
+
+  if (userType === 'courier') {
+    return updateCourierProfile(profileData as Partial<Courier>);
+  }
+  
   const response = await api.put('/profile', profileData);
   return response.data;
 };
@@ -92,11 +127,20 @@ export const deleteAddress = async (addressId: number): Promise<any> => {
 };
 
 // Upload profile image
-export const uploadProfileImage = async (formData: FormData): Promise<{ imageUrl: string }> => {
-  const response = await api.post('/profile/image', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
+export const uploadProfileImage = async (
+  restaurantId: number,
+  image: File
+): Promise<Restaurant> => {
+  const formData = new FormData();
+  formData.append('image', image);
+  const response = await api.post<Restaurant>(
+    `/restaurants/${restaurantId}/profile-image`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     }
-  });
+  );
   return response.data;
 }; 

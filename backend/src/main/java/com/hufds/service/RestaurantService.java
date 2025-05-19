@@ -3,6 +3,7 @@ package com.hufds.service;
 import com.hufds.entity.BusinessHours;
 import com.hufds.entity.Courier;
 import com.hufds.entity.Restaurant;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -52,4 +53,6 @@ public interface RestaurantService {
      * @return The updated order
      */
     Object assignCourierToOrder(Integer restaurantId, Integer orderId, Integer courierId);
+
+    Restaurant uploadProfileImage(Integer restaurantId, MultipartFile image);
 } 

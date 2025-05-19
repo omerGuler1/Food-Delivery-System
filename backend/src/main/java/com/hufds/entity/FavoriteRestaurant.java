@@ -1,6 +1,7 @@
 package com.hufds.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 @Table(name = "favoriterestaurant", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"customer_id", "restaurant_id"})
 })
+@JsonIgnoreProperties({"restaurant.menuItems", "restaurant.orders", "restaurant.businessHours", "restaurant.favoritedByCustomers", "customer.orders", "customer.payments", "customer.reviews", "customer.favoriteRestaurants"})
 public class FavoriteRestaurant {
 
     @Id
@@ -25,12 +27,12 @@ public class FavoriteRestaurant {
     @ManyToOne
     @JoinColumn(name = "restaurant_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_favorite_restaurant"))
-    @JsonBackReference
+    @JsonBackReference(value = "favorite-restaurant")
     private Restaurant restaurant;
 
     @ManyToOne
     @JoinColumn(name = "customer_id", nullable = false)
-    @JsonBackReference
+    @JsonBackReference(value = "favorite-customer")
     private Customer customer;
 
 

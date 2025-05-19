@@ -2,6 +2,7 @@ package com.hufds.controller;
 
 import com.hufds.dto.CourierOrderHistoryDTO;
 import com.hufds.entity.CourierAssignment;
+import com.hufds.dto.CourierAssignmentDTO;
 import com.hufds.service.CourierAssignmentService;
 import com.hufds.service.JwtService;
 import com.hufds.exception.CustomException;
@@ -203,13 +204,13 @@ public class CourierAssignmentController {
      * @return List of pending courier assignments
      */
     @GetMapping("/pending-requests")
-    public ResponseEntity<List<CourierAssignment>> getPendingDeliveryRequests(HttpServletRequest request) {
+    public ResponseEntity<List<CourierAssignmentDTO>> getPendingDeliveryRequests(HttpServletRequest request) {
         validateUserRole("courier");
         String token = extractToken(request);
         Integer courierId = jwtService.extractUserId(token);
         
         log.info("Fetching pending delivery requests for courier: {}", courierId);
-        List<CourierAssignment> pendingRequests = assignmentService.getPendingRequestsForCourier(courierId);
+        List<CourierAssignmentDTO> pendingRequests = assignmentService.getPendingRequestsForCourier(courierId);
         log.info("Found {} pending requests for courier {}", pendingRequests.size(), courierId);
         
         return ResponseEntity.ok(pendingRequests);
@@ -224,7 +225,7 @@ public class CourierAssignmentController {
      * @return List of courier assignments for the courier
      */
     @GetMapping("/courier/{courierId}")
-    public ResponseEntity<List<CourierAssignment>> getAssignmentsForCourier(
+    public ResponseEntity<List<CourierAssignmentDTO>> getAssignmentsForCourier(
             @PathVariable Integer courierId,
             HttpServletRequest request) {
         
@@ -238,7 +239,7 @@ public class CourierAssignmentController {
         }
         
         log.info("Fetching all assignments for courier: {}", courierId);
-        List<CourierAssignment> assignments = assignmentService.getAllAssignmentsForCourier(courierId);
+        List<CourierAssignmentDTO> assignments = assignmentService.getAllAssignmentsForCourier(courierId);
         log.info("Found {} assignments for courier {}", assignments.size(), courierId);
         
         return ResponseEntity.ok(assignments);

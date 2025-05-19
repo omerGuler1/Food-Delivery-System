@@ -55,7 +55,8 @@ import {
   ActiveDeliveryOrder, 
   PendingDeliveryRequest, 
   CourierOrderHistoryDTO,
-  CourierAssignment 
+  CourierAssignment,
+  Courier
 } from '../interfaces';
 import { formatDate, formatDateTime } from '../utils/dateUtils';
 
@@ -87,12 +88,13 @@ function TabPanel(props: TabPanelProps) {
 
 const CourierDashboard: React.FC = () => {
   const { user } = useAuth();
+  const courierUser = user as Courier; // Type assertion since we know this is a courier dashboard
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [isAvailable, setIsAvailable] = useState(true);
+  const [isAvailable, setIsAvailable] = useState<boolean>(false);
   const [activeDeliveries, setActiveDeliveries] = useState<ActiveDeliveryOrder[]>([]);
   const [availableOrders, setAvailableOrders] = useState<PendingDeliveryRequest[]>([]);
   const [pastDeliveries, setPastDeliveries] = useState<CourierOrderHistoryDTO[]>([]);
@@ -103,14 +105,13 @@ const CourierDashboard: React.FC = () => {
   const itemsPerPage = 10;
 
   // Toggle courier availability
-  const toggleAvailability = async () => {
+  const handleToggleAvailability = async () => {
     try {
-      if (!user || !('courierId' in user)) {
-        setError('Courier ID not found');
-        return;
+      if (!courierUser?.courierId) {
+        throw new Error('Courier ID not available');
       }
 
-      const courierId = user.courierId as number;
+      const courierId = courierUser.courierId;
       // Toggle the status - if currently available, set to unavailable and vice versa
       const newStatus = isAvailable ? 'UNAVAILABLE' : 'AVAILABLE';
       
@@ -119,17 +120,11 @@ const CourierDashboard: React.FC = () => {
       
       // Update the local state
       setIsAvailable(!isAvailable);
-      setSuccessMessage(`You are now ${!isAvailable ? 'available' : 'unavailable'} for deliveries`);
-      
-      // Refresh pending requests if courier becomes available
-      if (!isAvailable) {
-        fetchAvailableOrders();
-      }
-      
+      setSuccessMessage(`Status updated to ${newStatus.toLowerCase()}`);
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error: any) {
-      console.error('Error toggling availability:', error);
-      setError(error.response?.data?.message || 'Failed to update availability');
+      console.error('Error updating availability:', error);
+      setError(error.message || 'Failed to update availability status');
       setTimeout(() => setError(null), 3000);
     }
   };
@@ -298,21 +293,17 @@ const CourierDashboard: React.FC = () => {
   // Fetch active deliveries
   const fetchActiveDeliveries = async () => {
     try {
-      setLoading(true);
-      
-      if (!user || !('courierId' in user)) {
-        setError('Courier ID not found');
-        return;
+      if (!courierUser?.courierId) {
+        throw new Error('Courier ID not available');
       }
       
-      const courierId = user.courierId as number;
+      const courierId = courierUser.courierId;
       const deliveries = await getActiveDeliveries(courierId);
       setActiveDeliveries(deliveries);
     } catch (error: any) {
       console.error('Error fetching active deliveries:', error);
-      setError(error.response?.data?.message || 'Failed to load active deliveries');
-    } finally {
-      setLoading(false);
+      setError(error.message || 'Failed to fetch active deliveries');
+      setTimeout(() => setError(null), 3000);
     }
   };
 
@@ -322,14 +313,30 @@ const CourierDashboard: React.FC = () => {
       setLoading(true);
       console.log('Courier availability status:', isAvailable);
       const pendingRequests = await getPendingDeliveryRequests();
-      console.log('Pending requests before processing:', pendingRequests);
+      console.log('DEBUG: pendingRequests raw:', pendingRequests);
+      pendingRequests.forEach((req: PendingDeliveryRequest, idx: number) => {
+        console.log(`DEBUG: req[${idx}]`, req, 'order:', req.order, 'typeof order:', typeof req.order);
+      });
       
-      // Ensure each item has a valid order object
-      const validRequests = pendingRequests.filter((req: PendingDeliveryRequest) => req && req.order);
+      // More detailed validation of each request
+      const validRequests = pendingRequests.filter((req: PendingDeliveryRequest) => {
+        if (!req) {
+          console.warn('Request is null:', req);
+          return false;
+        }
+        if (!req.order || typeof req.order !== 'object') {
+          console.warn('Order is missing or not an object:', req, req.order);
+          return false;
+        }
+        return true;
+      });
       
       if (validRequests.length !== pendingRequests.length) {
-        console.warn('Some pending requests had invalid order data and were filtered out:', 
-          pendingRequests.length - validRequests.length);
+        console.warn('Filtered out invalid requests:', {
+          total: pendingRequests.length,
+          valid: validRequests.length,
+          invalid: pendingRequests.length - validRequests.length
+        });
       }
       
       console.log('Setting available orders with valid requests:', validRequests);
@@ -337,7 +344,6 @@ const CourierDashboard: React.FC = () => {
     } catch (error: any) {
       console.error('Error fetching available orders:', error);
       setError(error.response?.data?.message || 'Failed to load available orders');
-      // Set empty array on error to avoid rendering issues
       setAvailableOrders([]);
     } finally {
       setLoading(false);
@@ -361,30 +367,28 @@ const CourierDashboard: React.FC = () => {
   // Fetch courier profile to get current status
   const fetchCourierProfile = useCallback(async () => {
     try {
-      if (!user || !('courierId' in user)) {
-        setError('Courier ID not found');
-        return;
+      if (!courierUser?.courierId) {
+        throw new Error('Courier ID not available');
       }
 
-      const courierId = user.courierId as number;
+      const courierId = courierUser.courierId;
       const profile = await getCourierProfile(courierId);
       
-      // Update availability state based on profile
-      console.log('Setting courier availability from profile:', profile.status);
+      // Update availability state based on profile status
       setIsAvailable(profile.status === 'AVAILABLE');
     } catch (error: any) {
       console.error('Error fetching courier profile:', error);
-      setError(error.response?.data?.message || 'Failed to load courier profile');
+      setError(error.message || 'Failed to fetch courier profile');
       setTimeout(() => setError(null), 3000);
     }
-  }, [user, setError, setIsAvailable]);
+  }, [courierUser]);
 
   // Fetch courier profile when component mounts
   useEffect(() => {
-    if (user && 'courierId' in user) {
+    if (courierUser && 'courierId' in courierUser) {
       fetchCourierProfile();
     }
-  }, [user, fetchCourierProfile]);
+  }, [courierUser, fetchCourierProfile]);
 
   // Load data based on active tab
   useEffect(() => {
@@ -454,20 +458,12 @@ const CourierDashboard: React.FC = () => {
               <Typography sx={{ mr: 1, fontWeight: 'medium' }}>
                 {isAvailable ? 'Available' : 'Unavailable'}
               </Typography>
-              <Tooltip title={isAvailable ? "Set as unavailable" : "Set as available"}>
+              <Tooltip title={isAvailable ? "Set as Unavailable" : "Set as Available"}>
                 <Switch
                   checked={isAvailable}
-                  onChange={toggleAvailability}
-                  color="default"
-                  sx={{
-                    '& .MuiSwitch-switchBase.Mui-checked': {
-                      color: '#fff',
-                    },
-                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                      backgroundColor: '#fff',
-                      opacity: 0.5
-                    },
-                  }}
+                  onChange={handleToggleAvailability}
+                  color="primary"
+                  inputProps={{ 'aria-label': 'Toggle availability' }}
                 />
               </Tooltip>
             </Box>
@@ -576,7 +572,12 @@ const CourierDashboard: React.FC = () => {
                         <TableCell>#{delivery.orderId}</TableCell>
                         <TableCell>{delivery.restaurant ? delivery.restaurant.name : 'Unknown'}</TableCell>
                         <TableCell>{delivery.customer ? delivery.customer.name : 'Unknown'}</TableCell>
-                        <TableCell>{delivery.address.fullAddress || `${delivery.address.street}, ${delivery.address.city}`}</TableCell>
+                        <TableCell>
+                          {delivery.address ? 
+                            (delivery.address.fullAddress || 
+                             `${delivery.address.street || ''}, ${delivery.address.city || ''}`) 
+                            : 'Unknown'}
+                        </TableCell>
                         <TableCell>{formatDateTime(delivery.createdAt)}</TableCell>
                         <TableCell>
                           <Chip 
@@ -699,8 +700,12 @@ const CourierDashboard: React.FC = () => {
                         <TableCell>#{assignment.assignmentId}</TableCell>
                         <TableCell>#{assignment.order.orderId}</TableCell>
                         <TableCell>{assignment.order.restaurant?.name || 'Unknown'}</TableCell>
-                        <TableCell>{assignment.order.address?.fullAddress || 
-                          (assignment.order.address ? `${assignment.order.address.street || ''}, ${assignment.order.address.city || ''}` : 'Unknown')}</TableCell>
+                        <TableCell>
+                          {assignment.order?.address ? 
+                            (assignment.order.address.fullAddress || 
+                             `${assignment.order.address.street || ''}, ${assignment.order.address.city || ''}`) 
+                            : 'Unknown'}
+                        </TableCell>
                         <TableCell>{assignment.order.createdAt ? formatDateTime(assignment.order.createdAt) : 'Unknown'}</TableCell>
                         <TableCell>${assignment.order.totalPrice ? assignment.order.totalPrice.toFixed(2) : '0.00'}</TableCell>
                         <TableCell align="center">

@@ -165,7 +165,7 @@ const RestaurantsPage: React.FC = () => {
                 <CardMedia
                   component="img"
                   height="160"
-                  image={getRestaurantImage(restaurant.name)}
+                  image={restaurant.profileImageUrl || getRestaurantImage(restaurant.name)}
                   alt={restaurant.name}
                 />
                 <CardContent sx={{ flexGrow: 1 }}>
