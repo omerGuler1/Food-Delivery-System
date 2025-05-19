@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Entity
 @Table(name = "restaurant")
+@JsonIgnoreProperties({"menuItems.orderItems", "orders.customer", "orders.courier", "orders.address", "favoritedByCustomers.customer"})
 public class Restaurant {
 
     @Id
@@ -81,19 +83,26 @@ public class Restaurant {
 
     // Relationships
     @OneToMany(mappedBy = "restaurant")
-    @JsonManagedReference
+    @JsonManagedReference(value = "restaurant-menu-items")
     private Set<MenuItem> menuItems;
 
     @OneToMany(mappedBy = "restaurant")
-    @JsonManagedReference
+    @JsonManagedReference(value = "restaurant-business-hours")
     private Set<BusinessHours> businessHours;
 
     @OneToMany(mappedBy = "restaurant")
-    @JsonBackReference
+    @JsonManagedReference(value = "restaurant-orders")
     private Set<Order> orders;
 
     @OneToMany(mappedBy = "restaurant")
-    @JsonManagedReference
+    @JsonManagedReference(value = "favorite-restaurant")
     private Set<FavoriteRestaurant> favoritedByCustomers;
 
+    public String getProfileImageUrl() {
+        return profileImageUrl;
+    }
+
+    public void setProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
+    }
 }

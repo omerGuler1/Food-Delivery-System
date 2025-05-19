@@ -4,7 +4,7 @@ import com.hufds.dto.ProfileUpdateDTO;
 import com.hufds.dto.PasswordUpdateDTO;
 import com.hufds.dto.AddressDTO;
 import com.hufds.dto.AccountDeletionDTO;
-import com.hufds.service.IProfileService;
+import com.hufds.service.ProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class ProfileController {
 
-    private final IProfileService profileService;
+    private final ProfileService profileService;
 
     @GetMapping
     public ResponseEntity<?> getProfile() {

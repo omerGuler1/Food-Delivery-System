@@ -147,9 +147,9 @@ const ProfilePage: React.FC = () => {
         const data = await getProfile();
         setProfileData(data);
         setFormValues({
-          name: data?.name || '',
-          email: data?.email || '',
-          phoneNumber: data?.phoneNumber || '',
+          name: data.name,
+          email: data.email,
+          phoneNumber: data.phoneNumber,
           cuisineType: 'cuisineType' in data ? data.cuisineType || '' : '',
           vehicleType: 'vehicleType' in data ? data.vehicleType || '' : '',
           isAvailable: 'isAvailable' in data ? data.isAvailable || false : false
@@ -224,20 +224,17 @@ const ProfilePage: React.FC = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      // Always send all required fields for customer
-      const updateData: any = {
+      const updatedProfile = await updateProfile({
         name: formValues.name,
         email: formValues.email,
         phoneNumber: formValues.phoneNumber,
-      };
-      if (userType === 'restaurant') {
-        updateData.cuisineType = formValues.cuisineType;
-      }
-      if (userType === 'courier') {
-        updateData.vehicleType = formValues.vehicleType;
-        updateData.isAvailable = formValues.isAvailable;
-      }
-      const updatedProfile = await updateProfile(updateData);
+        ...(userType === 'restaurant' && { cuisineType: formValues.cuisineType }),
+        ...(userType === 'courier' && { 
+          vehicleType: formValues.vehicleType,
+          isAvailable: formValues.isAvailable
+        })
+      });
+
       setProfileData(updatedProfile);
       setEditMode(false);
       setSuccessMessage('Profile updated successfully');
@@ -466,15 +463,15 @@ const ProfilePage: React.FC = () => {
                 zIndex: 1
               }}
             >
-              {profileData?.name ? profileData.name.charAt(0).toUpperCase() : ''}
+              {profileData.name.charAt(0).toUpperCase()}
             </Avatar>
             
             <Typography variant="h5" sx={{ mb: 1 }}>
-              {profileData?.name || ''}
+              {profileData.name}
             </Typography>
             
             <Typography variant="body2" sx={{ mb: 3, textAlign: 'center' }}>
-              {profileData?.email || ''}
+              {profileData.email}
             </Typography>
             
             <Box sx={{ width: '100%', mb: 2 }}>

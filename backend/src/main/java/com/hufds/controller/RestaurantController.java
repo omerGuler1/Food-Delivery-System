@@ -9,10 +9,13 @@ import com.hufds.service.RestaurantService;
 import com.hufds.service.CourierAssignmentService;
 import com.hufds.service.OrderService;
 import com.hufds.dto.CourierAssignmentDTO;
+import com.hufds.dto.CourierAssignmentRequestDTO;
 import com.hufds.dto.OrderResponseDTO;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -68,9 +71,10 @@ public class RestaurantController {
             @PathVariable Integer restaurantId,
             @PathVariable Integer orderId,
             @PathVariable Integer courierId) {
-        CourierAssignmentDTO assignmentDTO = new CourierAssignmentDTO();
-        assignmentDTO.setOrderId(orderId);
-        assignmentDTO.setCourierId(courierId);
+        CourierAssignmentRequestDTO assignmentDTO = CourierAssignmentRequestDTO.builder()
+            .orderId(orderId)
+            .courierId(courierId)
+            .build();
         return ResponseEntity.ok(courierAssignmentService.assignOrderToCourier(assignmentDTO));
     }
 
@@ -92,5 +96,12 @@ public class RestaurantController {
                 .collect(Collectors.toList());
                 
         return ResponseEntity.ok(orderDTOs);
+    }
+
+    @PostMapping(value = "/{restaurantId}/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Restaurant> uploadProfileImage(
+            @PathVariable Integer restaurantId,
+            @RequestParam("image") MultipartFile image) {
+        return ResponseEntity.ok(restaurantService.uploadProfileImage(restaurantId, image));
     }
 } 

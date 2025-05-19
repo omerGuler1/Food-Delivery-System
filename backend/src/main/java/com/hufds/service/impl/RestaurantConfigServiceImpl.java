@@ -29,15 +29,6 @@ public class RestaurantConfigServiceImpl implements RestaurantConfigService {
     public BusinessHours addBusinessHours(Integer restaurantId, BusinessHoursDTO businessHoursDTO) {
         Restaurant restaurant = getRestaurantById(restaurantId);
         
-        // Validate that we don't already have hours for this day
-        boolean existingHours = businessHoursRepository.findByRestaurantRestaurantId(restaurantId)
-                .stream()
-                .anyMatch(hours -> hours.getDayOfWeek().equalsIgnoreCase(businessHoursDTO.getDayOfWeek()));
-        
-        if (existingHours) {
-            throw new CustomException("Business hours already exist for this day", HttpStatus.CONFLICT);
-        }
-        
         BusinessHours businessHours = new BusinessHours();
         updateBusinessHoursFromDTO(businessHours, businessHoursDTO);
         businessHours.setRestaurant(restaurant);
@@ -49,19 +40,6 @@ public class RestaurantConfigServiceImpl implements RestaurantConfigService {
     @Transactional
     public BusinessHours updateBusinessHours(Integer hoursId, BusinessHoursDTO businessHoursDTO, Integer restaurantId) {
         BusinessHours businessHours = getBusinessHoursAndValidateRestaurant(hoursId, restaurantId);
-        
-        // Check if we're changing the day and if that day already has hours
-        if (!businessHours.getDayOfWeek().equalsIgnoreCase(businessHoursDTO.getDayOfWeek())) {
-            boolean existingHours = businessHoursRepository.findByRestaurantRestaurantId(restaurantId)
-                    .stream()
-                    .filter(hours -> !hours.getHoursId().equals(hoursId)) // Exclude current hours
-                    .anyMatch(hours -> hours.getDayOfWeek().equalsIgnoreCase(businessHoursDTO.getDayOfWeek()));
-            
-            if (existingHours) {
-                throw new CustomException("Business hours already exist for this day", HttpStatus.CONFLICT);
-            }
-        }
-        
         updateBusinessHoursFromDTO(businessHours, businessHoursDTO);
         return businessHoursRepository.save(businessHours);
     }
@@ -132,22 +110,9 @@ public class RestaurantConfigServiceImpl implements RestaurantConfigService {
     }
 
     private void updateBusinessHoursFromDTO(BusinessHours businessHours, BusinessHoursDTO dto) {
-        businessHours.setDayOfWeek(dto.getDayOfWeek().toUpperCase());
-        
-        if (dto.getIsClosed()) {
-            businessHours.setOpenTime(null);
-            businessHours.setCloseTime(null);
-        } else {
-            if (dto.getOpenTime() == null || dto.getCloseTime() == null) {
-                throw new CustomException("Open and close times are required when not closed", HttpStatus.BAD_REQUEST);
-            }
-            if (dto.getOpenTime().isAfter(dto.getCloseTime())) {
-                throw new CustomException("Open time must be before close time", HttpStatus.BAD_REQUEST);
-            }
-            businessHours.setOpenTime(dto.getOpenTime());
-            businessHours.setCloseTime(dto.getCloseTime());
-        }
-        
+        businessHours.setDayOfWeek(dto.getDayOfWeek());
+        businessHours.setOpenTime(dto.getOpenTime());
+        businessHours.setCloseTime(dto.getCloseTime());
         businessHours.setIsClosed(dto.getIsClosed());
     }
 } 

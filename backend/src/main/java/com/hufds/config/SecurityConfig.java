@@ -52,6 +52,8 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Allow access to uploads directory
+                        .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/customer/auth/**").permitAll()
                         .requestMatchers("/api/restaurant/auth/**").permitAll()
@@ -61,8 +63,6 @@ public class SecurityConfig {
                         // Public endpoints for restaurant data must be before role-restricted endpoints
                         .requestMatchers("/api/restaurant/menu-items/public/**").permitAll()
                         .requestMatchers("/api/restaurants/**").permitAll()
-                        // Allow public access to uploaded images
-                        .requestMatchers("/uploads/**").permitAll()
                         // Customer and Courier listing endpoints for admin
                         .requestMatchers("/api/customers").hasRole("admin")
                         .requestMatchers("/api/couriers").hasRole("admin")

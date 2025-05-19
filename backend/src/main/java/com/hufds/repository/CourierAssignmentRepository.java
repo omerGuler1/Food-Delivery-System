@@ -2,6 +2,8 @@ package com.hufds.repository;
 
 import com.hufds.entity.CourierAssignment;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -21,11 +23,16 @@ public interface CourierAssignmentRepository extends JpaRepository<CourierAssign
     List<CourierAssignment> findByOrderOrderId(Integer orderId);
     
     /**
-     * Find all assignments for a courier with REQUESTED status.
-     * These are pending delivery requests that the courier can accept or reject.
-     * 
-     * @param courierId The courier ID
-     * @return List of pending assignments
+     * Find all assignments for a courier with REQUESTED status, eagerly fetching order, restaurant, address, and customer.
      */
-    List<CourierAssignment> findByCourierCourierIdAndStatus(Integer courierId, CourierAssignment.AssignmentStatus status);
+    @Query("SELECT ca FROM CourierAssignment ca " +
+           "JOIN FETCH ca.order o " +
+           "JOIN FETCH o.restaurant " +
+           "JOIN FETCH o.address " +
+           "JOIN FETCH o.customer " +
+           "WHERE ca.courier.courierId = :courierId AND ca.status = :status")
+    List<CourierAssignment> findWithOrderDetailsByCourierCourierIdAndStatus(
+        @Param("courierId") Integer courierId,
+        @Param("status") CourierAssignment.AssignmentStatus status
+    );
 } 

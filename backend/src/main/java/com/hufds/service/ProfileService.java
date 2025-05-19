@@ -22,145 +22,219 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class ProfileService implements IProfileService {
+public class ProfileService {
 
     private final CustomerRepository customerRepository;
     private final AddressRepository addressRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Override
-    public CustomerProfileDTO getCurrentProfile() {
-        String email = getCurrentUserEmail();
-        Customer customer = customerRepository.findByEmailAndDeletedAtIsNull(email)
-            .orElseThrow(() -> new CustomException("User not found or account is deleted", HttpStatus.NOT_FOUND));
-        return CustomerProfileDTO.fromEntity(customer);
-    }
-
-    private String getCurrentUserEmail() {
+    public Customer getCurrentProfile() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String email;
+
         if (principal instanceof UserDetails userDetails) {
-            return userDetails.getUsername();
+            email = userDetails.getUsername();
         } else if (principal instanceof String stringEmail) {
-            return stringEmail;
+            email = stringEmail;
+        } else {
+            throw new CustomException("Not authenticated", HttpStatus.UNAUTHORIZED);
         }
-        throw new CustomException("Not authenticated", HttpStatus.UNAUTHORIZED);
+
+        return customerRepository.findByEmailAndDeletedAtIsNull(email)
+                .orElseThrow(() -> new CustomException("User not found or account is deleted", HttpStatus.NOT_FOUND));
     }
 
-    @Override
     @Transactional
     public void softDeleteAccount(AccountDeletionDTO deletionDTO) {
-        Customer customer = getCurrentCustomer();
-        if (!customer.getCustomerId().equals(deletionDTO.getUserId())) {
-            throw new CustomException("Unauthorized account deletion attempt", HttpStatus.FORBIDDEN);
+        Customer currentUser = getCurrentProfile();
+
+        if (!currentUser.getCustomerId().equals(deletionDTO.getUserId())) {
+            throw new CustomException("User ID mismatch", HttpStatus.FORBIDDEN);
         }
-        customer.setDeletedAt(java.time.LocalDateTime.now());
-        customerRepository.save(customer);
+
+        if (!Boolean.TRUE.equals(deletionDTO.getConfirmation())) {
+            throw new CustomException("Account deletion must be confirmed", HttpStatus.BAD_REQUEST);
+        }
+
+        currentUser.setDeletedAt(LocalDateTime.now());
+        customerRepository.save(currentUser);
     }
 
-    @Override
     @Transactional
-    public CustomerProfileDTO updateProfile(ProfileUpdateDTO dto) {
-        Customer customer = getCurrentCustomer();
+    public Customer updateProfile(ProfileUpdateDTO dto) {
+        Customer customer = getCurrentProfile();
+
         if (dto.getEmail() != null && !dto.getEmail().equals(customer.getEmail())) {
-            if (customerRepository.findByEmail(dto.getEmail()).isPresent()) {
-                throw new CustomException("Email already in use", HttpStatus.CONFLICT);
+            Optional<Customer> existing = customerRepository.findByEmail(dto.getEmail());
+            if (existing.isPresent() && !existing.get().getCustomerId().equals(customer.getCustomerId())) {
+                throw new CustomException("Email is already in use", HttpStatus.CONFLICT);
             }
             customer.setEmail(dto.getEmail());
         }
-        if (dto.getName() != null) {
+
+        if (dto.getName() != null && !dto.getName().isBlank()) {
             customer.setName(dto.getName());
         }
-        if (dto.getPhoneNumber() != null) {
+
+        if (dto.getPhoneNumber() != null && !dto.getPhoneNumber().isBlank()) {
             customer.setPhoneNumber(dto.getPhoneNumber());
         }
-        return CustomerProfileDTO.fromEntity(customerRepository.save(customer));
+
+        return customerRepository.save(customer);
     }
 
-    @Override
     @Transactional
     public void updatePassword(PasswordUpdateDTO dto) {
-        Customer customer = getCurrentCustomer();
+        Customer customer = getCurrentProfile();
+
         if (!passwordEncoder.matches(dto.getCurrentPassword(), customer.getPassword())) {
             throw new CustomException("Current password is incorrect", HttpStatus.BAD_REQUEST);
         }
+
+        if (!dto.getNewPassword().equals(dto.getConfirmPassword())) {
+            throw new CustomException("New password and confirmation do not match", HttpStatus.BAD_REQUEST);
+        }
+
         customer.setPassword(passwordEncoder.encode(dto.getNewPassword()));
         customerRepository.save(customer);
     }
 
-    @Override
-    public List<AddressDTO> getCurrentUserAddresses() {
-        Customer customer = getCurrentCustomer();
-        return customer.getAddresses().stream()
-            .map(AddressDTO::fromEntity)
-            .collect(Collectors.toList());
+    public Set<Address> getCurrentUserAddresses() {
+        return getCurrentProfile().getAddresses();
     }
 
-    @Override
-    public List<OrderSummaryDTO> getCurrentUserOrders() {
-        Customer customer = getCurrentCustomer();
+    public Set<CustomerOrderDTO> getCurrentUserOrders() {
+        Customer customer = getCurrentProfile();
         return customer.getOrders().stream()
-            .map(OrderSummaryDTO::fromEntity)
-            .collect(Collectors.toList());
+                .filter(order -> order.getRestaurant() != null && order.getAddress() != null)
+                .map(order -> {
+                    CustomerOrderDTO.PaymentDTO paymentDTO = null;
+                    if (order.getPayment() != null) {
+                        Payment payment = order.getPayment();
+                        paymentDTO = CustomerOrderDTO.PaymentDTO.builder()
+                                .paymentId(payment.getPaymentId())
+                                .paymentMethod(payment.getMethod().toString())
+                                .paymentStatus(payment.getStatus().toString())
+                                .paymentDate(payment.getPaidAt())
+                                .build();
+                    }
+
+                    // Defensive: skip if restaurant or address is null (should not happen, but for safety)
+                    if (order.getRestaurant() == null || order.getAddress() == null) {
+                        // Optionally log this situation
+                        return null;
+                    }
+
+                    return CustomerOrderDTO.builder()
+                            .orderId(order.getOrderId())
+                            .status(order.getStatus())
+                            .totalPrice(order.getTotalPrice())
+                            .createdAt(order.getCreatedAt())
+                            .deliveredAt(order.getDeliveredAt())
+                            .restaurant(RestaurantSummaryDTO.builder()
+                                    .restaurantId(order.getRestaurant().getRestaurantId())
+                                    .name(order.getRestaurant().getName())
+                                    .phoneNumber(order.getRestaurant().getPhoneNumber())
+                                    .cuisineType(order.getRestaurant().getCuisineType())
+                                    .build())
+                            .address(order.getAddress() != null ? AddressSummaryDTO.builder()
+                                    .street(order.getAddress().getStreet())
+                                    .city(order.getAddress().getCity())
+                                    .state(order.getAddress().getState())
+                                    .zipCode(order.getAddress().getZipCode())
+                                    .country(order.getAddress().getCountry())
+                                    .build() : null)
+                            .orderItems(order.getOrderItems().stream()
+                                    .map(item -> OrderItemDTO.builder()
+                                            .itemId(item.getOrderItemId())
+                                            .menuItem(item.getMenuItem() != null ? MenuItemSummaryDTO.builder()
+                                                      .menuItemId(item.getMenuItem().getMenuItemId())
+                                                      .name(item.getMenuItem().getName())
+                                                      .price(item.getMenuItem().getPrice() != null ? item.getMenuItem().getPrice().doubleValue() : 0.0)
+                                                      .build() : null)
+                                            .quantity(item.getQuantity())
+                                            .subtotal(item.getSubtotal() != null ? item.getSubtotal().doubleValue() : 0.0)
+                                            .build())
+                                    .collect(Collectors.toSet()))
+                            .payment(paymentDTO)
+                            .build();
+                })
+                .filter(dto -> dto != null) // Remove any nulls from skipped orders
+                .collect(Collectors.toSet());
     }
 
-    @Override
     @Transactional
-    public AddressDTO addAddress(AddressDTO dto) {
-        Customer customer = getCurrentCustomer();
+    public Address addAddress(AddressDTO dto) {
+        Customer customer = getCurrentProfile();
+
         Address address = new Address();
+        address.setStreet(dto.getStreet());
+        address.setCity(dto.getCity());
+        address.setState(dto.getState());
+        address.setZipCode(dto.getZipCode());
+        address.setCountry(dto.getCountry());
+        address.setLatitude(dto.getLatitude() != null ? BigDecimal.valueOf(dto.getLatitude()) : null);
+        address.setLongitude(dto.getLongitude() != null ? BigDecimal.valueOf(dto.getLongitude()) : null);
+        address.setIsDefault(dto.getIsDefault());
         address.setCustomer(customer);
-        address.setStreet(dto.getStreet());
-        address.setCity(dto.getCity());
-        address.setState(dto.getState());
-        address.setZipCode(dto.getZipCode());
-        address.setCountry(dto.getCountry());
-        address.setLatitude(dto.getLatitude() != null ? new java.math.BigDecimal(dto.getLatitude().toString()) : null);
-        address.setLongitude(dto.getLongitude() != null ? new java.math.BigDecimal(dto.getLongitude().toString()) : null);
-        address.setIsDefault(dto.getIsDefault());
+
+        if (dto.getIsDefault()) {
+            customer.getAddresses().forEach(a -> a.setIsDefault(false));
+            addressRepository.saveAll(customer.getAddresses());
+        }
+
+        address = addressRepository.save(address);
         customer.getAddresses().add(address);
-        return AddressDTO.fromEntity(customerRepository.save(customer).getAddresses().stream()
-            .filter(a -> a.getStreet().equals(dto.getStreet()) && a.getCity().equals(dto.getCity()))
-            .findFirst()
-            .orElseThrow(() -> new CustomException("Failed to save address", HttpStatus.INTERNAL_SERVER_ERROR)));
+        customerRepository.save(customer);
+        return address;
     }
 
-    @Override
     @Transactional
-    public AddressDTO updateAddress(AddressDTO dto) {
-        Customer customer = getCurrentCustomer();
+    public Address updateAddress(AddressDTO dto) {
+        Customer customer = getCurrentProfile();
+
         Address address = customer.getAddresses().stream()
-            .filter(a -> a.getAddressId().equals(dto.getAddressId()))
-            .findFirst()
-            .orElseThrow(() -> new CustomException("Address not found", HttpStatus.NOT_FOUND));
+                .filter(a -> a.getAddressId().equals(dto.getAddressId()))
+                .findFirst()
+                .orElseThrow(() -> new CustomException("Address not found", HttpStatus.NOT_FOUND));
+
         address.setStreet(dto.getStreet());
         address.setCity(dto.getCity());
         address.setState(dto.getState());
         address.setZipCode(dto.getZipCode());
         address.setCountry(dto.getCountry());
-        address.setLatitude(dto.getLatitude() != null ? new java.math.BigDecimal(dto.getLatitude().toString()) : null);
-        address.setLongitude(dto.getLongitude() != null ? new java.math.BigDecimal(dto.getLongitude().toString()) : null);
-        address.setIsDefault(dto.getIsDefault());
-        return AddressDTO.fromEntity(customerRepository.save(customer).getAddresses().stream()
-            .filter(a -> a.getAddressId().equals(dto.getAddressId()))
-            .findFirst()
-            .orElseThrow(() -> new CustomException("Failed to update address", HttpStatus.INTERNAL_SERVER_ERROR)));
+        address.setLatitude(dto.getLatitude() != null ? BigDecimal.valueOf(dto.getLatitude()) : null);
+        address.setLongitude(dto.getLongitude() != null ? BigDecimal.valueOf(dto.getLongitude()) : null);
+
+        if (dto.getIsDefault() && !address.getIsDefault()) {
+            customer.getAddresses().forEach(a -> a.setIsDefault(false));
+            address.setIsDefault(true);
+        } else if (!dto.getIsDefault() && address.getIsDefault()) {
+            if (customer.getAddresses().size() == 1) {
+                throw new CustomException("Cannot remove default status from the only address", HttpStatus.BAD_REQUEST);
+            }
+            address.setIsDefault(false);
+        }
+
+        customerRepository.save(customer);
+        return address;
     }
 
-    @Override
     @Transactional
     public void deleteAddress(Integer addressId) {
-        Customer customer = getCurrentCustomer();
-        Address address = customer.getAddresses().stream()
-            .filter(a -> a.getAddressId().equals(addressId))
-            .findFirst()
-            .orElseThrow(() -> new CustomException("Address not found", HttpStatus.NOT_FOUND));
-        customer.getAddresses().remove(address);
-        customerRepository.save(customer);
-    }
+        Customer customer = getCurrentProfile();
 
-    private Customer getCurrentCustomer() {
-        String email = getCurrentUserEmail();
-        return customerRepository.findByEmailAndDeletedAtIsNull(email)
-            .orElseThrow(() -> new CustomException("User not found or account is deleted", HttpStatus.NOT_FOUND));
+        Address address = customer.getAddresses().stream()
+                .filter(a -> a.getAddressId().equals(addressId))
+                .findFirst()
+                .orElseThrow(() -> new CustomException("Address not found", HttpStatus.NOT_FOUND));
+
+        if (address.getIsDefault() && customer.getAddresses().size() == 1) {
+            throw new CustomException("Cannot delete the only default address", HttpStatus.BAD_REQUEST);
+        }
+
+        customer.getAddresses().remove(address);
+        addressRepository.delete(address);
+        customerRepository.save(customer);
     }
 }

@@ -7,6 +7,7 @@ import com.hufds.service.MenuItemService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -94,7 +95,7 @@ public class MenuItemController {
         return ResponseEntity.ok(menuItemService.toggleAvailability(menuItemId, restaurantId));
     }
 
-    @PostMapping("/{menuItemId}/image")
+    @PostMapping(value = "/{menuItemId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MenuItem> uploadMenuItemImage(
             @PathVariable Integer menuItemId,
             @RequestParam("image") MultipartFile image,

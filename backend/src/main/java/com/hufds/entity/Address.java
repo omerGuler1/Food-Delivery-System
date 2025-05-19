@@ -1,10 +1,14 @@
 package com.hufds.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -13,6 +17,7 @@ import java.math.BigDecimal;
 
 @Entity
 @Table(name = "Address")
+@JsonIgnoreProperties({"customer.orders", "customer.payments", "customer.reviews", "customer.favoriteRestaurants", "orders.customer", "orders.courier", "orders.restaurant"})
 public class Address {
 
     @Id
@@ -22,8 +27,12 @@ public class Address {
 
     @ManyToOne
     @JoinColumn(name = "customer_id", nullable = false)
-    @JsonBackReference
+    @JsonBackReference(value = "customer-addresses")
     private Customer customer;
+
+    @OneToMany(mappedBy = "address")
+    @JsonManagedReference(value = "order-address")
+    private Set<Order> orders = new HashSet<>();
 
     @Column(length = 255, nullable = false)
     private String street;

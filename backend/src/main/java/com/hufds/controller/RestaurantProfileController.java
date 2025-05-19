@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/profile")
@@ -54,16 +53,6 @@ public class RestaurantProfileController {
         Integer restaurantId = jwtService.extractUserId(token);
         restaurantProfileService.updateLocation(restaurantId, locationDTO);
         return ResponseEntity.ok().build();
-    }
-
-    @PostMapping("/restaurant/image")
-    public ResponseEntity<String> uploadRestaurantProfileImage(
-            HttpServletRequest request,
-            @RequestParam("profileImage") MultipartFile image) {
-        String token = extractToken(request);
-        Integer restaurantId = jwtService.extractUserId(token);
-        String imageUrl = restaurantProfileService.uploadProfileImage(restaurantId, image);
-        return ResponseEntity.ok(imageUrl);
     }
 
     private String extractToken(HttpServletRequest request) {

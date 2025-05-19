@@ -20,14 +20,14 @@ public class CourierAssignment {
     @Column(name = "assignment_id")
     private Integer assignmentId;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne
     @JoinColumn(name = "order_id", nullable = false)
-    @JsonIgnoreProperties({"courierAssignments", "orderItems"})
+    @JsonBackReference(value = "order-assignments")
     private Order order;
 
     @ManyToOne
     @JoinColumn(name = "courier_id")
-    @JsonBackReference("courier-assignments")
+    @JsonBackReference(value = "courier-assignments")
     private Courier courier;
 
     @Column(name = "assigned_at", nullable = false)

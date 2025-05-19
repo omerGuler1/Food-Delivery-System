@@ -6,8 +6,8 @@ import com.hufds.entity.Restaurant;
 import com.hufds.exception.CustomException;
 import com.hufds.repository.MenuItemRepository;
 import com.hufds.repository.RestaurantRepository;
-import com.hufds.service.MenuItemService;
 import com.hufds.service.FileStorageService;
+import com.hufds.service.MenuItemService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -84,6 +84,7 @@ public class MenuItemServiceImpl implements MenuItemService {
     @Override
     @Transactional
     public MenuItem uploadMenuItemImage(Integer menuItemId, MultipartFile image, Integer restaurantId) {
+        // Get and validate menu item
         MenuItem menuItem = getMenuItemAndValidateRestaurant(menuItemId, restaurantId);
         
         // Validate image
@@ -102,7 +103,12 @@ public class MenuItemServiceImpl implements MenuItemService {
             throw new CustomException("Image size must be less than 5MB", HttpStatus.BAD_REQUEST);
         }
         
-        // Upload image and get URL
+        // Delete old image if exists
+        if (menuItem.getImageUrl() != null) {
+            fileStorageService.deleteFile(menuItem.getImageUrl());
+        }
+        
+        // Upload new image and get URL
         String imageUrl = fileStorageService.storeFile(image, "menu-items");
         
         // Update menu item with new image URL

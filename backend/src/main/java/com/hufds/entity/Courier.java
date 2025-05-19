@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Entity
 @Table(name = "courier")
+@JsonIgnoreProperties({"orders.customer.addresses", "orders.address.customer", "orders.restaurant.businessHours"})
 public class Courier {
 
     @Id
@@ -45,11 +47,11 @@ public class Courier {
     private BigDecimal earnings = BigDecimal.ZERO;
 
     @OneToMany(mappedBy = "courier")
-    @JsonBackReference("courier-orders")
+    @JsonBackReference(value = "courier-orders")
     private Set<Order> orders;
 
     @OneToMany(mappedBy = "courier")
-    @JsonManagedReference("courier-assignments")
+    @JsonManagedReference(value = "courier-assignments")
     private Set<CourierAssignment> assignments;
 
     @Column(name = "created_at", nullable = false)

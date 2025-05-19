@@ -140,8 +140,7 @@ const RestaurantDashboard: React.FC = () => {
   const [selectedCourierId, setSelectedCourierId] = useState<number | null>(null);
   const [isLoadingCouriers, setIsLoadingCouriers] = useState(false);
   const [isAssigningCourier, setIsAssigningCourier] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -154,7 +153,8 @@ const RestaurantDashboard: React.FC = () => {
       price: apiItem.price || 0,
       category: apiItem.category || FoodCategory.MAIN_COURSES,
       available: apiItem.availability !== undefined ? apiItem.availability : true,
-      restaurantId: apiItem.restaurantId || 1
+      restaurantId: apiItem.restaurantId || 1,
+      imageUrl: apiItem.imageUrl || undefined // Include imageUrl in the mapping
     };
   };
 
@@ -364,35 +364,6 @@ const RestaurantDashboard: React.FC = () => {
   const handleDialogClose = () => {
     setOpenDialog(false);
     setEditingItem(null);
-    setSelectedImage(null);
-    setImagePreviewUrl(null);
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image size must be less than 5MB');
-        setTimeout(() => setError(null), 3000);
-        return;
-      }
-      
-      // Validate file type
-      if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-        setError('Only JPEG, PNG and JPG images are supported');
-        setTimeout(() => setError(null), 3000);
-        return;
-      }
-      
-      setSelectedImage(file);
-      setImagePreviewUrl(URL.createObjectURL(file));
-    }
-  };
-
-  const handleImageUploadClick = () => {
-    fileInputRef.current?.click();
   };
 
   const handleSaveItem = async () => {
@@ -410,55 +381,38 @@ const RestaurantDashboard: React.FC = () => {
           description: editingItem.description,
           price: editingItem.price,
           availability: editingItem.available,
-          category: editingItem.category
+          category: editingItem.category,
+          imageUrl: editingItem.imageUrl // Include the imageUrl in the update
         };
 
         console.log(`Saving menu item for restaurant ID: ${restaurantId}`);
-        
-        let updatedItem: MenuItemType;
         
         // Check if it's a new item or updating an existing one
         if (editingItem.menuItemId !== 0) {
           // Update existing item
           const apiResult = await updateMenuItem(editingItem.menuItemId, menuItemData);
-          updatedItem = mapApiMenuItemToLocal(apiResult);
-          
-          // Upload image if selected
-          if (selectedImage) {
-            const itemWithImage = await uploadMenuItemImage(editingItem.menuItemId, selectedImage);
-            updatedItem = mapApiMenuItemToLocal(itemWithImage);
-          }
-          
-          // Update local state
-          setMenuItems(prevItems => 
-            prevItems.map(item => 
-              item.menuItemId === editingItem.menuItemId 
-                ? updatedItem
-                : item
+          const updatedItem = mapApiMenuItemToLocal(apiResult);
+          setMenuItems(prevItems =>
+            prevItems.map(item =>
+              item.menuItemId === editingItem.menuItemId ? updatedItem : item
             )
           );
           setSuccessMessage('Menu item updated successfully');
+          setTimeout(() => setSuccessMessage(null), 3000);
+          setOpenDialog(false);
+          setEditingItem(null);
         } else {
           // Add new item
           const apiResult = await addMenuItem(menuItemData);
-          updatedItem = mapApiMenuItemToLocal(apiResult);
-          
-          // Upload image if selected
-          if (selectedImage) {
-            const itemWithImage = await uploadMenuItemImage(updatedItem.menuItemId, selectedImage);
-            updatedItem = mapApiMenuItemToLocal(itemWithImage);
-          }
-          
-          // Add to local state with the returned ID from the server
-          setMenuItems(prevItems => [...prevItems, updatedItem]);
-          setSuccessMessage('Menu item added successfully');
+          const newItem = mapApiMenuItemToLocal(apiResult);
+          setMenuItems(prevItems => [...prevItems, newItem]);
+          setEditingItem(newItem); // Stay in dialog for image upload
+          setSuccessMessage('Menu item added! Now you can upload an image.');
+          setTimeout(() => setSuccessMessage(null), 3000);
+          // Do NOT close the dialog yet
+          setLoading(false);
+          return;
         }
-        
-        setTimeout(() => setSuccessMessage(null), 3000);
-        setOpenDialog(false);
-        setEditingItem(null);
-        setSelectedImage(null);
-        setImagePreviewUrl(null);
       } catch (error: any) {
         console.error('Error saving menu item:', error);
         
@@ -850,6 +804,39 @@ const RestaurantDashboard: React.FC = () => {
     }
   };
 
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !editingItem) return;
+
+    try {
+      setUploadingImage(true);
+      const updatedItem = await uploadMenuItemImage(editingItem.menuItemId, file);
+      
+      // Update the menu items list with the new image URL
+      setMenuItems(prevItems => 
+        prevItems.map(item => 
+          item.menuItemId === editingItem.menuItemId 
+            ? { ...item, imageUrl: updatedItem.imageUrl }
+            : item
+        )
+      );
+      
+      // Update the editing item with the new image URL
+      setEditingItem(prev => prev ? { ...prev, imageUrl: updatedItem.imageUrl } : null);
+      
+      setSuccessMessage('Image uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      setError('Failed to upload image. Please try again.');
+    } finally {
+      setUploadingImage(false);
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <Box sx={{ minHeight: '100vh', py: 3, bgcolor: '#f8f9fa' }}>
       {/* Full page loading indicator when processing an order */}
@@ -1029,26 +1016,53 @@ const RestaurantDashboard: React.FC = () => {
             
             {/* Menu Items Table */}
             <TableContainer component={Paper} sx={{ borderRadius: 2, mb: 3 }}>
-              <Table sx={{ minWidth: 650 }} size="small">
-                <TableHead sx={{ bgcolor: 'primary.light' }}>
+              <Table>
+                <TableHead>
                   <TableRow>
+                    <TableCell>Image</TableCell>
                     <TableCell>Name</TableCell>
-                    <TableCell>Description</TableCell>
                     <TableCell>Category</TableCell>
-                    <TableCell align="right">Price</TableCell>
-                    <TableCell align="center">Status</TableCell>
+                    <TableCell>Price</TableCell>
+                    <TableCell>Status</TableCell>
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {filteredItems.length > 0 ? (
                     filteredItems.map((item) => (
-                      <TableRow key={item.menuItemId} hover>
+                      <TableRow key={item.menuItemId}>
                         <TableCell>
-                          <Typography variant="subtitle2">{item.name}</Typography>
+                          {item.imageUrl ? (
+                            <Box
+                              component="img"
+                              src={item.imageUrl}
+                              alt={item.name}
+                              sx={{
+                                width: 60,
+                                height: 60,
+                                objectFit: 'cover',
+                                borderRadius: 1
+                              }}
+                            />
+                          ) : (
+                            <Box
+                              sx={{
+                                width: 60,
+                                height: 60,
+                                bgcolor: 'grey.100',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: 1
+                              }}
+                            >
+                              <ImageIcon sx={{ color: 'grey.400' }} />
+                            </Box>
+                          )}
                         </TableCell>
                         <TableCell>
-                          <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: 250, display: 'block' }}>
+                          <Typography variant="subtitle2">{item.name}</Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                             {item.description}
                           </Typography>
                         </TableCell>
@@ -1056,46 +1070,53 @@ const RestaurantDashboard: React.FC = () => {
                           <Chip
                             label={item.category}
                             size="small"
-                            color="primary"
-                            variant="outlined"
+                            sx={{ bgcolor: 'primary.light', color: 'primary.contrastText' }}
                           />
                         </TableCell>
-                        <TableCell align="right">
-                          <Typography variant="subtitle2">
+                        <TableCell>
+                          <Typography variant="subtitle2" color="primary">
                             ${item.price.toFixed(2)}
                           </Typography>
                         </TableCell>
-                        <TableCell align="center">
+                        <TableCell>
                           <Chip
                             label={item.available ? 'Available' : 'Unavailable'}
-                            color={item.available ? 'success' : 'default'}
+                            color={item.available ? 'success' : 'error'}
                             size="small"
                           />
                         </TableCell>
                         <TableCell align="right">
-                          <Stack direction="row" spacing={1} justifyContent="flex-end">
-                            <IconButton 
-                              size="small" 
-                              color="primary"
-                              onClick={() => handleToggleAvailability(item.menuItemId)}
-                            >
-                              {item.available ? <VisibilityIcon fontSize="small" /> : <VisibilityOffIcon fontSize="small" />}
-                            </IconButton>
-                            <IconButton 
-                              size="small" 
-                              color="primary"
-                              onClick={() => handleEditItem(item)}
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton 
-                              size="small" 
-                              color="error"
-                              onClick={() => handleDeleteItem(item.menuItemId)}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Stack>
+                          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                            <Tooltip title="Edit">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleEditItem(item)}
+                                disabled={loading}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title={item.available ? 'Make Unavailable' : 'Make Available'}>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleToggleAvailability(item.menuItemId)}
+                                disabled={loading}
+                                color={item.available ? 'error' : 'success'}
+                              >
+                                {item.available ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Delete">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDeleteItem(item.menuItemId)}
+                                disabled={loading}
+                                color="error"
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
                         </TableCell>
                       </TableRow>
                     ))
@@ -1297,66 +1318,78 @@ const RestaurantDashboard: React.FC = () => {
             <Grid container spacing={2}>
               {/* Image Upload Section */}
               <Grid item xs={12}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
-                  <Box
-                    sx={{
-                      width: 200,
-                      height: 200,
-                      border: '2px dashed',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      position: 'relative',
-                      overflow: 'hidden',
-                      '&:hover': {
-                        borderColor: 'primary.main',
-                      },
-                    }}
-                    onClick={handleImageUploadClick}
-                  >
-                    {imagePreviewUrl ? (
-                      <img
-                        src={imagePreviewUrl}
-                        alt="Preview"
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                        }}
-                      />
-                    ) : editingItem.imageUrl ? (
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center',
+                  gap: 2,
+                  p: 2,
+                  border: '1px dashed',
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  bgcolor: 'background.paper'
+                }}>
+                  {editingItem.imageUrl ? (
+                    <Box sx={{ position: 'relative', width: '100%', maxWidth: 300 }}>
                       <img
                         src={editingItem.imageUrl}
                         alt={editingItem.name}
                         style={{
                           width: '100%',
-                          height: '100%',
+                          height: 'auto',
+                          maxHeight: 200,
                           objectFit: 'cover',
+                          borderRadius: 8
                         }}
                       />
-                    ) : (
-                      <>
-                        <ImageIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
-                        <Typography variant="body2" color="text.secondary" align="center">
-                          Click to upload image
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" align="center">
-                          (JPEG, PNG, JPG, max 5MB)
-                        </Typography>
-                      </>
-                    )}
-                  </Box>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    style={{ display: 'none' }}
-                    accept="image/jpeg, image/png, image/jpg"
-                    onChange={handleImageChange}
-                  />
+                      <IconButton
+                        size="small"
+                        sx={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                          bgcolor: 'background.paper',
+                          '&:hover': { bgcolor: 'background.paper' }
+                        }}
+                        onClick={() => {
+                          setEditingItem(prev => prev ? { ...prev, imageUrl: undefined } : null);
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = '';
+                          }
+                        }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ) : (
+                    <Box sx={{ textAlign: 'center' }}>
+                      <ImageIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        No image uploaded
+                      </Typography>
+                    </Box>
+                  )}
+                  
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<ImageIcon />}
+                    disabled={uploadingImage || !editingItem?.menuItemId}
+                  >
+                    {uploadingImage ? 'Uploading...' : 'Upload Image'}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      hidden
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                    />
+                  </Button>
+                  {!editingItem?.menuItemId && (
+                    <Typography variant="caption" color="text.secondary">
+                      Save the item first to upload an image.
+                    </Typography>
+                  )}
                 </Box>
               </Grid>
 

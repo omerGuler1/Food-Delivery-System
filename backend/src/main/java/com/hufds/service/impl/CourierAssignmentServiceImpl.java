@@ -2,6 +2,7 @@ package com.hufds.service.impl;
 
 import com.hufds.dto.CourierAssignmentDTO;
 import com.hufds.dto.CourierOrderHistoryDTO;
+import com.hufds.dto.CourierAssignmentRequestDTO;
 import com.hufds.entity.CourierAssignment;
 import com.hufds.entity.Order;
 import com.hufds.entity.Courier;
@@ -10,6 +11,8 @@ import com.hufds.repository.CourierAssignmentRepository;
 import com.hufds.repository.OrderRepository;
 import com.hufds.repository.CourierRepository;
 import com.hufds.service.CourierAssignmentService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -17,9 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
 
 @Service
 public class CourierAssignmentServiceImpl implements CourierAssignmentService {
+
+    private static final Logger log = LoggerFactory.getLogger(CourierAssignmentServiceImpl.class);
 
     @Autowired
     private CourierAssignmentRepository assignmentRepository;
@@ -32,10 +38,21 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
 
     @Override
     @Transactional
-    public CourierAssignment assignOrderToCourier(CourierAssignmentDTO assignmentDTO) {
+    public CourierAssignment assignOrderToCourier(CourierAssignmentRequestDTO assignmentDTO) {
         // Validate order exists and is in correct status
         Order order = orderRepository.findById(assignmentDTO.getOrderId())
                 .orElseThrow(() -> new CustomException("Order not found", HttpStatus.NOT_FOUND));
+
+        // Validate order has complete data
+        if (order.getRestaurant() == null) {
+            throw new CustomException("Order is missing restaurant information", HttpStatus.BAD_REQUEST);
+        }
+        if (order.getAddress() == null) {
+            throw new CustomException("Order is missing delivery address", HttpStatus.BAD_REQUEST);
+        }
+        if (order.getCustomer() == null) {
+            throw new CustomException("Order is missing customer information", HttpStatus.BAD_REQUEST);
+        }
 
         if (order.getStatus() != Order.OrderStatus.PROCESSING) {
             throw new CustomException("Order must be in PROCESSING status to assign courier", HttpStatus.BAD_REQUEST);
@@ -73,17 +90,28 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
     @Override
     @Transactional
     public CourierAssignment acceptDeliveryRequest(Integer assignmentId) {
+        log.info("[DEBUG] Attempting to accept delivery request for assignment: {}", assignmentId);
+        
         CourierAssignment assignment = assignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> new CustomException("Assignment not found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> {
+                    log.error("[DEBUG] Assignment not found: {}", assignmentId);
+                    return new CustomException("Assignment not found", HttpStatus.NOT_FOUND);
+                });
 
         // Validate assignment status
+        log.info("[DEBUG] Current assignment status: {}", assignment.getStatus());
         if (assignment.getStatus() != CourierAssignment.AssignmentStatus.REQUESTED) {
+            log.error("[DEBUG] Invalid assignment status. Expected: REQUESTED, Got: {}", assignment.getStatus());
             throw new CustomException("Can only accept REQUESTED assignments", HttpStatus.BAD_REQUEST);
         }
 
-        // Check if the request is too old (e.g., more than 5 minutes)
-        if (assignment.getAssignedAt().plusMinutes(5).isBefore(java.time.LocalDateTime.now())) {
-            // Mark the assignment as expired
+        // Check if the request is too old
+        LocalDateTime expiryTime = assignment.getAssignedAt().plusMinutes(5);
+        log.info("[DEBUG] Assignment assigned at: {}, Expires at: {}, Current time: {}", 
+            assignment.getAssignedAt(), expiryTime, LocalDateTime.now());
+        if (expiryTime.isBefore(LocalDateTime.now())) {
+            log.error("[DEBUG] Assignment expired. Assignment time: {}, Current time: {}", 
+                assignment.getAssignedAt(), LocalDateTime.now());
             assignment.setStatus(CourierAssignment.AssignmentStatus.EXPIRED);
             assignmentRepository.save(assignment);
             throw new CustomException("This delivery request has expired", HttpStatus.BAD_REQUEST);
@@ -91,25 +119,34 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
 
         // Validate order status
         Order order = assignment.getOrder();
+        log.info("[DEBUG] Order status: {}", order.getStatus());
         if (order.getStatus() != Order.OrderStatus.PROCESSING) {
+            log.error("[DEBUG] Invalid order status. Expected: PROCESSING, Got: {}", order.getStatus());
             throw new CustomException("Order is no longer available for delivery", HttpStatus.BAD_REQUEST);
         }
 
         // Get courier from assignment
         Courier courier = assignment.getCourier();
+        log.info("[DEBUG] Courier status: {}", courier.getStatus());
         
         // Validate courier is still available
         if (courier.getStatus() != Courier.CourierStatus.AVAILABLE) {
+            log.error("[DEBUG] Courier not available. Status: {}", courier.getStatus());
             throw new CustomException("Courier is no longer available", HttpStatus.BAD_REQUEST);
         }
 
-        // Check if this order is already assigned to any courier with ACCEPTED status
+        // Check if this order is already assigned
         List<CourierAssignment> acceptedAssignments = assignmentRepository.findByOrderOrderIdAndStatus(
                 order.getOrderId(), CourierAssignment.AssignmentStatus.ACCEPTED);
+        log.info("[DEBUG] Found {} existing accepted assignments for order {}", 
+            acceptedAssignments.size(), order.getOrderId());
         
         if (!acceptedAssignments.isEmpty()) {
+            log.error("[DEBUG] Order already assigned to another courier");
             throw new CustomException("Order is already assigned to another courier", HttpStatus.BAD_REQUEST);
         }
+
+        log.info("[DEBUG] All validations passed, proceeding with acceptance");
 
         // Update assignment status
         assignment.setStatus(CourierAssignment.AssignmentStatus.ACCEPTED);
@@ -223,16 +260,24 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
         // Get all assignments for the courier
         List<CourierAssignment> assignments = assignmentRepository.findByCourierCourierId(courierId);
 
-        // Convert assignments to DTOs
+        log.debug("[DEBUG] Found {} assignments for courier {}", assignments.size(), courierId);
+
+        // Convert assignments to DTOs, skip if order is missing
         return assignments.stream()
                 .map(assignment -> {
                     Order order = assignment.getOrder();
+                    if (order == null) {
+                        log.error("[DEBUG] Assignment {} has null order, skipping", assignment.getAssignmentId());
+                        return null;
+                    }
+                    log.debug("[DEBUG] Assignment {}: orderId={}", assignment.getAssignmentId(), order.getOrderId());
+                    try {
                     return CourierOrderHistoryDTO.builder()
                             .orderId(order.getOrderId())
                             .assignmentId(assignment.getAssignmentId())
-                            .restaurantName(order.getRestaurant().getName())
-                            .customerName(order.getCustomer().getName())
-                            .deliveryAddress(order.getAddress().getFullAddress())
+                                .restaurantName(order.getRestaurant() != null ? order.getRestaurant().getName() : "Unknown")
+                                .customerName(order.getCustomer() != null ? order.getCustomer().getName() : "Unknown")
+                                .deliveryAddress(order.getAddress() != null ? order.getAddress().getFullAddress() : "Unknown")
                             .totalPrice(order.getTotalPrice())
                             .orderStatus(order.getStatus())
                             .assignmentStatus(assignment.getStatus())
@@ -240,30 +285,141 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
                             .pickedUpAt(assignment.getPickedUpAt())
                             .deliveredAt(assignment.getDeliveredAt())
                             .build();
+                    } catch (Exception e) {
+                        log.error("[DEBUG] Error building CourierOrderHistoryDTO for assignment {}: {}", assignment.getAssignmentId(), e.getMessage());
+                        return null;
+                    }
                 })
+                .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<CourierAssignment> getPendingRequestsForCourier(Integer courierId) {
+    public List<CourierAssignmentDTO> getPendingRequestsForCourier(Integer courierId) {
         // Validate courier exists
         courierRepository.findById(courierId)
                 .orElseThrow(() -> new CustomException("Courier not found", HttpStatus.NOT_FOUND));
         
-        // Get all assignments with REQUESTED status for the courier
-        return assignmentRepository.findByCourierCourierIdAndStatus(courierId, CourierAssignment.AssignmentStatus.REQUESTED);
+        // Use the new eager fetch method
+        List<CourierAssignment> pending = assignmentRepository.findWithOrderDetailsByCourierCourierIdAndStatus(
+            courierId,
+            CourierAssignment.AssignmentStatus.REQUESTED
+        );
+
+        log.info("[DEBUG] Found {} pending assignments for courier {} (eager fetch)", pending.size(), courierId);
+
+        // Convert to DTOs and log any issues
+        List<CourierAssignmentDTO> dtos = pending.stream()
+            .map(assignment -> {
+                try {
+                    CourierAssignmentDTO dto = toDTO(assignment);
+                    if (dto == null) {
+                        log.error("[DEBUG] Failed to convert assignment {} to DTO", assignment.getAssignmentId());
+                    }
+                    return dto;
+                } catch (Exception e) {
+                    log.error("[DEBUG] Error converting assignment {} to DTO: {}", 
+                        assignment.getAssignmentId(), e.getMessage());
+                    return null;
+                }
+            })
+            .filter(java.util.Objects::nonNull)
+            .collect(Collectors.toList());
+
+        log.info("[DEBUG] Successfully converted {} assignments to DTOs", dtos.size());
+        return dtos;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<CourierAssignment> getAllAssignmentsForCourier(Integer courierId) {
-        // Validate courier exists
+    public List<CourierAssignmentDTO> getAllAssignmentsForCourier(Integer courierId) {
         courierRepository.findById(courierId)
                 .orElseThrow(() -> new CustomException("Courier not found", HttpStatus.NOT_FOUND));
-        
-        // Get all assignments for the courier regardless of status
-        return assignmentRepository.findByCourierCourierId(courierId);
+        List<CourierAssignment> all = assignmentRepository.findByCourierCourierId(courierId);
+        System.out.println("[DEBUG] All assignments for courier " + courierId + ": " + all.size());
+        for (CourierAssignment a : all) {
+            System.out.println("[DEBUG] AssignmentId: " + a.getAssignmentId() + ", status: " + a.getStatus() + ", orderId: " + (a.getOrder() != null ? a.getOrder().getOrderId() : null));
+        }
+        return all.stream().map(this::toDTO).filter(java.util.Objects::nonNull).collect(Collectors.toList());
+    }
+
+    private CourierAssignmentDTO toDTO(CourierAssignment assignment) {
+        Order order = assignment.getOrder();
+        if (order == null) {
+            log.error("[DEBUG] Assignment {} has null order", assignment.getAssignmentId());
+            return null;
+        }
+        log.debug("[DEBUG] Assignment {}: orderId={}, customerId={}, restaurantId={}, addressId={}",
+            assignment.getAssignmentId(),
+            order.getOrderId(),
+            order.getCustomer() != null ? order.getCustomer().getCustomerId() : null,
+            order.getRestaurant() != null ? order.getRestaurant().getRestaurantId() : null,
+            order.getAddress() != null ? order.getAddress().getAddressId() : null
+        );
+        if (order.getCustomer() == null) {
+            log.error("[DEBUG] Assignment {} has order {} with null customer", assignment.getAssignmentId(), order.getOrderId());
+            return null;
+        } else {
+            log.debug("[DEBUG] Assignment {}: Customer name={}, email={}", assignment.getAssignmentId(), order.getCustomer().getName(), order.getCustomer().getEmail());
+        }
+        if (order.getRestaurant() == null) {
+            log.error("[DEBUG] Assignment {} has order {} with null restaurant", assignment.getAssignmentId(), order.getOrderId());
+            return null;
+        } else {
+            log.debug("[DEBUG] Assignment {}: Restaurant name={}, email={}", assignment.getAssignmentId(), order.getRestaurant().getName(), order.getRestaurant().getEmail());
+        }
+        if (order.getAddress() == null) {
+            log.error("[DEBUG] Assignment {} has order {} with null address", assignment.getAssignmentId(), order.getOrderId());
+            return null;
+        } else {
+            log.debug("[DEBUG] Assignment {}: Address street={}, city={}, state={}, zip={}, country={}",
+                assignment.getAssignmentId(),
+                order.getAddress().getStreet(),
+                order.getAddress().getCity(),
+                order.getAddress().getState(),
+                order.getAddress().getZipCode(),
+                order.getAddress().getCountry()
+            );
+        }
+        log.info("[DEBUG] Converting assignment {} to DTO - Order: {}, Restaurant: {}, Address: {}, Customer: {}", 
+            assignment.getAssignmentId(),
+            order.getOrderId(),
+            order.getRestaurant().getRestaurantId(),
+            order.getAddress().getAddressId(),
+            order.getCustomer().getCustomerId());
+        return CourierAssignmentDTO.builder()
+                .assignmentId(assignment.getAssignmentId())
+                .status(assignment.getStatus().name())
+                .assignedAt(assignment.getAssignedAt())
+                .pickedUpAt(assignment.getPickedUpAt())
+                .deliveredAt(assignment.getDeliveredAt())
+                .order(CourierAssignmentDTO.OrderSummaryDTO.builder()
+                        .orderId(order.getOrderId())
+                        .status(order.getStatus().name())
+                        .restaurant(CourierAssignmentDTO.RestaurantSummaryDTO.builder()
+                                .restaurantId(order.getRestaurant().getRestaurantId())
+                                .name(order.getRestaurant().getName())
+                                .phoneNumber(order.getRestaurant().getPhoneNumber())
+                                .cuisineType(order.getRestaurant().getCuisineType())
+                                .build())
+                        .address(CourierAssignmentDTO.AddressSummaryDTO.builder()
+                                .street(order.getAddress().getStreet())
+                                .city(order.getAddress().getCity())
+                                .state(order.getAddress().getState())
+                                .zipCode(order.getAddress().getZipCode())
+                                .country(order.getAddress().getCountry())
+                                .build())
+                        .customer(CourierAssignmentDTO.CustomerSummaryDTO.builder()
+                                .customerId(order.getCustomer().getCustomerId())
+                                .name(order.getCustomer().getName())
+                                .phoneNumber(order.getCustomer().getPhoneNumber())
+                                .build())
+                        .totalPrice(order.getTotalPrice() != null ? order.getTotalPrice().doubleValue() : 0.0)
+                        .createdAt(order.getCreatedAt())
+                        .deliveredAt(order.getDeliveredAt())
+                        .build())
+                .build();
     }
 
     /**

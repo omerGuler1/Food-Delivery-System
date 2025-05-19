@@ -12,7 +12,7 @@ const getAuthHeader = () => {
 };
 
 // Get active delivery orders for a courier
-export const getActiveDeliveries = async (courierId: number) => {
+export const getActiveDeliveries = async (courierId: string) => {
   try {
     const response = await axios.get(
       `${API_URL}/courier/orders/active/${courierId}`,
@@ -36,45 +36,7 @@ export const getPendingDeliveryRequests = async () => {
       { headers: getAuthHeader() }
     );
     console.log('Pending Delivery Requests API response:', response.data);
-    
-    // Validate response structure
-    if (Array.isArray(response.data)) {
-      console.log(`Received ${response.data.length} items from API`);
-      
-      // Problem: The API response doesn't include order details due to @JsonBackReference in the backend
-      // Temporary solution: Get each assignment's order details separately 
-      const assignmentsWithOrders = await Promise.all(
-        response.data.map(async (assignment) => {
-          try {
-            // Get assignment details with order
-            const detailsResponse = await axios.get(
-              `${API_URL}/courier-assignments/${assignment.assignmentId}`,
-              { headers: getAuthHeader() }
-            );
-            return detailsResponse.data;
-          } catch (error) {
-            console.error(`Error fetching details for assignment ${assignment.assignmentId}:`, error);
-            // Create a dummy order to avoid UI errors
-            return {
-              ...assignment,
-              order: {
-                orderId: 0,
-                restaurant: { name: 'Loading...' },
-                address: { street: 'Loading...', city: 'Loading...', fullAddress: 'Loading...' },
-                createdAt: new Date().toISOString(),
-                totalPrice: 0
-              }
-            };
-          }
-        })
-      );
-      
-      console.log('Assignments with orders:', assignmentsWithOrders);
-      return assignmentsWithOrders;
-    } else {
-      console.warn('API response is not an array as expected:', response.data);
-      return [];
-    }
+    return response.data;
   } catch (error) {
     console.error('Error fetching pending delivery requests:', error);
     throw error;
@@ -141,24 +103,22 @@ export const getCourierOrderHistory = async () => {
 };
 
 // Update courier availability status (AVAILABLE or UNAVAILABLE)
-export const updateCourierStatus = async (courierId: number, status: string) => {
+export const updateCourierStatus = async (courierId: string, status: 'AVAILABLE' | 'UNAVAILABLE'): Promise<void> => {
   try {
-    console.log(`Updating courier status for courier ${courierId} to ${status}`);
     const response = await axios.put(
       `${API_URL}/courier/status/${courierId}?status=${status}`,
       {}, // empty body
       { headers: getAuthHeader() }
     );
-    console.log('Courier status update response:', response.data);
     return response.data;
   } catch (error) {
-    console.error(`Error updating courier status to ${status}:`, error);
+    console.error('Error updating courier status:', error);
     throw error;
   }
 };
 
 // Get courier profile information
-export const getCourierProfile = async (courierId: number) => {
+export const getCourierProfile = async (courierId: string) => {
   try {
     const response = await axios.get(
       `${API_URL}/courier/profile/${courierId}`,

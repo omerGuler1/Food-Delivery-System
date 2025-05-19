@@ -1,6 +1,7 @@
 package com.hufds.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -11,6 +12,7 @@ import java.time.LocalTime;
 @AllArgsConstructor
 @Entity
 @Table(name = "businesshours")
+@JsonIgnoreProperties({"restaurant.menuItems", "restaurant.orders", "restaurant.businessHours", "restaurant.favoritedByCustomers"})
 public class BusinessHours {
 
     @Id
@@ -20,7 +22,7 @@ public class BusinessHours {
 
     @ManyToOne
     @JoinColumn(name = "restaurant_id", nullable = false)
-    @JsonBackReference
+    @JsonBackReference(value = "restaurant-business-hours")
     private Restaurant restaurant;
 
     @Column(name = "day_of_week", length = 10, nullable = false)

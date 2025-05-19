@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -16,6 +17,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "customer")
+@JsonIgnoreProperties({"orders.courier", "orders.restaurant", "orders.address", "payments.order", "reviews.targetId", "favoriteRestaurants.restaurant"})
 public class Customer {
 
     @Id
@@ -36,23 +38,23 @@ public class Customer {
     private String phoneNumber;
 
     @OneToMany(mappedBy = "customer")
-    @JsonManagedReference
+    @JsonManagedReference(value = "customer-addresses")
     private Set<Address> addresses = new HashSet<>();
 
     @OneToMany(mappedBy = "customer")
-    @JsonManagedReference
+    @JsonManagedReference(value = "order-customer")
     private Set<Order> orders = new HashSet<>();
 
     @OneToMany(mappedBy = "customer")
-    @JsonBackReference
+    @JsonManagedReference(value = "customer-payments")
     private Set<Payment> payments = new HashSet<>();
 
     @OneToMany(mappedBy = "customer")
-    @JsonBackReference
+    @JsonManagedReference(value = "customer-reviews")
     private Set<Review> reviews = new HashSet<>();
 
     @OneToMany(mappedBy = "customer")
-    @JsonManagedReference
+    @JsonManagedReference(value = "favorite-customer")
     private Set<FavoriteRestaurant> favoriteRestaurants = new HashSet<>();
 
     @Column(name = "created_at", nullable = false)

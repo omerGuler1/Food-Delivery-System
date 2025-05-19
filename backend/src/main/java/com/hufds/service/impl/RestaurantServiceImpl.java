@@ -9,10 +9,12 @@ import com.hufds.repository.CourierRepository;
 import com.hufds.repository.OrderRepository;
 import com.hufds.repository.RestaurantRepository;
 import com.hufds.service.RestaurantService;
+import com.hufds.service.FileStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
@@ -29,6 +31,9 @@ public class RestaurantServiceImpl implements RestaurantService {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private FileStorageService fileStorageService;
 
     @Override
     public Restaurant getRestaurantById(Integer id) {
@@ -94,5 +99,27 @@ public class RestaurantServiceImpl implements RestaurantService {
     public Object assignCourierToOrder(Integer restaurantId, Integer orderId, Integer courierId) {
         // This method is deprecated. Use CourierAssignmentService instead.
         throw new CustomException("This method is deprecated. Please use CourierAssignmentService to request a courier.", HttpStatus.BAD_REQUEST);
+    }
+
+    @Override
+    @Transactional
+    public Restaurant uploadProfileImage(Integer restaurantId, MultipartFile image) {
+        Restaurant restaurant = getRestaurantById(restaurantId);
+        if (image.isEmpty()) {
+            throw new CustomException("Please select an image to upload", HttpStatus.BAD_REQUEST);
+        }
+        String contentType = image.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new CustomException("Only image files are allowed", HttpStatus.BAD_REQUEST);
+        }
+        if (image.getSize() > 5 * 1024 * 1024) {
+            throw new CustomException("Image size must be less than 5MB", HttpStatus.BAD_REQUEST);
+        }
+        if (restaurant.getProfileImageUrl() != null) {
+            fileStorageService.deleteFile(restaurant.getProfileImageUrl());
+        }
+        String imageUrl = fileStorageService.storeFile(image, "restaurant-profiles");
+        restaurant.setProfileImageUrl(imageUrl);
+        return restaurantRepository.save(restaurant);
     }
 } 

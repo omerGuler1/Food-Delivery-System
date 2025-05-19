@@ -3,7 +3,6 @@ package com.hufds.service;
 import com.hufds.entity.Courier;
 import com.hufds.entity.Order;
 import com.hufds.dto.PasswordUpdateDTO;
-import com.hufds.dto.CourierProfileDTO;
 
 import java.util.List;
 
@@ -27,9 +26,4 @@ public interface CourierService {
     
     // Password operations
     void updatePassword(Integer courierId, PasswordUpdateDTO passwordUpdateDTO);
-
-    // Add this method for updating from DTO
-    Courier updateCourierProfileFromDTO(Integer courierId, CourierProfileDTO dto);
-
-    void deleteCourierAccount(Integer courierId);
 } 
