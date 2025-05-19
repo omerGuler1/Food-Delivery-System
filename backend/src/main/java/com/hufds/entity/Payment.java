@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Entity
 @Table(name = "payment")
+@JsonIgnoreProperties({"order.customer", "order.courier", "order.restaurant", "order.address", "customer.orders", "customer.payments", "customer.reviews", "customer.favoriteRestaurants"})
 public class Payment {
 
     @Id
@@ -23,12 +25,12 @@ public class Payment {
 
     @OneToOne
     @JoinColumn(name = "order_id", nullable = false)
-    @JsonBackReference
+    @JsonBackReference(value = "order-payment")
     private Order order;
 
     @ManyToOne
     @JoinColumn(name = "customer_id")
-    @JsonManagedReference
+    @JsonBackReference(value = "customer-payments")
     private Customer customer;
 
     @Column(nullable = false, precision = 10, scale = 2)

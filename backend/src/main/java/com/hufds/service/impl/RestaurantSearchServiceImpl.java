@@ -119,6 +119,7 @@ public class RestaurantSearchServiceImpl implements RestaurantSearchService {
             .estimatedDeliveryTime(calculateEstimatedDeliveryTime(restaurant))
             .averagePrice(calculateAveragePrice(restaurant))
             .isOpen(restaurantConfigService.isRestaurantOpen(restaurant.getRestaurantId()))
+            .profileImageUrl(restaurant.getProfileImageUrl())
             .build();
     }
 

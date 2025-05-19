@@ -29,4 +29,5 @@ public class RestaurantSearchResultDTO {
     private LocalTime estimatedDeliveryTime;
     private Double averagePrice;
     private boolean isOpen;
+    private String profileImageUrl;
 } 

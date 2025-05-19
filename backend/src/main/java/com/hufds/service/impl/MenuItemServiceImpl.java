@@ -6,11 +6,13 @@ import com.hufds.entity.Restaurant;
 import com.hufds.exception.CustomException;
 import com.hufds.repository.MenuItemRepository;
 import com.hufds.repository.RestaurantRepository;
+import com.hufds.service.FileStorageService;
 import com.hufds.service.MenuItemService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,6 +23,7 @@ public class MenuItemServiceImpl implements MenuItemService {
 
     private final MenuItemRepository menuItemRepository;
     private final RestaurantRepository restaurantRepository;
+    private final FileStorageService fileStorageService;
 
     @Override
     @Transactional
@@ -75,6 +78,41 @@ public class MenuItemServiceImpl implements MenuItemService {
     public MenuItem toggleAvailability(Integer menuItemId, Integer restaurantId) {
         MenuItem menuItem = getMenuItemAndValidateRestaurant(menuItemId, restaurantId);
         menuItem.setAvailability(!menuItem.getAvailability());
+        return menuItemRepository.save(menuItem);
+    }
+
+    @Override
+    @Transactional
+    public MenuItem uploadMenuItemImage(Integer menuItemId, MultipartFile image, Integer restaurantId) {
+        // Get and validate menu item
+        MenuItem menuItem = getMenuItemAndValidateRestaurant(menuItemId, restaurantId);
+        
+        // Validate image
+        if (image.isEmpty()) {
+            throw new CustomException("Please select an image to upload", HttpStatus.BAD_REQUEST);
+        }
+        
+        // Validate file type
+        String contentType = image.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new CustomException("Only image files are allowed", HttpStatus.BAD_REQUEST);
+        }
+        
+        // Validate file size (max 5MB)
+        if (image.getSize() > 5 * 1024 * 1024) {
+            throw new CustomException("Image size must be less than 5MB", HttpStatus.BAD_REQUEST);
+        }
+        
+        // Delete old image if exists
+        if (menuItem.getImageUrl() != null) {
+            fileStorageService.deleteFile(menuItem.getImageUrl());
+        }
+        
+        // Upload new image and get URL
+        String imageUrl = fileStorageService.storeFile(image, "menu-items");
+        
+        // Update menu item with new image URL
+        menuItem.setImageUrl(imageUrl);
         return menuItemRepository.save(menuItem);
     }
 

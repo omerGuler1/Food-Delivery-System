@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -10,22 +10,17 @@ import {
   Button,
   CircularProgress,
   Alert,
-  IconButton,
   Grid,
-  Avatar,
-  Card,
-  CardContent,
-  Divider,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   SelectChangeEvent,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Badge
+  Switch,
+  FormControlLabel,
+  Card,
+  CardContent,
+  Divider
 } from '@mui/material';
 import {
   Person,
@@ -34,21 +29,17 @@ import {
   Edit as EditIcon,
   Save as SaveIcon,
   Delete as DeleteIcon,
-  CameraAlt as CameraIcon,
   DirectionsBike as BikeIcon,
   LocationOn as LocationIcon,
   Info as InfoIcon,
-  ArrowBack
+  ArrowBack,
+  AccessTime as AccessTimeIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Courier } from '../types/courier';
-import { getCourierProfile, updateProfile, uploadProfileImage } from '../services/profileService';
-
-// Define CourierWithProfileImage interface
-interface CourierWithProfileImage extends Courier {
-  profileImageUrl?: string;
-}
+import { Courier } from '../interfaces';
+import { getCourierProfile, updateProfile } from '../services/profileService';
+import { updateCourierStatus } from '../services/courierService';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -87,17 +78,17 @@ const vehicleTypes = [
 ];
 
 const CourierProfile: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // State
   const [activeTab, setActiveTab] = useState(0);
-  const [profileData, setProfileData] = useState<CourierWithProfileImage | null>(null);
+  const [profileData, setProfileData] = useState<Courier | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isAvailable, setIsAvailable] = useState(false);
   
   // Form values
   const [formValues, setFormValues] = useState({
@@ -106,19 +97,16 @@ const CourierProfile: React.FC = () => {
     phoneNumber: '',
     vehicleType: ''
   });
-
-  // Profile Image
-  const [profileImage, setProfileImage] = useState<File | null>(null);
-  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
-  const [openImageDialog, setOpenImageDialog] = useState(false);
   
   // Fetch profile data
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
         setLoading(true);
-        const data = await getCourierProfile() as CourierWithProfileImage;
+        const data = await getCourierProfile();
+        console.log('Profile data from API:', data);
         setProfileData(data);
+        setIsAvailable(data.isAvailable || false);
         
         // Set form values from profile data
         setFormValues({
@@ -127,12 +115,6 @@ const CourierProfile: React.FC = () => {
           phoneNumber: data.phoneNumber || '',
           vehicleType: data.vehicleType || ''
         });
-        
-        // Set profile image URL if it exists
-        if (data.profileImageUrl) {
-          setProfileImageUrl(data.profileImageUrl);
-        }
-        
       } catch (err: any) {
         console.error('Error fetching profile:', err);
         setError(err.message || 'Failed to load profile data. Please try again later.');
@@ -177,6 +159,24 @@ const CourierProfile: React.FC = () => {
     });
   };
 
+  const handleAvailabilityChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!profileData?.courierId) {
+        throw new Error('Courier ID not available');
+      }
+
+      const newStatus = event.target.checked ? 'AVAILABLE' : 'UNAVAILABLE';
+      await updateCourierStatus(profileData.courierId, newStatus);
+      setIsAvailable(event.target.checked);
+      setSuccessMessage(`Status updated to ${newStatus.toLowerCase()}`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      console.error('Error updating availability:', err);
+      setError(err.message || 'Failed to update availability status');
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -190,88 +190,12 @@ const CourierProfile: React.FC = () => {
       };
       
       const updatedProfile = await updateProfile(updateData);
-      setProfileData(updatedProfile as CourierWithProfileImage);
+      setProfileData(updatedProfile as Courier);
       setEditMode(false);
       setSuccessMessage('Profile updated successfully');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       setError(err.message || 'Failed to update profile. Please try again.');
-      setTimeout(() => setError(null), 3000);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleProfileImageClick = () => {
-    setOpenImageDialog(true);
-  };
-
-  const handleCloseImageDialog = () => {
-    setOpenImageDialog(false);
-  };
-
-  const handleImageUploadClick = () => {
-    // Trigger file input click
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image size must be less than 5MB');
-        setTimeout(() => setError(null), 3000);
-        return;
-      }
-      
-      // Validate file type
-      if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-        setError('Only JPEG, JPG and PNG images are supported');
-        setTimeout(() => setError(null), 3000);
-        return;
-      }
-      
-      setProfileImage(file);
-      setProfileImageUrl(URL.createObjectURL(file));
-      setOpenImageDialog(false);
-    }
-  };
-
-  const handleUploadProfileImage = async () => {
-    if (!profileImage) return;
-    
-    try {
-      setLoading(true);
-      
-      // Create a FormData object to send the file
-      const formData = new FormData();
-      formData.append('profileImage', profileImage);
-      
-      // Upload the image using the API service
-      const response = await uploadProfileImage(formData);
-      
-      // Update profile image URL with the returned URL from the server
-      setProfileImageUrl(response.imageUrl);
-      
-      // Update local state
-      if (profileData) {
-        setProfileData({
-          ...profileData,
-          profileImageUrl: response.imageUrl
-        });
-      }
-      
-      setSuccessMessage('Profile image uploaded successfully');
-      setTimeout(() => setSuccessMessage(null), 3000);
-      
-      // Close the dialog
-      setOpenImageDialog(false);
-    } catch (err: any) {
-      setError(err.message || 'Failed to upload profile image. Please try again.');
       setTimeout(() => setError(null), 3000);
     } finally {
       setLoading(false);
@@ -288,19 +212,19 @@ const CourierProfile: React.FC = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      {/* Back button at the top left */}
+      {/* Back button */}
       <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
         <Button
           variant="text"
           color="primary"
           startIcon={<ArrowBack />}
-          onClick={() => navigate('/courier/dashboard')}
+          onClick={() => navigate(-1)}
           sx={{ 
             fontWeight: 'medium',
             '&:hover': { bgcolor: 'rgba(255, 112, 67, 0.08)' }
           }}
         >
-          Back to Dashboard
+          Back
         </Button>
       </Box>
 
@@ -326,7 +250,7 @@ const CourierProfile: React.FC = () => {
               width: { xs: '100%', md: '300px' }, 
               minWidth: { xs: '100%', md: '300px' },
               flexShrink: 0,
-              background: 'linear-gradient(135deg, #ff7043 0%, #c63f17 100%)',
+              background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
               color: 'white',
               p: 3,
               pt: 4,
@@ -336,38 +260,23 @@ const CourierProfile: React.FC = () => {
               alignItems: 'center'
             }}
           >
-            <Badge
-              overlap="circular"
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-              badgeContent={
-                <IconButton 
-                  sx={{ 
-                    bgcolor: 'primary.light', 
-                    color: 'white',
-                    '&:hover': { bgcolor: 'primary.main' } 
-                  }}
-                  size="small"
-                  onClick={handleProfileImageClick}
-                >
-                  <CameraIcon fontSize="small" />
-                </IconButton>
-              }
-            >
-              <Avatar 
-                src={profileImageUrl || undefined}
+            <Box 
                 sx={{ 
                   width: 120, 
                   height: 120, 
                   mb: 3, 
                   bgcolor: 'rgba(255, 255, 255, 0.2)', 
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                   fontSize: '3rem',
                   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
                   border: '4px solid rgba(255, 255, 255, 0.2)'
                 }}
               >
-                {profileData?.name.charAt(0).toUpperCase()}
-              </Avatar>
-            </Badge>
+              <BikeIcon sx={{ fontSize: 60 }} />
+            </Box>
             
             <Typography variant="h5" sx={{ mb: 1 }}>
               {profileData?.name}
@@ -376,261 +285,215 @@ const CourierProfile: React.FC = () => {
             <Typography variant="body2" sx={{ mb: 3, textAlign: 'center' }}>
               {profileData?.email}
             </Typography>
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isAvailable}
+                  onChange={handleAvailabilityChange}
+                  color="default"
+                />
+              }
+              label={
+                <Typography variant="body2" sx={{ color: 'white' }}>
+                  {isAvailable ? 'Available for Delivery' : 'Not Available'}
+                </Typography>
+              }
+              sx={{ mb: 3 }}
+            />
             
             <Box sx={{ width: '100%' }}>
               <Tabs
                 value={activeTab}
                 onChange={handleTabChange}
                 orientation="vertical"
-                variant="fullWidth"
+                variant="scrollable"
                 sx={{
                   '.MuiTab-root': {
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    justifyContent: 'flex-start',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     textAlign: 'left',
-                    borderRadius: 1,
-                    mb: 0.5,
-                    pl: 2,
+                    color: 'rgba(255, 255, 255, 0.7)',
                     '&.Mui-selected': {
                       color: 'white',
-                      bgcolor: 'rgba(255, 255, 255, 0.15)',
-                      fontWeight: 'bold'
-                    },
-                    '&:hover': {
                       bgcolor: 'rgba(255, 255, 255, 0.1)',
+                      borderLeft: '3px solid white'
                     }
-                  },
-                  '.MuiTabs-indicator': {
-                    display: 'none'
                   }
                 }}
               >
-                <Tab 
-                  label="Personal Information" 
-                  icon={<Person />} 
-                  iconPosition="start"
-                />
-                <Tab 
-                  label="Account Settings" 
-                  icon={<InfoIcon />} 
-                  iconPosition="start"
-                />
+                <Tab icon={<Person />} label="Profile Information" iconPosition="start" />
+                <Tab icon={<AccessTimeIcon />} label="Delivery History" iconPosition="start" />
+                <Tab icon={<InfoIcon />} label="Account Details" iconPosition="start" />
               </Tabs>
             </Box>
           </Box>
           
           {/* Main Content */}
-          <Box sx={{ flexGrow: 1, p: { xs: 2, md: 3 } }}>
+          <Box sx={{ flexGrow: 1, p: 3 }}>
+            {/* Profile Information Tab */}
             <TabPanel value={activeTab} index={0}>
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                mb: 3 
-              }}>
-                <Typography variant="h5" fontWeight="bold">
-                  Personal Information
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+                <Typography variant="h5" component="h2" fontWeight="bold">
+                  Courier Profile
                 </Typography>
                 <Button 
-                  startIcon={editMode ? <SaveIcon /> : <EditIcon />}
-                  variant={editMode ? "contained" : "outlined"}
-                  color={editMode ? "primary" : "inherit"}
-                  onClick={editMode ? handleProfileSubmit : handleEditToggle}
+                  variant={editMode ? "outlined" : "contained"}
+                  color={editMode ? "error" : "primary"}
+                  startIcon={editMode ? <EditIcon /> : <EditIcon />}
+                  onClick={handleEditToggle}
                 >
-                  {editMode ? 'Save Changes' : 'Edit Profile'}
+                  {editMode ? 'Cancel' : 'Edit Profile'}
                 </Button>
               </Box>
               
-              <Card elevation={0} sx={{ mb: 3, borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
-                <CardContent>
+              <form onSubmit={handleProfileSubmit}>
                   <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
                       <TextField
-                        label="Full Name"
+                      fullWidth
+                      label="Name"
                         name="name"
                         value={formValues.name}
                         onChange={handleInputChange}
-                        fullWidth
-                        margin="normal"
+                      disabled={!editMode}
+                      required
                         InputProps={{
-                          startAdornment: <Person color="primary" sx={{ mr: 1 }} />,
-                          readOnly: !editMode
+                        startAdornment: <Person color="action" sx={{ mr: 1 }} />
                         }}
-                        variant={editMode ? "outlined" : "filled"}
                       />
                     </Grid>
-                    
                     <Grid item xs={12} md={6}>
                       <TextField
-                        label="Email Address"
+                      fullWidth
+                      label="Email"
                         name="email"
+                      type="email"
                         value={formValues.email}
-                        fullWidth
-                        margin="normal"
+                      disabled={true}
+                      required
                         InputProps={{
-                          startAdornment: <Email color="primary" sx={{ mr: 1 }} />,
+                        startAdornment: <Email color="action" sx={{ mr: 1 }} />,
                           readOnly: true
                         }}
-                        variant="filled"
-                        helperText="Email cannot be changed"
+                      helperText="Email address cannot be changed"
                       />
                     </Grid>
-                    
                     <Grid item xs={12} md={6}>
                       <TextField
+                      fullWidth
                         label="Phone Number"
                         name="phoneNumber"
                         value={formValues.phoneNumber}
                         onChange={handleInputChange}
-                        fullWidth
-                        margin="normal"
+                      disabled={!editMode}
+                      required
                         InputProps={{
-                          startAdornment: <Phone color="primary" sx={{ mr: 1 }} />,
-                          readOnly: !editMode
+                        startAdornment: <Phone color="action" sx={{ mr: 1 }} />
                         }}
-                        variant={editMode ? "outlined" : "filled"}
                       />
                     </Grid>
-                    
                     <Grid item xs={12} md={6}>
-                      <FormControl fullWidth margin="normal" variant="outlined">
+                    <FormControl fullWidth disabled={!editMode}>
                         <InputLabel id="vehicle-type-label">Vehicle Type</InputLabel>
                         <Select
+                        labelId="vehicle-type-label"
                           name="vehicleType"
                           value={formValues.vehicleType}
                           onChange={handleSelectChange}
                           label="Vehicle Type"
-                          inputProps={{ 
-                            startAdornment: <BikeIcon sx={{ color: 'action.active', mr: 1, my: 0.5 }} /> 
-                          }}
-                          readOnly={!editMode}
-                          disabled={!editMode}
-                        >
-                          <MenuItem value="Bicycle">Bicycle</MenuItem>
-                          <MenuItem value="Motorcycle">Motorcycle</MenuItem>
-                          <MenuItem value="Car">Car</MenuItem>
-                          <MenuItem value="Van">Van</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Grid>
+                        startAdornment={<BikeIcon color="action" sx={{ mr: 1 }} />}
+                      >
+                        {vehicleTypes.map((type) => (
+                          <MenuItem key={type} value={type}>{type}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
                   </Grid>
-                </CardContent>
-              </Card>
+                  
+                  {/* Save Button - only shown in edit mode */}
+                  {editMode && (
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+                        <Button
+                          type="submit"
+                          variant="contained"
+                          color="primary"
+                          startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
+                          disabled={loading}
+                        >
+                          Save Changes
+                        </Button>
+                      </Box>
+                    </Grid>
+                  )}
+                  </Grid>
+              </form>
             </TabPanel>
             
+            {/* Delivery History Tab */}
             <TabPanel value={activeTab} index={1}>
-              <Typography variant="h5" fontWeight="bold" gutterBottom>
-                Account Settings
+              <Typography variant="h5" component="h2" fontWeight="bold" sx={{ mb: 4 }}>
+                Delivery History
               </Typography>
               
-              <Card 
-                elevation={0} 
-                sx={{ 
-                  mb: 3, 
-                  borderRadius: 2, 
-                  border: '1px solid rgba(0,0,0,0.08)'
-                }}
-              >
+              <Alert severity="info" sx={{ mb: 3 }}>
+                Your delivery history will be displayed here. This feature is coming soon.
+              </Alert>
+            </TabPanel>
+            
+            {/* Account Details Tab */}
+            <TabPanel value={activeTab} index={2}>
+              <Typography variant="h5" component="h2" fontWeight="bold" sx={{ mb: 4 }}>
+                Account Details
+              </Typography>
+              
+              <Card>
                 <CardContent>
-                  <Box sx={{ mb: 3 }}>
                     <Typography variant="h6" gutterBottom>
-                      Change Password
+                    Account Information
                     </Typography>
                     <Divider sx={{ mb: 2 }} />
-                    <Button 
-                      variant="outlined"
-                      color="primary"
-                      onClick={() => {
-                        // Password change functionality would go here
-                        alert('Password change functionality would be implemented here');
-                      }}
-                    >
-                      Change Password
-                    </Button>
-                  </Box>
                   
-                  <Box>
-                    <Typography variant="h6" color="error" gutterBottom>
-                      Delete Account
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Account Type
+                      </Typography>
+                      <Typography variant="body1">
+                        Courier
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Member Since
+                      </Typography>
+                      <Typography variant="body1">
+                        {profileData?.createdAt ? new Date(profileData.createdAt).toLocaleDateString() : 'N/A'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Current Status
+                      </Typography>
+                      <Typography variant="body1" color={isAvailable ? 'success.main' : 'error.main'}>
+                        {isAvailable ? 'Available' : 'Not Available'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Vehicle Type
                     </Typography>
-                    <Divider sx={{ mb: 2 }} />
-                    <Typography variant="body2" color="text.secondary" paragraph>
-                      Deleting your account will permanently remove all your data from our systems.
-                      This action cannot be undone.
+                      <Typography variant="body1">
+                        {profileData?.vehicleType || 'Not specified'}
                     </Typography>
-                    <Button 
-                      variant="outlined"
-                      color="error"
-                      startIcon={<DeleteIcon />}
-                      onClick={() => {
-                        // Account deletion functionality would go here
-                        alert('Account deletion functionality would be implemented here');
-                      }}
-                    >
-                      Delete Account
-                    </Button>
-                  </Box>
+                    </Grid>
+                  </Grid>
                 </CardContent>
               </Card>
             </TabPanel>
           </Box>
         </Box>
       </Paper>
-      
-      {/* Hidden file input for image upload */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        accept="image/jpeg,image/png,image/jpg"
-        style={{ display: 'none' }}
-        onChange={handleImageChange}
-      />
-      
-      {/* Profile image dialog */}
-      <Dialog open={openImageDialog} onClose={handleCloseImageDialog} maxWidth="xs" fullWidth>
-        <DialogTitle>Profile Picture</DialogTitle>
-        <DialogContent>
-          <Box sx={{ textAlign: 'center' }}>
-            <Avatar 
-              src={profileImageUrl || undefined}
-              sx={{ 
-                width: 120, 
-                height: 120, 
-                mx: 'auto',
-                mb: 2
-              }}
-            >
-              {profileData?.name.charAt(0).toUpperCase()}
-            </Avatar>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleImageUploadClick}
-              startIcon={<CameraIcon />}
-            >
-              Upload New Photo
-            </Button>
-            {profileImage && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" gutterBottom>
-                  Ready to upload: {profileImage.name}
-                </Typography>
-                <Button
-                  variant="contained"
-                  color="success"
-                  onClick={handleUploadProfileImage}
-                >
-                  Save Photo
-                </Button>
-              </Box>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseImageDialog}>Cancel</Button>
-        </DialogActions>
-      </Dialog>
     </Container>
   );
 };

@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -102,8 +103,64 @@ public class ProfileService {
         return getCurrentProfile().getAddresses();
     }
 
-    public Set<Order> getCurrentUserOrders() {
-        return getCurrentProfile().getOrders();
+    public Set<CustomerOrderDTO> getCurrentUserOrders() {
+        Customer customer = getCurrentProfile();
+        return customer.getOrders().stream()
+                .filter(order -> order.getRestaurant() != null && order.getAddress() != null)
+                .map(order -> {
+                    CustomerOrderDTO.PaymentDTO paymentDTO = null;
+                    if (order.getPayment() != null) {
+                        Payment payment = order.getPayment();
+                        paymentDTO = CustomerOrderDTO.PaymentDTO.builder()
+                                .paymentId(payment.getPaymentId())
+                                .paymentMethod(payment.getMethod().toString())
+                                .paymentStatus(payment.getStatus().toString())
+                                .paymentDate(payment.getPaidAt())
+                                .build();
+                    }
+
+                    // Defensive: skip if restaurant or address is null (should not happen, but for safety)
+                    if (order.getRestaurant() == null || order.getAddress() == null) {
+                        // Optionally log this situation
+                        return null;
+                    }
+
+                    return CustomerOrderDTO.builder()
+                            .orderId(order.getOrderId())
+                            .status(order.getStatus())
+                            .totalPrice(order.getTotalPrice())
+                            .createdAt(order.getCreatedAt())
+                            .deliveredAt(order.getDeliveredAt())
+                            .restaurant(RestaurantSummaryDTO.builder()
+                                    .restaurantId(order.getRestaurant().getRestaurantId())
+                                    .name(order.getRestaurant().getName())
+                                    .phoneNumber(order.getRestaurant().getPhoneNumber())
+                                    .cuisineType(order.getRestaurant().getCuisineType())
+                                    .build())
+                            .address(order.getAddress() != null ? AddressSummaryDTO.builder()
+                                    .street(order.getAddress().getStreet())
+                                    .city(order.getAddress().getCity())
+                                    .state(order.getAddress().getState())
+                                    .zipCode(order.getAddress().getZipCode())
+                                    .country(order.getAddress().getCountry())
+                                    .build() : null)
+                            .orderItems(order.getOrderItems().stream()
+                                    .map(item -> OrderItemDTO.builder()
+                                            .itemId(item.getOrderItemId())
+                                            .menuItem(item.getMenuItem() != null ? MenuItemSummaryDTO.builder()
+                                                      .menuItemId(item.getMenuItem().getMenuItemId())
+                                                      .name(item.getMenuItem().getName())
+                                                      .price(item.getMenuItem().getPrice() != null ? item.getMenuItem().getPrice().doubleValue() : 0.0)
+                                                      .build() : null)
+                                            .quantity(item.getQuantity())
+                                            .subtotal(item.getSubtotal() != null ? item.getSubtotal().doubleValue() : 0.0)
+                                            .build())
+                                    .collect(Collectors.toSet()))
+                            .payment(paymentDTO)
+                            .build();
+                })
+                .filter(dto -> dto != null) // Remove any nulls from skipped orders
+                .collect(Collectors.toSet());
     }
 
     @Transactional

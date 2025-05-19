@@ -275,7 +275,7 @@ const Navbar: React.FC = () => {
                 {/* User menu */}
                 <Tooltip title="Open settings">
                   <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                    <Avatar alt={user?.name}>
+                    <Avatar alt={user?.name} src={userType === 'restaurant' && 'profileImageUrl' in (user || {}) ? (user as any).profileImageUrl : undefined}>
                       {user?.name ? user.name.charAt(0).toUpperCase() : <AccountCircleIcon />}
                     </Avatar>
                   </IconButton>

@@ -20,11 +20,12 @@ public class OrderItem {
 
     @ManyToOne
     @JoinColumn(name = "order_id", nullable = false)
-    @JsonIgnoreProperties({"orderItems", "courierAssignments"})
+    @JsonBackReference(value = "order-items")
     private Order order;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "menu_item_id", nullable = false)
+    @JsonBackReference(value = "menu-item-orders")
     private MenuItem menuItem;
 
     @Column(nullable = false)

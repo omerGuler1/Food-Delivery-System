@@ -18,6 +18,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   checkAuth: () => boolean;
   getCurrentUserType: () => UserType;
+  setUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -80,7 +81,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       login, 
       logout,
       checkAuth,
-      getCurrentUserType
+      getCurrentUserType,
+      setUser
     }}>
       {children}
     </AuthContext.Provider>

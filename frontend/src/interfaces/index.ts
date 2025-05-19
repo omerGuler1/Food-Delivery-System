@@ -49,10 +49,11 @@ export interface Restaurant extends User {
 }
 
 export interface Courier extends User {
-  courierId: number;
-  isAvailable?: boolean;
-  currentLocation?: string;
-  vehicleType?: string;
+  courierId: string;
+  vehicleType: string;
+  isAvailable: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Auth interfaces
@@ -105,15 +106,18 @@ export enum FoodCategory {
   FAST_FOOD = 'Fast Food'
 }
 
-export interface MenuItem {
+export interface MenuItemType {
   menuItemId: number;
   name: string;
   description: string;
   price: number;
   category: string;
-  imageUrl?: string;
   available: boolean;
   restaurantId?: number;
+  imageUrl?: string;
+}
+
+export interface MenuItem extends MenuItemType {
   allergens?: string[];
   preparationTime?: number; // in minutes
   calories?: number;
@@ -240,4 +244,36 @@ export interface ActiveDeliveryOrder {
 // PendingDeliveryRequest interface
 export interface PendingDeliveryRequest extends CourierAssignment {
   order: Order;
+}
+
+// Admin Edit DTOs
+export interface AdminEditCustomerRequest {
+  customerId: number;
+  name?: string;
+  email?: string;
+  phoneNumber?: string;
+  newPassword?: string;
+}
+
+export interface AdminEditRestaurantRequest {
+  restaurantId: number;
+  name?: string;
+  email?: string;
+  phoneNumber?: string;
+  cuisineType?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+  newPassword?: string;
+}
+
+export interface AdminEditCourierRequest {
+  courierId: number;
+  name?: string;
+  email?: string;
+  phoneNumber?: string;
+  vehicleType?: string;
+  newPassword?: string;
 } 

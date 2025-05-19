@@ -103,6 +103,7 @@ export const updateMenuItem = async (
     price: number;
     availability: boolean;
     category: string;
+    imageUrl?: string;
   }
 ): Promise<MenuItem> => {
   console.log(`API Call: Updating menu item ${menuItemId}`, menuItem);
@@ -149,4 +150,31 @@ export const updateRestaurantStatus = async (restaurantId: number, isOpen: boole
 export const getRestaurantsSorted = async (sortBy: string): Promise<Restaurant[]> => {
   const response = await api.get<Restaurant[]>(`/restaurants?sortBy=${sortBy}`);
   return response.data;
+};
+
+// Upload menu item image
+export const uploadMenuItemImage = async (
+  menuItemId: number,
+  image: File
+): Promise<MenuItem> => {
+  console.log(`API Call: Uploading image for menu item ${menuItemId}`);
+  try {
+    const formData = new FormData();
+    formData.append('image', image);
+    
+    const response = await api.post<MenuItem>(
+      `/restaurant/menu-items/${menuItemId}/image`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    console.log('API Response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('API Error in uploadMenuItemImage:', error);
+    throw error;
+  }
 }; 
