@@ -6,11 +6,13 @@ import com.hufds.dto.CourierAssignmentRequestDTO;
 import com.hufds.entity.CourierAssignment;
 import com.hufds.entity.Order;
 import com.hufds.entity.Courier;
+import com.hufds.entity.Payment;
 import com.hufds.exception.CustomException;
 import com.hufds.repository.CourierAssignmentRepository;
 import com.hufds.repository.OrderRepository;
 import com.hufds.repository.CourierRepository;
 import com.hufds.service.CourierAssignmentService;
+import com.hufds.service.PaymentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +37,9 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
 
     @Autowired
     private CourierRepository courierRepository;
+
+    @Autowired
+    private PaymentService paymentService;
 
     @Override
     @Transactional
@@ -66,12 +71,13 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
             throw new CustomException("Courier is not available", HttpStatus.BAD_REQUEST);
         }
 
-        // Check if order has any active assignments (not REJECTED or EXPIRED)
+        // Check if order has any active assignments (not REJECTED, EXPIRED, or CANCELLED)
         List<CourierAssignment> existingAssignments = assignmentRepository.findByOrderOrderId(assignmentDTO.getOrderId());
         boolean hasActiveAssignment = existingAssignments.stream()
                 .anyMatch(assignment -> 
                     assignment.getStatus() != CourierAssignment.AssignmentStatus.REJECTED && 
-                    assignment.getStatus() != CourierAssignment.AssignmentStatus.EXPIRED);
+                    assignment.getStatus() != CourierAssignment.AssignmentStatus.EXPIRED &&
+                    assignment.getStatus() != CourierAssignment.AssignmentStatus.CANCELLED);
 
         if (hasActiveAssignment) {
             throw new CustomException("Order is already assigned to a courier", HttpStatus.BAD_REQUEST);
@@ -212,14 +218,61 @@ public class CourierAssignmentServiceImpl implements CourierAssignmentService {
             Order order = assignment.getOrder();
             order.setStatus(Order.OrderStatus.DELIVERED);
             order.setDeliveredAt(java.time.LocalDateTime.now());
+
+            // Process payment for CASH_ON_DELIVERY
+            if (order.getPayment() != null && order.getPayment().getMethod() == Payment.PaymentMethod.CASH_ON_DELIVERY) {
+                log.info("Processing payment for order ID: {} with payment ID: {}", order.getOrderId(), order.getPayment().getPaymentId());
+                paymentService.processPayment(order.getPayment().getPaymentId());
+            }
+
             orderRepository.save(order);
+
             // Make courier available again
             Courier courier = assignment.getCourier();
             courier.setStatus(Courier.CourierStatus.AVAILABLE);
             courierRepository.save(courier);
+        } else if (status == CourierAssignment.AssignmentStatus.CANCELLED) {
+            // Handle cancellation
+            Order order = assignment.getOrder();
+            Courier courier = assignment.getCourier();
+
+            // 1. Set order status back to PROCESSING and remove courier
+            order.setStatus(Order.OrderStatus.PROCESSING);
+            order.setCourier(null);
+            orderRepository.save(order);
+
+            // 2. Mark courier as unavailable
+            courier.setStatus(Courier.CourierStatus.UNAVAILABLE);
+            courierRepository.save(courier);
+
+            // 3. Save the cancelled assignment
+            assignment = assignmentRepository.save(assignment);
+
+            // 4. Try to find a new courier for the order
+            try {
+                // Get all available couriers
+                List<Courier> availableCouriers = courierRepository.findByStatus(Courier.CourierStatus.AVAILABLE);
+                
+                if (!availableCouriers.isEmpty()) {
+                    // Create a new assignment request for the first available courier
+                    CourierAssignmentRequestDTO newAssignmentDTO = CourierAssignmentRequestDTO.builder()
+                        .orderId(order.getOrderId())
+                        .courierId(availableCouriers.get(0).getCourierId())
+                        .build();
+                    
+                    // Create new assignment with REQUESTED status
+                    assignOrderToCourier(newAssignmentDTO);
+                    log.info("Created new courier assignment request for order {} after cancellation", order.getOrderId());
+                } else {
+                    log.warn("No available couriers found for reassignment of order {} after cancellation", order.getOrderId());
+                }
+            } catch (Exception e) {
+                log.error("Error while trying to reassign order {} after cancellation: {}", order.getOrderId(), e.getMessage());
+                // Don't throw the exception - we want to complete the cancellation even if reassignment fails
+            }
         }
 
-        return assignmentRepository.save(assignment);
+        return assignment;
     }
 
     @Override

@@ -8,6 +8,7 @@ export interface OrderRequest {
   restaurantId: number;
   addressId: number;
   items: OrderItem[];
+  paymentMethod: 'CREDIT_CARD' | 'CASH_ON_DELIVERY';
 }
 
 export interface OrderItem {
@@ -25,14 +26,15 @@ export const placeOrder = async (orderData: OrderRequest): Promise<any> => {
     try {
       console.log(`Attempt ${retryCount + 1} - Sending order data to server:`, JSON.stringify(orderData, null, 2));
       
-      // Backend'in doğru formatı kullanması için emin olalım
+      // Format order data for backend
       const formattedOrderData = {
         restaurantId: orderData.restaurantId,
         addressId: orderData.addressId,
         items: orderData.items.map(item => ({
           menuItemId: item.menuItemId,
           quantity: item.quantity
-        }))
+        })),
+        paymentMethod: orderData.paymentMethod
       };
       
       const response = await api.post('/orders', formattedOrderData);
@@ -69,7 +71,7 @@ export const placeOrder = async (orderData: OrderRequest): Promise<any> => {
 };
 
 // Prepare order data from cart
-export const prepareOrderData = (cart: Cart, addressId: number): OrderRequest => {
+export const prepareOrderData = (cart: Cart, addressId: number, paymentMethod: 'CREDIT_CARD' | 'CASH_ON_DELIVERY'): OrderRequest => {
   if (!cart.restaurantId) {
     throw new Error('Cart does not have a restaurant ID');
   }
@@ -82,7 +84,8 @@ export const prepareOrderData = (cart: Cart, addressId: number): OrderRequest =>
   return {
     restaurantId: cart.restaurantId,
     addressId,
-    items
+    items,
+    paymentMethod
   };
 };
 
