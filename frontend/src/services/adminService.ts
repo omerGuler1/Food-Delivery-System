@@ -18,6 +18,7 @@ export interface CourierListItem {
   status: string;
   earnings: number;
   createdAt: string;
+  approvalStatus: string;
 }
 
 export interface RestaurantListItem {
@@ -29,6 +30,7 @@ export interface RestaurantListItem {
   rating: number;
   city: string;
   createdAt: string;
+  approvalStatus: string;
 }
 
 /**

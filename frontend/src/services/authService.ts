@@ -52,6 +52,11 @@ export const restaurantLogin = async (data: LoginRequest) => {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data));
       localStorage.setItem('userType', 'restaurant');
+      
+      // Check approval status
+      if (response.data.approvalStatus === 'PENDING' || response.data.approvalStatus === 'REJECTED') {
+        // Still allow login but the protected route will redirect to pending approval page
+      }
     }
     return response.data;
   } catch (error: any) {
@@ -83,6 +88,11 @@ export const courierLogin = async (data: LoginRequest) => {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data));
       localStorage.setItem('userType', 'courier');
+      
+      // Check approval status
+      if (response.data.approvalStatus === 'PENDING' || response.data.approvalStatus === 'REJECTED') {
+        // Still allow login but the protected route will redirect to pending approval page
+      }
     }
     return response.data;
   } catch (error: any) {

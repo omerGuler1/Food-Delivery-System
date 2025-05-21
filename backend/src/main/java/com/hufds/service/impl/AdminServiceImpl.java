@@ -73,7 +73,9 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public List<Restaurant> getAllActiveRestaurants() {
-        return restaurantRepository.findAllByDeletedAtIsNull();
+        // Admin doesn't need to filter by approval status when viewing all restaurants
+        // to provide a complete view of all data
+        return restaurantRepository.findAll();
     }
 
     @Override
@@ -204,5 +206,46 @@ public class AdminServiceImpl implements AdminService {
         }
         
         return courierRepository.save(courier);
+    }
+
+    @Override
+    public Restaurant updateRestaurantApprovalStatus(Integer restaurantId, Restaurant.ApprovalStatus status) {
+        // Use findById directly as we need to be able to manage all restaurants regardless of status
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new CustomException("Restaurant not found", HttpStatus.NOT_FOUND));
+        
+        restaurant.setApprovalStatus(status);
+        
+        // If the restaurant is rejected, set the deletedAt timestamp
+        if (status == Restaurant.ApprovalStatus.REJECTED) {
+            restaurant.setDeletedAt(LocalDateTime.now());
+        }
+        
+        return restaurantRepository.save(restaurant);
+    }
+    
+    @Override
+    public Courier updateCourierApprovalStatus(Integer courierId, Courier.ApprovalStatus status) {
+        Courier courier = courierRepository.findById(courierId)
+                .orElseThrow(() -> new CustomException("Courier not found", HttpStatus.NOT_FOUND));
+        
+        courier.setApprovalStatus(status);
+        
+        // If the courier is rejected, set the deletedAt timestamp
+        if (status == Courier.ApprovalStatus.REJECTED) {
+            courier.setDeletedAt(LocalDateTime.now());
+        }
+        
+        return courierRepository.save(courier);
+    }
+
+    @Override
+    public List<Restaurant> getPendingApprovalRestaurants() {
+        return restaurantRepository.findByApprovalStatus(Restaurant.ApprovalStatus.PENDING);
+    }
+    
+    @Override
+    public List<Courier> getPendingApprovalCouriers() {
+        return courierRepository.findByApprovalStatus(Courier.ApprovalStatus.PENDING);
     }
 } 

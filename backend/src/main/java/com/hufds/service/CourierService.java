@@ -26,4 +26,6 @@ public interface CourierService {
     
     // Password operations
     void updatePassword(Integer courierId, PasswordUpdateDTO passwordUpdateDTO);
+
+    Courier updateApprovalStatus(Integer courierId, Courier.ApprovalStatus approvalStatus);
 } 

@@ -73,4 +73,12 @@ public interface AdminService {
      * @return Updated Courier entity
      */
     Courier editCourier(AdminEditCourierDTO dto);
+
+    Restaurant updateRestaurantApprovalStatus(Integer restaurantId, Restaurant.ApprovalStatus status);
+    
+    Courier updateCourierApprovalStatus(Integer courierId, Courier.ApprovalStatus status);
+
+    List<Restaurant> getPendingApprovalRestaurants();
+    
+    List<Courier> getPendingApprovalCouriers();
 } 

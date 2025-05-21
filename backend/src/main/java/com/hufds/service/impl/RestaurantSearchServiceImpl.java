@@ -26,9 +26,9 @@ public class RestaurantSearchServiceImpl implements RestaurantSearchService {
     public List<RestaurantSearchResultDTO> searchRestaurants(RestaurantSearchDTO searchDTO) {
         List<Restaurant> restaurants = new ArrayList<>();
 
-        // If all search parameters are null, return all restaurants
+        // If all search parameters are null, return only approved and non-deleted restaurants
         if (isAllSearchParametersNull(searchDTO)) {
-            restaurants.addAll(restaurantRepository.findAll());
+            restaurants.addAll(restaurantRepository.findByApprovalStatusAndDeletedAtIsNull(Restaurant.ApprovalStatus.ACCEPTED));
         } else {
             // Basic search by name, cuisine, location
             if (searchDTO.getName() != null) {
@@ -60,6 +60,10 @@ public class RestaurantSearchServiceImpl implements RestaurantSearchService {
         // Remove duplicates and filter by additional criteria
         return restaurants.stream()
             .distinct()
+            // We already filter by approval status and deleted status in our query in most cases,
+            // but we'll keep these filters to ensure consistency for other search types
+            .filter(restaurant -> restaurant.getApprovalStatus() == Restaurant.ApprovalStatus.ACCEPTED)
+            .filter(restaurant -> restaurant.getDeletedAt() == null)
             .filter(restaurant -> filterByPriceRange(restaurant, searchDTO.getMinPrice(), searchDTO.getMaxPrice()))
             .filter(restaurant -> filterByDeliveryTime(restaurant, searchDTO.getDeliveryTime()))
             .map(this::mapToSearchResultDTO)

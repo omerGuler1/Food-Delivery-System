@@ -37,6 +37,26 @@ public class RestaurantServiceImpl implements RestaurantService {
 
     @Override
     public Restaurant getRestaurantById(Integer id) {
+        Restaurant restaurant = restaurantRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+        
+        // When accessed by customers, check if restaurant is approved and not deleted
+        if (restaurant.getApprovalStatus() != Restaurant.ApprovalStatus.ACCEPTED) {
+            throw new CustomException("Restaurant is not available", HttpStatus.NOT_FOUND);
+        }
+        
+        if (restaurant.getDeletedAt() != null) {
+            throw new CustomException("Restaurant is not available", HttpStatus.NOT_FOUND);
+        }
+        
+        return restaurant;
+    }
+
+    /**
+     * Admin version of getRestaurantById that doesn't filter based on approval status or deleted status
+     */
+    @Override
+    public Restaurant getRestaurantByIdForAdmin(Integer id) {
         return restaurantRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
     }
@@ -120,6 +140,13 @@ public class RestaurantServiceImpl implements RestaurantService {
         }
         String imageUrl = fileStorageService.storeFile(image, "restaurant-profiles");
         restaurant.setProfileImageUrl(imageUrl);
+        return restaurantRepository.save(restaurant);
+    }
+
+    @Override
+    public Restaurant updateApprovalStatus(Integer restaurantId, Restaurant.ApprovalStatus approvalStatus) {
+        Restaurant restaurant = getRestaurantById(restaurantId);
+        restaurant.setApprovalStatus(approvalStatus);
         return restaurantRepository.save(restaurant);
     }
 } 

@@ -40,6 +40,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import { getRestaurantById } from '../services/restaurantService';
 import { getRestaurantMenuItems, MenuItem as MenuServiceItem } from '../services/menuService';
+import { favoriteService } from '../services/favoriteService';
 import { Restaurant } from '../interfaces';
 import { useCart } from '../contexts/CartContext';
 
@@ -92,7 +93,7 @@ const RestaurantDetailPage: React.FC = () => {
   const DELIVERY_FEE = 15;
   const SERVICE_FEE = 5;
 
-  // Fetch restaurant details
+  // Fetch restaurant details and favorite status
   useEffect(() => {
     const fetchRestaurantData = async () => {
       if (!id) return;
@@ -108,6 +109,10 @@ const RestaurantDetailPage: React.FC = () => {
             ...restaurantData,
             isOpen: true
           });
+          
+          // Check if restaurant is in favorites
+          const favoriteStatus = await favoriteService.checkFavoriteStatus(Number(id));
+          setIsFavorite(favoriteStatus);
         }
       } catch (error) {
         console.error('Error fetching restaurant data:', error);
@@ -155,8 +160,23 @@ const RestaurantDetailPage: React.FC = () => {
     ? menuItems.filter(item => item.category === selectedCategory)
     : menuItems;
 
-  const toggleFavorite = () => {
-    setIsFavorite(!isFavorite);
+  const toggleFavorite = async () => {
+    if (!id || !restaurant) return;
+    
+    try {
+      if (isFavorite) {
+        // Remove from favorites
+        await favoriteService.removeFavoriteRestaurant(Number(id));
+      } else {
+        // Add to favorites
+        await favoriteService.addFavoriteRestaurant(Number(id));
+      }
+      // Toggle the local state
+      setIsFavorite(!isFavorite);
+    } catch (error) {
+      console.error('Error toggling favorite status:', error);
+      // Show error message (you could add a snackbar or alert here)
+    }
   };
 
   // Add to cart using the context

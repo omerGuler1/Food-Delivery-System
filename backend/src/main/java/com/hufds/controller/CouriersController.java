@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -28,6 +29,17 @@ public class CouriersController {
         return ResponseEntity.ok(courierDTOs);
     }
 
+    @GetMapping("/{courierId}/approval-status")
+    public ResponseEntity<?> checkApprovalStatus(@PathVariable Integer courierId) {
+        Courier courier = courierRepository.findById(courierId)
+                .orElseThrow(() -> new RuntimeException("Courier not found"));
+        
+        return ResponseEntity.ok(Map.of(
+                "courierId", courier.getCourierId(),
+                "approvalStatus", courier.getApprovalStatus()
+        ));
+    }
+
     private CourierListDTO mapToDTO(Courier courier) {
         return CourierListDTO.builder()
                 .courierId(courier.getCourierId())
@@ -38,6 +50,7 @@ public class CouriersController {
                 .status(courier.getStatus())
                 .earnings(courier.getEarnings())
                 .createdAt(courier.getCreatedAt() != null ? courier.getCreatedAt().format(formatter) : null)
+                .approvalStatus(courier.getApprovalStatus())
                 .build();
     }
 } 

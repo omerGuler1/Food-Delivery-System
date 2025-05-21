@@ -8,6 +8,9 @@ import com.hufds.repository.RestaurantRepository;
 import com.hufds.repository.AddressRepository;
 import com.hufds.repository.MenuItemRepository;
 import com.hufds.service.OrderService;
+import com.hufds.service.PaymentService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +24,8 @@ import java.util.List;
 
 @Service
 public class OrderServiceImpl implements OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
 
     @Autowired
     private OrderRepository orderRepository;
@@ -36,6 +41,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private MenuItemRepository menuItemRepository;
+
+    @Autowired
+    private PaymentService paymentService;
 
     @Override
     @Transactional
@@ -93,8 +101,26 @@ public class OrderServiceImpl implements OrderService {
         order.setOrderItems(orderItems);
         order.setTotalPrice(totalPrice);
 
-        // Save again to update the order with items
-        return orderRepository.save(order);
+        // Save order with items
+        order = orderRepository.save(order);
+
+        // Create payment record for the order
+        try {
+            Payment payment = paymentService.createPayment(order.getOrderId(), dto.getPaymentMethod());
+            
+            // For credit card payments, process immediately
+            if (dto.getPaymentMethod() == Payment.PaymentMethod.CREDIT_CARD) {
+                payment = paymentService.processPayment(payment.getPaymentId());
+            }
+            
+            order.setPayment(payment);
+            order = orderRepository.save(order);
+        } catch (Exception e) {
+            // If payment creation or processing fails, we should roll back the entire transaction
+            throw new RuntimeException("Failed to create/process payment record: " + e.getMessage());
+        }
+
+        return order;
     }
 
     @Override
@@ -120,6 +146,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public Order updateOrderStatus(Integer id, Order.OrderStatus status, Integer userId, String userType) {
+        log.info("Attempting to update order status for order ID: {}. New status: {}", id, status);
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
@@ -133,6 +160,20 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("Invalid status transition");
         }
 
+        // Validate payment status for the new order status
+        if (!paymentService.validatePaymentForOrderStatus(order, status)) {
+            throw new RuntimeException("Payment validation failed for status change");
+        }
+
+        // If order is being delivered, process payment
+        if (status == Order.OrderStatus.DELIVERED && order.getPayment() != null) {
+            log.info("Order is delivered. Processing payment for payment ID: {}", order.getPayment().getPaymentId());
+            if (order.getPayment().getMethod() == Payment.PaymentMethod.CASH_ON_DELIVERY ||
+                order.getPayment().getMethod() == Payment.PaymentMethod.CREDIT_CARD) {
+                paymentService.processPayment(order.getPayment().getPaymentId());
+            }
+        }
+
         order.setStatus(status);
         return orderRepository.save(order);
     }
@@ -140,6 +181,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public Order cancelOrder(Integer id, Integer userId, String userType) {
+        log.info("Attempting to cancel order ID: {} by user ID: {} of type: {}", id, userId, userType);
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
@@ -154,6 +196,13 @@ public class OrderServiceImpl implements OrderService {
         // Validate order can be cancelled
         if (!canBeCancelled(order.getStatus())) {
             throw new RuntimeException("Order cannot be cancelled in its current status");
+        }
+
+        // If payment was completed, process refund
+        if (order.getPayment() != null && 
+            order.getPayment().getStatus() == Payment.PaymentStatus.COMPLETED) {
+            log.info("Processing refund for payment ID: {}", order.getPayment().getPaymentId());
+            paymentService.refundPayment(order.getPayment().getPaymentId());
         }
 
         order.setStatus(Order.OrderStatus.CANCELLED);

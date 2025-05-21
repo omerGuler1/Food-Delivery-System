@@ -37,6 +37,8 @@ public class RestaurantAuthServiceImpl implements RestaurantAuthService {
         restaurant.setPassword(passwordEncoder.encode(registerDTO.getPassword()));
         restaurant.setPhoneNumber(registerDTO.getPhoneNumber());
         restaurant.setCuisineType(registerDTO.getCuisineType());
+        // Set approval status to PENDING by default
+        restaurant.setApprovalStatus(Restaurant.ApprovalStatus.PENDING);
 
         // Save to DB
         Restaurant saved = restaurantRepository.save(restaurant);
@@ -52,6 +54,7 @@ public class RestaurantAuthServiceImpl implements RestaurantAuthService {
                 .phoneNumber(saved.getPhoneNumber())
                 .cuisineType(saved.getCuisineType())
                 .rating(saved.getRating())
+                .approvalStatus(saved.getApprovalStatus())
                 .build();
     }
 
@@ -68,6 +71,8 @@ public class RestaurantAuthServiceImpl implements RestaurantAuthService {
             throw new CustomException("Invalid email or password", HttpStatus.UNAUTHORIZED);
         }
 
+        // Allow login but include approval status in the response
+        // Frontend will handle redirection based on approval status
         String token = jwtService.generateToken(restaurant.getEmail(), restaurant.getRestaurantId(), "restaurant");
 
         return RestaurantResponseDTO.builder()
@@ -78,6 +83,7 @@ public class RestaurantAuthServiceImpl implements RestaurantAuthService {
                 .phoneNumber(restaurant.getPhoneNumber())
                 .cuisineType(restaurant.getCuisineType())
                 .rating(restaurant.getRating())
+                .approvalStatus(restaurant.getApprovalStatus())
                 .build();
     }
 } 

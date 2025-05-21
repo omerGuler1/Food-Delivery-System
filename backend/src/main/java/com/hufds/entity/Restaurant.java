@@ -67,6 +67,10 @@ public class Restaurant {
     @Column(precision = 10, scale = 6)
     private BigDecimal longitude;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approval_status", nullable = false)
+    private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -104,5 +108,9 @@ public class Restaurant {
 
     public void setProfileImageUrl(String profileImageUrl) {
         this.profileImageUrl = profileImageUrl;
+    }
+
+    public enum ApprovalStatus {
+        PENDING, ACCEPTED, REJECTED
     }
 }

@@ -177,4 +177,15 @@ export const uploadMenuItemImage = async (
     console.error('API Error in uploadMenuItemImage:', error);
     throw error;
   }
+};
+
+// Check restaurant approval status
+export const checkRestaurantApprovalStatus = async (restaurantId: number) => {
+  try {
+    const response = await api.get(`/restaurants/${restaurantId}/approval-status`);
+    return response.data;
+  } catch (error) {
+    console.error('Error checking restaurant approval status:', error);
+    throw error;
+  }
 }; 

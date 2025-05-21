@@ -37,6 +37,8 @@ public class CourierAuthServiceImpl implements CourierAuthService {
         courier.setPassword(passwordEncoder.encode(registerDTO.getPassword()));
         courier.setPhoneNumber(registerDTO.getPhoneNumber());
         courier.setVehicleType(registerDTO.getVehicleType());
+        // Set approval status to PENDING by default
+        courier.setApprovalStatus(Courier.ApprovalStatus.PENDING);
 
         Courier savedCourier = courierRepository.save(courier);
 
@@ -50,6 +52,9 @@ public class CourierAuthServiceImpl implements CourierAuthService {
                 .email(savedCourier.getEmail())
                 .phoneNumber(savedCourier.getPhoneNumber())
                 .vehicleType(savedCourier.getVehicleType())
+                .status(savedCourier.getStatus())
+                .earnings(savedCourier.getEarnings())
+                .approvalStatus(savedCourier.getApprovalStatus())
                 .build();
     }
 
@@ -62,6 +67,8 @@ public class CourierAuthServiceImpl implements CourierAuthService {
             throw new CustomException("Invalid email or password", HttpStatus.UNAUTHORIZED);
         }
 
+        // Allow login but include approval status in the response
+        // Frontend will handle redirection based on approval status
         String token = jwtService.generateToken(courier.getEmail(), courier.getCourierId(), "courier");
 
         return CourierResponseDTO.builder()
@@ -71,6 +78,9 @@ public class CourierAuthServiceImpl implements CourierAuthService {
                 .email(courier.getEmail())
                 .phoneNumber(courier.getPhoneNumber())
                 .vehicleType(courier.getVehicleType())
+                .status(courier.getStatus())
+                .earnings(courier.getEarnings())
+                .approvalStatus(courier.getApprovalStatus())
                 .build();
     }
 } 

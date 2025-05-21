@@ -185,6 +185,10 @@ const CheckoutPage: React.FC = () => {
         ? parseInt(selectedAddressId, 10) 
         : selectedAddressId;
       
+      // Map frontend payment method to backend enum
+      const selectedPaymentMethod: 'CREDIT_CARD' | 'CASH_ON_DELIVERY' = 
+        paymentMethod === 'cashOnDelivery' ? 'CASH_ON_DELIVERY' : 'CREDIT_CARD';
+      
       // Prepare order data
       const orderData = {
         restaurantId: cart.restaurantId,
@@ -192,7 +196,8 @@ const CheckoutPage: React.FC = () => {
         items: cart.items.map(item => ({
           menuItemId: item.menuItemId,
           quantity: item.quantity
-        }))
+        })),
+        paymentMethod: selectedPaymentMethod
       };
       
       // Send order to backend
@@ -209,11 +214,17 @@ const CheckoutPage: React.FC = () => {
       setSuccess(true);
       clearCart();
       setActiveStep(steps.length - 1);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error placing order:', error);
       
       // Check for specific error messages from the backend
-      const backendError = error.response?.data?.message || '';
+      const backendError = error instanceof Error ? error.message : 
+        (error && typeof error === 'object' && 'response' in error && 
+         error.response && typeof error.response === 'object' && 
+         'data' in error.response && error.response.data && 
+         typeof error.response.data === 'object' && 
+         'message' in error.response.data) ? 
+         String(error.response.data.message) : '';
       
       // Check if we have a null constraint violation which suggests order was created but OrderItems failed
       if (backendError.includes('order_id') && backendError.includes('null value') && backendError.includes('constraint')) {
@@ -226,7 +237,7 @@ const CheckoutPage: React.FC = () => {
       }
       
       // Otherwise show the error
-      const errorMsg = error.response?.data?.message || 'Failed to place your order. Please try again.';
+      const errorMsg = backendError || 'Failed to place your order. Please try again.';
       setError(errorMsg);
     } finally {
       setOrderLoading(false);
