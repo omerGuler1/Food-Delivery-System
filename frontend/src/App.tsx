@@ -20,6 +20,7 @@ import CourierDashboard from './pages/CourierDashboard';
 import CourierProfile from './pages/CourierProfile';
 import RestaurantsPage from './pages/RestaurantsPage';
 import RestaurantDetailPage from './pages/RestaurantDetailPage';
+import FavoriteRestaurantsPage from './pages/FavoriteRestaurantsPage';
 import CheckoutPage from './pages/CheckoutPage';
 import CustomerOrdersPage from './pages/CustomerOrdersPage';
 import AdminDashboard from './pages/AdminDashboard';
@@ -344,6 +345,11 @@ const App: React.FC = () => {
                 {/* Add the customer orders route */}
                 <Route path="/orders" element={
                   <ProtectedRoute userType="customer" element={<CustomerOrdersPage />} />
+                } />
+                
+                {/* Add the favorites route */}
+                <Route path="/favorites" element={
+                  <ProtectedRoute userType="customer" element={<FavoriteRestaurantsPage />} />
                 } />
                 
                 {/* Fallback route */}

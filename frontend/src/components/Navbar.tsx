@@ -31,6 +31,7 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 
@@ -96,8 +97,15 @@ const Navbar: React.FC = () => {
       { title: 'Dashboard', path: '/admin/dashboard', icon: <DashboardIcon sx={{ mr: 0.5 }} /> },
       { title: 'Promotions & Coupons', path: '/admin/promotions', icon: <LocalOfferIcon sx={{ mr: 0.5 }} /> }
     ];
+  } else if (isAuthenticated && userType === 'customer') {
+    // For customers, show regular navigation plus favorites
+    pages = [
+      { title: 'Home', path: '/', icon: null },
+      { title: 'Restaurants', path: '/restaurants', icon: null },
+      { title: 'Favorites', path: '/favorites', icon: null }
+    ];
   } else {
-    // For other users, show regular navigation
+    // For non-authenticated users, show regular navigation
     pages = [
       { title: 'Home', path: '/', icon: null },
       { title: 'Restaurants', path: '/restaurants', icon: null }
@@ -120,7 +128,10 @@ const Navbar: React.FC = () => {
           }
           handleCloseUserMenu(); 
         }},
-        ...(userType === 'customer' ? [{ title: 'My Orders', path: '/orders', icon: <ReceiptIcon fontSize="small" />, onClick: () => { navigate('/orders'); handleCloseUserMenu(); } }] : []),
+        ...(userType === 'customer' ? [
+          { title: 'My Orders', path: '/orders', icon: <ReceiptIcon fontSize="small" />, onClick: () => { navigate('/orders'); handleCloseUserMenu(); } },
+          { title: 'Favorite Restaurants', path: '/favorites', icon: <FavoriteIcon fontSize="small" />, onClick: () => { navigate('/favorites'); handleCloseUserMenu(); } }
+        ] : []),
         { title: 'Logout', icon: <ExitToAppIcon fontSize="small" />, onClick: handleLogout }
       ]
     : [];
