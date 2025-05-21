@@ -1,5 +1,6 @@
 package com.hufds.dto;
 
+import com.hufds.entity.Restaurant.ApprovalStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,4 +18,5 @@ public class RestaurantResponseDTO {
     private String phoneNumber;
     private String cuisineType;
     private float rating;
+    private ApprovalStatus approvalStatus;
 }

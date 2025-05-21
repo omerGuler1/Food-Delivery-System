@@ -130,4 +130,18 @@ export const getCourierProfile = async (courierId: string) => {
     console.error('Error fetching courier profile:', error);
     throw error;
   }
+};
+
+// Check courier approval status
+export const checkCourierApprovalStatus = async (courierId: string) => {
+  try {
+    const response = await axios.get(
+      `${API_URL}/couriers/${courierId}/approval-status`,
+      { headers: getAuthHeader() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error checking courier approval status:', error);
+    throw error;
+  }
 }; 

@@ -19,6 +19,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Map;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/restaurants")
@@ -103,5 +105,15 @@ public class RestaurantController {
             @PathVariable Integer restaurantId,
             @RequestParam("image") MultipartFile image) {
         return ResponseEntity.ok(restaurantService.uploadProfileImage(restaurantId, image));
+    }
+
+    @GetMapping("/{restaurantId}/approval-status")
+    public ResponseEntity<?> checkApprovalStatus(@PathVariable Integer restaurantId) {
+        Restaurant restaurant = restaurantService.getRestaurantById(restaurantId);
+        
+        return ResponseEntity.ok(Map.of(
+                "restaurantId", restaurant.getRestaurantId(),
+                "approvalStatus", restaurant.getApprovalStatus()
+        ));
     }
 } 

@@ -35,4 +35,6 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Integer>
         @Param("longitude") BigDecimal longitude,
         @Param("maxDistance") double maxDistance
     );
+
+    List<Restaurant> findByApprovalStatus(Restaurant.ApprovalStatus status);
 }

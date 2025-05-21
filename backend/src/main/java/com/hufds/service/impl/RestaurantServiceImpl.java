@@ -122,4 +122,11 @@ public class RestaurantServiceImpl implements RestaurantService {
         restaurant.setProfileImageUrl(imageUrl);
         return restaurantRepository.save(restaurant);
     }
+
+    @Override
+    public Restaurant updateApprovalStatus(Integer restaurantId, Restaurant.ApprovalStatus approvalStatus) {
+        Restaurant restaurant = getRestaurantById(restaurantId);
+        restaurant.setApprovalStatus(approvalStatus);
+        return restaurantRepository.save(restaurant);
+    }
 } 

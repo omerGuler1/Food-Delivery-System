@@ -125,4 +125,11 @@ public class CourierServiceImpl implements CourierService {
         courier.setPassword(passwordEncoder.encode(passwordUpdateDTO.getNewPassword()));
         courierRepository.save(courier);
     }
+
+    @Override
+    public Courier updateApprovalStatus(Integer courierId, Courier.ApprovalStatus approvalStatus) {
+        Courier courier = getCourierProfile(courierId);
+        courier.setApprovalStatus(approvalStatus);
+        return courierRepository.save(courier);
+    }
 } 

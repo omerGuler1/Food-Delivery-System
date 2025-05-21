@@ -342,8 +342,10 @@ const AdminDashboard: React.FC = () => {
     try {
       setLoading(true);
       const data = await getAllCouriers();
+      // Filter out couriers with non-ACCEPTED approval status
+      const acceptedCouriers = data.filter(courier => courier.approvalStatus === 'ACCEPTED');
       // ID'ye göre sıralama yap
-      const sortedData = [...data].sort((a, b) => a.courierId - b.courierId);
+      const sortedData = [...acceptedCouriers].sort((a, b) => a.courierId - b.courierId);
       setCouriers(sortedData);
     } catch (error: any) {
       setError(error.message || 'Failed to fetch couriers');
@@ -356,8 +358,10 @@ const AdminDashboard: React.FC = () => {
     try {
       setLoading(true);
       const data = await getAllRestaurants();
+      // Filter out restaurants with non-ACCEPTED approval status
+      const acceptedRestaurants = data.filter(restaurant => restaurant.approvalStatus === 'ACCEPTED');
       // ID'ye göre sıralama yap
-      const sortedData = [...data].sort((a, b) => a.restaurantId - b.restaurantId);
+      const sortedData = [...acceptedRestaurants].sort((a, b) => a.restaurantId - b.restaurantId);
       setRestaurants(sortedData);
     } catch (error: any) {
       setError(error.message || 'Failed to fetch restaurants');
@@ -452,25 +456,43 @@ const AdminDashboard: React.FC = () => {
     <Box sx={{ minHeight: '100vh', py: 3, bgcolor: '#f8f9fa' }}>
       <Container maxWidth="lg">
         {/* Dashboard Header */}
-        <Box sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
-          <Avatar 
+        <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Avatar 
+              sx={{ 
+                width: 50, 
+                height: 50, 
+                bgcolor: 'primary.main',
+                mr: 2
+              }}
+            >
+              <AdminIcon />
+            </Avatar>
+            <Box>
+              <Typography variant="h5" component="h1" fontWeight="bold">
+                Admin Dashboard
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Manage users, couriers, and restaurants
+              </Typography>
+            </Box>
+          </Box>
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={() => navigate('/admin/approvals')}
+            startIcon={<RestaurantIcon />}
             sx={{ 
-              width: 50, 
-              height: 50, 
-              bgcolor: 'primary.main',
-              mr: 2
+              boxShadow: 2,
+              '&:hover': {
+                boxShadow: 4,
+                transform: 'translateY(-2px)'
+              },
+              transition: 'all 0.2s ease-in-out'
             }}
           >
-            <AdminIcon />
-          </Avatar>
-          <Box>
-            <Typography variant="h5" component="h1" fontWeight="bold">
-              Admin Dashboard
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Manage users, couriers, and restaurants
-            </Typography>
-          </Box>
+            Pending Approvals
+          </Button>
         </Box>
 
         {/* Success and Error Messages */}

@@ -14,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -119,5 +120,39 @@ public class AdminController {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.notFound().build();
+    }
+
+    @PutMapping("/restaurants/{restaurantId}/approval-status")
+    public ResponseEntity<?> updateRestaurantApprovalStatus(
+            @PathVariable Integer restaurantId,
+            @RequestParam Restaurant.ApprovalStatus status) {
+        Restaurant restaurant = adminService.updateRestaurantApprovalStatus(restaurantId, status);
+        return ResponseEntity.ok(Map.of(
+            "restaurantId", restaurant.getRestaurantId(),
+            "approvalStatus", restaurant.getApprovalStatus(),
+            "message", "Restaurant approval status updated successfully"
+        ));
+    }
+
+    @PutMapping("/couriers/{courierId}/approval-status")
+    public ResponseEntity<?> updateCourierApprovalStatus(
+            @PathVariable Integer courierId,
+            @RequestParam Courier.ApprovalStatus status) {
+        Courier courier = adminService.updateCourierApprovalStatus(courierId, status);
+        return ResponseEntity.ok(Map.of(
+            "courierId", courier.getCourierId(),
+            "approvalStatus", courier.getApprovalStatus(),
+            "message", "Courier approval status updated successfully"
+        ));
+    }
+
+    @GetMapping("/restaurants/pending-approval")
+    public ResponseEntity<List<Restaurant>> getPendingRestaurants() {
+        return ResponseEntity.ok(adminService.getPendingApprovalRestaurants());
+    }
+
+    @GetMapping("/couriers/pending-approval")
+    public ResponseEntity<List<Courier>> getPendingCouriers() {
+        return ResponseEntity.ok(adminService.getPendingApprovalCouriers());
     }
 } 

@@ -25,6 +25,8 @@ import CustomerOrdersPage from './pages/CustomerOrdersPage';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminProfile from './pages/AdminProfile';
 import AdminPromotions from './pages/AdminPromotions';
+import AdminApprovalPage from './pages/AdminApprovalPage';
+import PendingApprovalPage from './pages/PendingApprovalPage';
 
 // Protected route component
 interface ProtectedRouteProps {
@@ -33,7 +35,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ userType, element }) => {
-  const { checkAuth, getCurrentUserType } = useAuth();
+  const { checkAuth, getCurrentUserType, user } = useAuth();
   
   if (!checkAuth()) {
     return <Navigate to="/login" replace />;
@@ -42,6 +44,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ userType, element }) =>
   const currentUserType = getCurrentUserType();
   if (currentUserType !== userType) {
     return <Navigate to="/" replace />;
+  }
+  
+  // Check approval status for restaurant and courier
+  if ((userType === 'restaurant' || userType === 'courier') && user) {
+    const approvalStatus = 'approvalStatus' in user ? user.approvalStatus : undefined;
+    if (approvalStatus === 'PENDING' || approvalStatus === 'REJECTED') {
+      return <Navigate to="/pending-approval" replace />;
+    }
   }
   
   return element;
@@ -289,6 +299,7 @@ const App: React.FC = () => {
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/restaurants" element={<RestaurantsPage />} />
                 <Route path="/restaurants/:id" element={<RestaurantDetailPage />} />
+                <Route path="/pending-approval" element={<PendingApprovalPage />} />
                 
                 {/* Protected routes */}
                 <Route path="/profile" element={
@@ -320,6 +331,9 @@ const App: React.FC = () => {
                 } />
                 <Route path="/admin/promotions" element={
                   <ProtectedRoute userType="admin" element={<AdminPromotions />} />
+                } />
+                <Route path="/admin/approvals" element={
+                  <ProtectedRoute userType="admin" element={<AdminApprovalPage />} />
                 } />
                 
                 {/* Add the checkout route */}

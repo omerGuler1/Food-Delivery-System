@@ -277,15 +277,19 @@ const RegisterPage: React.FC = () => {
           break;
         case 1: // Restaurant
           const restaurantResponse = await restaurantRegister(restaurantForm);
+          // Set approval status to PENDING for new restaurant registrations
+          restaurantResponse.approvalStatus = 'PENDING';
           login(restaurantResponse, 'restaurant');
-          // Redirect to restaurant dashboard page
-          navigate('/restaurant/dashboard');
+          // Redirect to pending approval page
+          navigate('/pending-approval');
           break;
         case 2: // Courier
           const courierResponse = await courierRegister(courierForm);
+          // Set approval status to PENDING for new courier registrations
+          courierResponse.approvalStatus = 'PENDING';
           login(courierResponse, 'courier');
-          // Redirect to courier dashboard page
-          navigate('/courier/dashboard');
+          // Redirect to pending approval page
+          navigate('/pending-approval');
           break;
         default:
           throw new Error('Invalid user type');

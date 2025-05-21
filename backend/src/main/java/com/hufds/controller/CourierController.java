@@ -13,6 +13,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/courier")
@@ -98,6 +99,17 @@ public class CourierController {
     @GetMapping("/earnings/{courierId}")
     public ResponseEntity<Double> getTotalEarnings(@PathVariable Integer courierId) {
         return ResponseEntity.ok(courierService.getTotalEarnings(courierId));
+    }
+
+    // Add this new endpoint for checking approval status
+    @GetMapping("/{courierId}/approval-status")
+    public ResponseEntity<?> checkApprovalStatus(@PathVariable Integer courierId) {
+        Courier courier = courierService.getCourierProfile(courierId);
+        
+        return ResponseEntity.ok(Map.of(
+                "courierId", courier.getCourierId(),
+                "approvalStatus", courier.getApprovalStatus()
+        ));
     }
     
     private String extractToken(HttpServletRequest request) {

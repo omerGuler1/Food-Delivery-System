@@ -46,6 +46,10 @@ public class Courier {
     @Column(precision = 10, scale = 2, nullable = false)
     private BigDecimal earnings = BigDecimal.ZERO;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approval_status", nullable = false)
+    private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
+
     @OneToMany(mappedBy = "courier")
     @JsonBackReference(value = "courier-orders")
     private Set<Order> orders;
@@ -62,6 +66,10 @@ public class Courier {
 
     public enum CourierStatus {
         AVAILABLE, UNAVAILABLE
+    }
+
+    public enum ApprovalStatus {
+        PENDING, ACCEPTED, REJECTED
     }
 
     @PrePersist

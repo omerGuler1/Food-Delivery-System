@@ -55,4 +55,6 @@ public interface RestaurantService {
     Object assignCourierToOrder(Integer restaurantId, Integer orderId, Integer courierId);
 
     Restaurant uploadProfileImage(Integer restaurantId, MultipartFile image);
+
+    Restaurant updateApprovalStatus(Integer restaurantId, Restaurant.ApprovalStatus approvalStatus);
 } 

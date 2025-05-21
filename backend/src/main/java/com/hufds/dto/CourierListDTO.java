@@ -1,6 +1,7 @@
 package com.hufds.dto;
 
 import com.hufds.entity.Courier.CourierStatus;
+import com.hufds.entity.Courier.ApprovalStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,4 +22,5 @@ public class CourierListDTO {
     private CourierStatus status;
     private BigDecimal earnings;
     private String createdAt;
+    private ApprovalStatus approvalStatus;
 } 

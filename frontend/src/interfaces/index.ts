@@ -46,6 +46,7 @@ export interface Restaurant extends User {
   deliveryRangeKm?: number;
   estimatedDeliveryTime?: string;
   averagePrice?: number;
+  approvalStatus?: 'PENDING' | 'ACCEPTED' | 'REJECTED';
 }
 
 export interface Courier extends User {
@@ -54,6 +55,7 @@ export interface Courier extends User {
   isAvailable: boolean;
   createdAt: string;
   updatedAt: string;
+  approvalStatus?: 'PENDING' | 'ACCEPTED' | 'REJECTED';
 }
 
 // Auth interfaces
