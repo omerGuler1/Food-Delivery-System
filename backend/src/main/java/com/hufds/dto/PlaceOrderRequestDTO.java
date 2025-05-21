@@ -1,5 +1,6 @@
 package com.hufds.dto;
 
+import com.hufds.entity.Payment.PaymentMethod;
 import lombok.Data;
 import java.util.List;
 
@@ -9,4 +10,5 @@ public class PlaceOrderRequestDTO {
     private Integer restaurantId;
     private Integer addressId;
     private List<OrderItemRequestDTO> items;
+    private PaymentMethod paymentMethod;
 }
