@@ -31,6 +31,14 @@ public interface RestaurantService {
     Restaurant getRestaurantById(Integer id);
 
     /**
+     * Gets a restaurant by ID for admin use
+     * Does not check approval status or deleted status
+     * @param id Restaurant ID
+     * @return Restaurant entity
+     */
+    Restaurant getRestaurantByIdForAdmin(Integer id);
+
+    /**
      * Updates a restaurant's details
      * @param id Restaurant ID
      * @param restaurantDetails Updated restaurant details

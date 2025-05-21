@@ -53,13 +53,29 @@ public class RestaurantController {
     public ResponseEntity<Restaurant> updateRestaurant(
             @PathVariable Integer id,
             @RequestBody Restaurant restaurantDetails) {
+        // Use the regular method - it will throw an exception if the restaurant doesn't exist
+        // or is not in ACCEPTED status (which is fine because we don't want to update 
+        // non-approved restaurants through this endpoint)
         Restaurant updatedRestaurant = restaurantService.updateRestaurant(id, restaurantDetails);
         return ResponseEntity.ok(updatedRestaurant);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Restaurant> getRestaurant(@PathVariable Integer id) {
-        Restaurant restaurant = restaurantService.getRestaurantById(id);
+    public ResponseEntity<Restaurant> getRestaurant(
+            @PathVariable Integer id, 
+            @RequestHeader(name = "Authorization", required = false) String authHeader) {
+        
+        // If this is an admin request, use the admin version that doesn't filter by status
+        boolean isAdminRequest = authHeader != null && authHeader.contains("ROLE_admin");
+        
+        Restaurant restaurant;
+        if (isAdminRequest) {
+            restaurant = restaurantService.getRestaurantByIdForAdmin(id);
+        } else {
+            // For regular customers, only return approved, non-deleted restaurants
+            restaurant = restaurantService.getRestaurantById(id);
+        }
+        
         return ResponseEntity.ok(restaurant);
     }
 

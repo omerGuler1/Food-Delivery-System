@@ -17,6 +17,9 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Integer>
     // Find all non-deleted restaurants
     List<Restaurant> findAllByDeletedAtIsNull();
     
+    // Find all approved and non-deleted restaurants
+    List<Restaurant> findByApprovalStatusAndDeletedAtIsNull(Restaurant.ApprovalStatus approvalStatus);
+    
     // Search methods
     List<Restaurant> findByNameContainingIgnoreCase(String name);
     List<Restaurant> findByCuisineTypeContainingIgnoreCase(String cuisineType);

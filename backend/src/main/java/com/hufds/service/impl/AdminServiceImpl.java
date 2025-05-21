@@ -73,7 +73,9 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public List<Restaurant> getAllActiveRestaurants() {
-        return restaurantRepository.findAllByDeletedAtIsNull();
+        // Admin doesn't need to filter by approval status when viewing all restaurants
+        // to provide a complete view of all data
+        return restaurantRepository.findAll();
     }
 
     @Override
@@ -208,6 +210,7 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public Restaurant updateRestaurantApprovalStatus(Integer restaurantId, Restaurant.ApprovalStatus status) {
+        // Use findById directly as we need to be able to manage all restaurants regardless of status
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new CustomException("Restaurant not found", HttpStatus.NOT_FOUND));
         
