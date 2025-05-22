@@ -81,4 +81,12 @@ public interface AdminService {
     List<Restaurant> getPendingApprovalRestaurants();
     
     List<Courier> getPendingApprovalCouriers();
+    
+    /**
+     * Search users by type and query
+     * @param userType Type of user to search for (CUSTOMER, RESTAURANT, COURIER)
+     * @param query Search query for name or email
+     * @return List of matching users
+     */
+    List<com.hufds.dto.UserSearchResultDTO> searchUsers(String userType, String query);
 } 

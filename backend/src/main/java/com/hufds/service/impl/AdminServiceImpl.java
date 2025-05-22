@@ -248,4 +248,53 @@ public class AdminServiceImpl implements AdminService {
     public List<Courier> getPendingApprovalCouriers() {
         return courierRepository.findByApprovalStatus(Courier.ApprovalStatus.PENDING);
     }
+
+    @Override
+    public List<com.hufds.dto.UserSearchResultDTO> searchUsers(String userType, String query) {
+        String searchTerm = "%" + query.toLowerCase() + "%";
+        
+        if (userType.equalsIgnoreCase("CUSTOMER")) {
+            // Search for customers
+            List<Customer> customers = customerRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query);
+            return customers.stream()
+                .filter(c -> c.getDeletedAt() == null) // Only include non-deleted users
+                .map(c -> com.hufds.dto.UserSearchResultDTO.builder()
+                    .id(c.getCustomerId())
+                    .name(c.getName())
+                    .email(c.getEmail())
+                    .type("CUSTOMER")
+                    .phoneNumber(c.getPhoneNumber())
+                    .build())
+                .toList();
+        } else if (userType.equalsIgnoreCase("RESTAURANT")) {
+            // Search for restaurants
+            List<Restaurant> restaurants = restaurantRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query);
+            return restaurants.stream()
+                .filter(r -> r.getDeletedAt() == null && r.getApprovalStatus() == Restaurant.ApprovalStatus.ACCEPTED) 
+                .map(r -> com.hufds.dto.UserSearchResultDTO.builder()
+                    .id(r.getRestaurantId())
+                    .name(r.getName())
+                    .email(r.getEmail())
+                    .type("RESTAURANT")
+                    .phoneNumber(r.getPhoneNumber())
+                    .build())
+                .toList();
+        } else if (userType.equalsIgnoreCase("COURIER")) {
+            // Search for couriers
+            List<Courier> couriers = courierRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query);
+            return couriers.stream()
+                .filter(c -> c.getDeletedAt() == null && c.getApprovalStatus() == Courier.ApprovalStatus.ACCEPTED)
+                .map(c -> com.hufds.dto.UserSearchResultDTO.builder()
+                    .id(c.getCourierId())
+                    .name(c.getName())
+                    .email(c.getEmail())
+                    .type("COURIER")
+                    .phoneNumber(c.getPhoneNumber())
+                    .build())
+                .toList();
+        }
+        
+        // If user type is not recognized, return empty list
+        return List.of();
+    }
 } 

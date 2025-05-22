@@ -186,4 +186,33 @@ export const editCourier = async (data: AdminEditCourierRequest): Promise<Courie
     console.error('Error editing courier:', error);
     throw error;
   }
+};
+
+/**
+ * Search users by type and query
+ * @param userType User type to search for (CUSTOMER, RESTAURANT, COURIER)
+ * @param query Search query for name or email
+ * @returns List of matching users
+ */
+export interface UserSearchResult {
+  id: number;
+  name: string;
+  email: string;
+  type: string;
+  phoneNumber?: string;
+}
+
+export const searchUsers = async (userType: string, query: string): Promise<UserSearchResult[]> => {
+  try {
+    const response = await api.get<UserSearchResult[]>('/admin/users/search', {
+      params: {
+        type: userType,
+        query: query
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error searching users:', error);
+    throw error;
+  }
 }; 

@@ -17,6 +17,9 @@ public interface CourierRepository extends JpaRepository<Courier, Integer> {
     
     // Find active couriers (not deleted and with specific status)
     List<Courier> findByStatusAndDeletedAtIsNull(Courier.CourierStatus status);
+    
+    // Search by name or email
+    List<Courier> findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(String name, String email);
 
     List<Courier> findByApprovalStatus(Courier.ApprovalStatus status);
 }

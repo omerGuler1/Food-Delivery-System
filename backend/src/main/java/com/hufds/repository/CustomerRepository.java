@@ -14,4 +14,7 @@ public interface CustomerRepository extends JpaRepository<Customer, Integer> {
     
     // Find all non-deleted customers
     List<Customer> findAllByDeletedAtIsNull();
+    
+    // Search customers by name or email
+    List<Customer> findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(String name, String email);
 } 

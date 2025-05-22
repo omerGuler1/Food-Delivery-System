@@ -289,4 +289,20 @@ export interface Promotion {
   createdAt?: string;
   endDate?: string;
   isActive: boolean;
+}
+
+// Message interface
+export interface Message {
+  messageId?: number;
+  senderId: number;
+  receiverId: number;
+  senderName: string;
+  receiverName: string;
+  senderType: 'CUSTOMER' | 'ADMIN' | 'RESTAURANT' | 'COURIER';
+  receiverType: 'CUSTOMER' | 'ADMIN' | 'RESTAURANT' | 'COURIER';
+  messageContent: string;
+  messageType: 'REQUEST' | 'SUGGESTION' | 'COMPLAINT' | 'WARNING';
+  isRead: boolean;
+  createdAt?: string;
+  deletedAt?: string | null;
 } 

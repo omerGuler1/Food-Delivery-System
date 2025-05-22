@@ -31,6 +31,10 @@ import AdminPromotions from './pages/AdminPromotions';
 import AdminApprovalPage from './pages/AdminApprovalPage';
 import AdminFees from './pages/AdminFees';
 import PendingApprovalPage from './pages/PendingApprovalPage';
+import FeedbackPage from './pages/FeedbackPage';
+import AdminNotificationsPage from './pages/AdminNotificationsPage';
+import AdminSendMessagePage from './pages/AdminSendMessagePage';
+import RestaurantNotificationsPage from './pages/RestaurantNotificationsPage';
 
 // Protected route component
 interface ProtectedRouteProps {
@@ -373,6 +377,9 @@ const App: React.FC = () => {
                   <Route path="/restaurant/profile" element={
                     <ProtectedRoute userType="restaurant" element={<RestaurantProfile />} />
                   } />
+                  <Route path="/restaurant/notifications" element={
+                    <ProtectedRoute userType="restaurant" element={<RestaurantNotificationsPage />} />
+                  } />
                   
                   {/* Courier routes */}
                   <Route path="/courier/dashboard" element={
@@ -398,6 +405,12 @@ const App: React.FC = () => {
                   <Route path="/admin/fees" element={
                     <ProtectedRoute userType="admin" element={<AdminFees />} />
                   } />
+                  <Route path="/admin/notifications" element={
+                    <ProtectedRoute userType="admin" element={<AdminNotificationsPage />} />
+                  } />
+                  <Route path="/admin/send-message" element={
+                    <ProtectedRoute userType="admin" element={<AdminSendMessagePage />} />
+                  } />
                   
                   {/* Add the checkout route */}
                   <Route path="/checkout" element={
@@ -412,6 +425,11 @@ const App: React.FC = () => {
                   {/* Add the favorites route */}
                   <Route path="/favorites" element={
                     <ProtectedRoute userType="customer" element={<FavoriteRestaurantsPage />} />
+                  } />
+                  
+                  {/* Add the feedback route */}
+                  <Route path="/feedback" element={
+                    <ProtectedRoute userType="customer" element={<FeedbackPage />} />
                   } />
                   
                   {/* Fallback route */}

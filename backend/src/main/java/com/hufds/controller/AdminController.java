@@ -177,4 +177,19 @@ public class AdminController {
     public ResponseEntity<List<Courier>> getPendingCouriers() {
         return ResponseEntity.ok(adminService.getPendingApprovalCouriers());
     }
+
+    /**
+     * Search users by type and query
+     * @param type Type of user to search for (CUSTOMER, RESTAURANT, COURIER)
+     * @param query Search query for name or email
+     * @return List of matching users
+     */
+    @GetMapping("/users/search")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<com.hufds.dto.UserSearchResultDTO>> searchUsers(
+            @RequestParam String type,
+            @RequestParam String query) {
+        List<com.hufds.dto.UserSearchResultDTO> results = adminService.searchUsers(type, query);
+        return ResponseEntity.ok(results);
+    }
 } 
