@@ -84,7 +84,7 @@ import {
 } from '@mui/icons-material';
 import { mockMenuItems, foodCategories, restaurantInfo } from '../data/mockData';
 import { MenuItem as MenuItemType, FoodCategory, OrderResponseDTO, CourierInfo } from '../interfaces';
-import { addMenuItem, updateMenuItem, deleteMenuItem, getRestaurantMenuItems, updateRestaurantStatus, uploadMenuItemImage } from '../services/restaurantService';
+import { addMenuItem, updateMenuItem, deleteMenuItem, getRestaurantMenuItems, uploadMenuItemImage, getRestaurantOpenStatus } from '../services/restaurantService';
 import { getRestaurantOrders, updateOrderStatus, getAvailableCouriers, requestCourierForOrder, checkOrderAssignmentsExpired, getOrdersNeedingCouriers, cancelOrder } from '../services/orderService';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -160,16 +160,14 @@ const RestaurantDashboard: React.FC = () => {
 
   // Load menu items from API
   useEffect(() => {
-    const fetchMenuItems = async () => {
+    // Function to load all data
+    const loadData = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        setError(null);
-        
-        // Get restaurant ID from user context or default to 1
+        // Get user information including restaurant ID
         const restaurantId = user && 'restaurantId' in user ? user.restaurantId : 1;
         
-        // Fetch menu items from API
-        console.log(`Fetching menu items for restaurant ID: ${restaurantId}`);
+        // Fetch restaurant menu items
         const apiItems = await getRestaurantMenuItems(restaurantId);
         console.log('Menu items loaded from API:', apiItems);
         
@@ -188,31 +186,18 @@ const RestaurantDashboard: React.FC = () => {
           setMenuItems([]);
           setFilteredItems([]);
         }
-
-        // Fetch restaurant status (in a real app, this would be a separate API call)
-        // For now, we're just simulating it
-        if (user && 'isOpen' in user) {
-          setIsRestaurantOpen(user.isOpen as boolean);
-        } else if (process.env.NODE_ENV === 'development') {
-          // Default to closed in development
-          setIsRestaurantOpen(false);
-        }
         
-      } catch (error: any) {
-        console.error('Error fetching menu items:', error);
+        // Fetch restaurant open status
+        const openStatus = await getRestaurantOpenStatus(restaurantId);
+        setIsRestaurantOpen(openStatus);
         
-        let errorMessage = 'Failed to load menu items.';
-        
-        // Check for authentication issues
-        if (error.response && error.response.status === 401) {
-          errorMessage = 'Authentication failed. Please log in again.';
-        } else if (error.response && error.response.status === 403) {
-          errorMessage = 'You do not have permission to view these menu items.';
-        } else if (error.message) {
-          errorMessage = `Error: ${error.message}`;
-        }
-        
-        setError(errorMessage);
+        // Fetch orders
+        const ordersData = await getRestaurantOrders(restaurantId);
+        setOrders(ordersData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+        setError('Failed to load data. Please refresh the page.');
+        setTimeout(() => setError(null), 5000);
         
         // Fallback to mock data if API fails - ONLY for development
         if (process.env.NODE_ENV === 'development') {
@@ -227,8 +212,24 @@ const RestaurantDashboard: React.FC = () => {
         setLoading(false);
       }
     };
-
-    fetchMenuItems();
+    
+    loadData();
+    
+    // Setup polling for orders
+    const orderInterval = setInterval(() => {
+      if (user && 'restaurantId' in user) {
+        getRestaurantOrders(user.restaurantId)
+          .then(data => setOrders(data))
+          .catch(err => console.error('Error polling orders:', err));
+          
+        // Also refresh open status periodically
+        getRestaurantOpenStatus(user.restaurantId)
+          .then(status => setIsRestaurantOpen(status))
+          .catch(err => console.error('Error polling open status:', err));
+      }
+    }, 30000); // Poll every 30 seconds
+    
+    return () => clearInterval(orderInterval);
   }, [user]);
 
   // Filter menu items based on category and search query
@@ -503,51 +504,6 @@ const RestaurantDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Toggle restaurant open/closed status
-  const toggleRestaurantStatus = async () => {
-    // If trying to open restaurant but no menu items exist, show warning
-    if (!isRestaurantOpen && menuItems.length === 0) {
-      setShowStatusWarning(true);
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      
-      // Get restaurant ID from user context
-      const restaurantId = user && 'restaurantId' in user ? user.restaurantId : 1;
-      
-      // Call API to update restaurant status
-      const newStatus = !isRestaurantOpen;
-      
-      // If in development mode or API call is not available yet, skip the actual API call
-      if (process.env.NODE_ENV !== 'development') {
-        await updateRestaurantStatus(restaurantId, newStatus);
-      }
-      
-      // Update local state
-      setIsRestaurantOpen(newStatus);
-      
-      // In a real implementation, we would also update the user context
-      // For example:
-      // updateUser({...user, isOpen: newStatus});
-      
-      setSuccessMessage(`Restaurant is now ${newStatus ? 'open' : 'closed'} for orders`);
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (error: any) {
-      console.error('Error updating restaurant status:', error);
-      setError('Failed to update restaurant status. Please try again.');
-      setTimeout(() => setError(null), 3000);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Close the warning dialog
-  const handleCloseWarning = () => {
-    setShowStatusWarning(false);
   };
 
   // Handle approving an order (changing status from PENDING to PROCESSING)
@@ -867,21 +823,8 @@ const RestaurantDashboard: React.FC = () => {
               <Typography sx={{ mr: 1, fontWeight: 'medium' }}>
                 {isRestaurantOpen ? 'Open' : 'Closed'}
               </Typography>
-              <Tooltip title={isRestaurantOpen ? "Set restaurant as closed" : "Set restaurant as open"}>
-                <Switch
-                  checked={isRestaurantOpen}
-                  onChange={toggleRestaurantStatus}
-                  color="default"
-                  sx={{
-                    '& .MuiSwitch-switchBase.Mui-checked': {
-                      color: '#fff',
-                    },
-                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                      backgroundColor: '#fff',
-                      opacity: 0.5
-                    },
-                  }}
-                />
+              <Tooltip title="Status based on business hours">
+                <InfoIcon fontSize="small" />
               </Tooltip>
             </Box>
             <Avatar 
@@ -1599,7 +1542,7 @@ const RestaurantDashboard: React.FC = () => {
       {/* Warning Dialog when trying to open restaurant without menu items */}
       <Dialog
         open={showStatusWarning}
-        onClose={handleCloseWarning}
+        onClose={() => setShowStatusWarning(false)}
         maxWidth="sm"
         fullWidth
       >
@@ -1619,15 +1562,12 @@ const RestaurantDashboard: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button
-            onClick={handleAddItem}
+            onClick={() => setShowStatusWarning(false)}
             color="primary"
             variant="contained"
             startIcon={<AddIcon />}
           >
             Add Menu Item
-          </Button>
-          <Button onClick={handleCloseWarning} color="inherit">
-            Close
           </Button>
         </DialogActions>
       </Dialog>
