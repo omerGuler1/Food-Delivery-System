@@ -63,6 +63,12 @@ public class Courier {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+    
+    @Column(name = "is_banned", nullable = false)
+    private Boolean isBanned = false;
+    
+    @Column(name = "ban_open_date")
+    private LocalDateTime banOpenDate;
 
     public enum CourierStatus {
         AVAILABLE, UNAVAILABLE

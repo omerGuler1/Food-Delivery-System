@@ -24,7 +24,13 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { Visibility, VisibilityOff, Home, AdminPanelSettings } from '@mui/icons-material';
 import { LoginRequest, AdminLoginRequest } from '../interfaces';
-import { customerLogin, restaurantLogin, courierLogin, adminLogin } from '../services/authService';
+import { 
+  customerLogin, 
+  restaurantLogin, 
+  courierLogin, 
+  adminLogin, 
+  setBanState 
+} from '../services/authService';
 import { checkCourierApprovalStatus } from '../services/courierService';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -192,6 +198,22 @@ const LoginPage: React.FC = () => {
       }
       
     } catch (err: any) {
+      // Check for ban error and redirect to banned page
+      if (err.isBanError) {
+        // Make sure ban info is stored properly
+        if (err.banInfo) {
+          setBanState(err.banInfo);
+        }
+        
+        // Redirect to banned page with ban information
+        navigate('/banned', { 
+          state: { 
+            banInfo: err.banInfo 
+          }
+        });
+        return;
+      }
+      
       let message = 'Login failed. Please try again.';
       
       // Use the enhanced userMessage if available

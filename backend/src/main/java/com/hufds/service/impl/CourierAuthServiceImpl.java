@@ -14,6 +14,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class CourierAuthServiceImpl implements CourierAuthService {
@@ -65,6 +67,19 @@ public class CourierAuthServiceImpl implements CourierAuthService {
 
         if (!passwordEncoder.matches(loginDTO.getPassword(), courier.getPassword())) {
             throw new CustomException("Invalid email or password", HttpStatus.UNAUTHORIZED);
+        }
+
+        // Check if the courier is banned
+        if (courier.getIsBanned() != null && courier.getIsBanned()) {
+            LocalDateTime banOpenDate = courier.getBanOpenDate();
+            if (banOpenDate != null && banOpenDate.isAfter(LocalDateTime.now())) {
+                throw new CustomException("Your account is banned until " + banOpenDate, HttpStatus.FORBIDDEN);
+            }
+            
+            // If ban period is over, automatically unban
+            courier.setIsBanned(false);
+            courier.setBanOpenDate(null);
+            courierRepository.save(courier);
         }
 
         // Allow login but include approval status in the response

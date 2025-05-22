@@ -7,6 +7,7 @@ import com.hufds.entity.Courier;
 import com.hufds.entity.Customer;
 import com.hufds.entity.Restaurant;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -81,4 +82,49 @@ public interface AdminService {
     List<Restaurant> getPendingApprovalRestaurants();
     
     List<Courier> getPendingApprovalCouriers();
+    
+    /**
+     * Ban a customer until the specified date
+     * @param customerId ID of the customer to ban
+     * @param banUntil Date until which the customer is banned
+     * @return Updated Customer entity
+     */
+    Customer banCustomer(Integer customerId, LocalDateTime banUntil);
+    
+    /**
+     * Ban a restaurant until the specified date
+     * @param restaurantId ID of the restaurant to ban
+     * @param banUntil Date until which the restaurant is banned
+     * @return Updated Restaurant entity
+     */
+    Restaurant banRestaurant(Integer restaurantId, LocalDateTime banUntil);
+    
+    /**
+     * Ban a courier until the specified date
+     * @param courierId ID of the courier to ban
+     * @param banUntil Date until which the courier is banned
+     * @return Updated Courier entity
+     */
+    Courier banCourier(Integer courierId, LocalDateTime banUntil);
+    
+    /**
+     * Remove ban from a customer
+     * @param customerId ID of the customer to unban
+     * @return Updated Customer entity
+     */
+    Customer unbanCustomer(Integer customerId);
+    
+    /**
+     * Remove ban from a restaurant
+     * @param restaurantId ID of the restaurant to unban
+     * @return Updated Restaurant entity
+     */
+    Restaurant unbanRestaurant(Integer restaurantId);
+    
+    /**
+     * Remove ban from a courier
+     * @param courierId ID of the courier to unban
+     * @return Updated Courier entity
+     */
+    Courier unbanCourier(Integer courierId);
 } 

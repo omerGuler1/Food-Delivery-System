@@ -248,4 +248,77 @@ public class AdminServiceImpl implements AdminService {
     public List<Courier> getPendingApprovalCouriers() {
         return courierRepository.findByApprovalStatus(Courier.ApprovalStatus.PENDING);
     }
+    
+    @Override
+    @Transactional
+    public Customer banCustomer(Integer customerId, LocalDateTime banUntil) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new CustomException("Customer not found", HttpStatus.NOT_FOUND));
+        
+        // İlgili alanları güncelle
+        customer.setIsBanned(true); // Boolean alan için
+        customer.setBanOpenDate(banUntil); // Tarih alanı için
+        
+        return customerRepository.save(customer);
+    }
+    
+    @Override
+    @Transactional
+    public Restaurant banRestaurant(Integer restaurantId, LocalDateTime banUntil) {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new CustomException("Restaurant not found", HttpStatus.NOT_FOUND));
+        
+        restaurant.setIsBanned(true);
+        restaurant.setBanOpenDate(banUntil);
+        
+        return restaurantRepository.save(restaurant);
+    }
+    
+    @Override
+    @Transactional
+    public Courier banCourier(Integer courierId, LocalDateTime banUntil) {
+        Courier courier = courierRepository.findById(courierId)
+                .orElseThrow(() -> new CustomException("Courier not found", HttpStatus.NOT_FOUND));
+        
+        courier.setIsBanned(true);
+        courier.setBanOpenDate(banUntil);
+        
+        return courierRepository.save(courier);
+    }
+    
+    @Override
+    @Transactional
+    public Customer unbanCustomer(Integer customerId) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new CustomException("Customer not found", HttpStatus.NOT_FOUND));
+        
+        customer.setIsBanned(false);
+        customer.setBanOpenDate(null);
+        
+        return customerRepository.save(customer);
+    }
+    
+    @Override
+    @Transactional
+    public Restaurant unbanRestaurant(Integer restaurantId) {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new CustomException("Restaurant not found", HttpStatus.NOT_FOUND));
+        
+        restaurant.setIsBanned(false);
+        restaurant.setBanOpenDate(null);
+        
+        return restaurantRepository.save(restaurant);
+    }
+    
+    @Override
+    @Transactional
+    public Courier unbanCourier(Integer courierId) {
+        Courier courier = courierRepository.findById(courierId)
+                .orElseThrow(() -> new CustomException("Courier not found", HttpStatus.NOT_FOUND));
+        
+        courier.setIsBanned(false);
+        courier.setBanOpenDate(null);
+        
+        return courierRepository.save(courier);
+    }
 } 
