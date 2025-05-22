@@ -5,6 +5,7 @@ import com.hufds.entity.Restaurant;
 import com.hufds.exception.CustomException;
 import com.hufds.repository.RestaurantRepository;
 import com.hufds.service.RestaurantProfileService;
+import com.hufds.service.GeocodingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RestaurantProfileServiceImpl implements RestaurantProfileService {
 
     private final RestaurantRepository restaurantRepository;
+    private final GeocodingService geocodingService;
 
     @Override
     public RestaurantProfileDTO getProfile(Integer restaurantId) {
@@ -40,6 +42,11 @@ public class RestaurantProfileServiceImpl implements RestaurantProfileService {
         // Update location if provided
         if (profileDTO.getLocation() != null) {
             updateLocation(restaurant, profileDTO.getLocation());
+        }
+        
+        // Update delivery range if provided
+        if (profileDTO.getDeliveryRangeKm() != null) {
+            restaurant.setDeliveryRangeKm(profileDTO.getDeliveryRangeKm());
         }
         
         Restaurant updated = restaurantRepository.save(restaurant);
@@ -73,6 +80,19 @@ public class RestaurantProfileServiceImpl implements RestaurantProfileService {
         restaurant.setState(addressDTO.getState());
         restaurant.setZipCode(addressDTO.getZipCode());
         restaurant.setCountry(addressDTO.getCountry());
+        
+        // Generate coordinates based on the address
+        GeocodingService.Coordinates coordinates = geocodingService.geocodeAddress(
+                addressDTO.getStreet(),
+                addressDTO.getCity(),
+                addressDTO.getState(),
+                addressDTO.getZipCode(),
+                addressDTO.getCountry()
+        );
+        
+        // Update restaurant coordinates
+        restaurant.setLatitude(coordinates.getLatitude());
+        restaurant.setLongitude(coordinates.getLongitude());
     }
 
     private void updateLocation(Restaurant restaurant, RestaurantProfileDTO.LocationDTO locationDTO) {
@@ -107,6 +127,7 @@ public class RestaurantProfileServiceImpl implements RestaurantProfileService {
                 .cuisineType(restaurant.getCuisineType())
                 .address(addressDTO)
                 .location(locationDTO)
+                .deliveryRangeKm(restaurant.getDeliveryRangeKm())
                 .profileImageUrl(restaurant.getProfileImageUrl())
                 .build();
     }

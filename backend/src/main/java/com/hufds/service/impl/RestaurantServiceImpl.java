@@ -54,38 +54,6 @@ public class RestaurantServiceImpl implements RestaurantService {
     }
 
     @Override
-    public BusinessHours updateRestaurantStatus(Integer restaurantId, Boolean isClosed) {
-        Restaurant restaurant = getRestaurantById(restaurantId);
-        
-        LocalDateTime now = LocalDateTime.now();
-        DayOfWeek currentDay = now.getDayOfWeek();
-        System.out.println("Current day: " + currentDay);
-        // Find business hours for current day
-        BusinessHours businessHours = restaurant.getBusinessHours().stream()
-                .filter(hours -> hours.getDayOfWeek().equals(currentDay.toString()))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Business hours not found for current day"));
-        
-        businessHours.setIsClosed(isClosed);
-        return businessHours;
-    }
-
-    @Override
-    public Boolean isRestaurantClosed(Integer restaurantId) {
-        Restaurant restaurant = getRestaurantById(restaurantId);
-        
-        LocalDateTime now = LocalDateTime.now();
-        DayOfWeek currentDay = now.getDayOfWeek();
-        
-        // Find business hours for current day
-        return restaurant.getBusinessHours().stream()
-                .filter(hours -> hours.getDayOfWeek().equals(currentDay.toString()))
-                .findFirst()
-                .map(BusinessHours::getIsClosed)
-                .orElse(true); // If no business hours found, consider restaurant closed
-    }
-
-    @Override
     public List<Courier> getAvailableCouriers(Integer restaurantId) {
         // Verify restaurant exists
         Restaurant restaurant = getRestaurantById(restaurantId);

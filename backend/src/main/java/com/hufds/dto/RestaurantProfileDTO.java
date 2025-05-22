@@ -31,6 +31,8 @@ public class RestaurantProfileDTO {
 
     private AddressDTO address;
     private LocationDTO location;
+    
+    private Integer deliveryRangeKm;
 
     private String profileImageUrl;
 
