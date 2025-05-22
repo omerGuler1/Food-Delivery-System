@@ -35,7 +35,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     @Override
     public List<RestaurantAnalyticsDTO> getRestaurantAnalytics() {
         List<Restaurant> restaurants = restaurantRepository.findAll();
-        List<Order> allOrders = orderRepository.findAll();
+        List<Order> allOrders = orderRepository.findByStatus(Order.OrderStatus.DELIVERED);
 
         // Group orders by restaurant
         Map<Integer, List<Order>> ordersByRestaurant = allOrders.stream()
@@ -75,7 +75,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     @Override
     public List<CustomerAnalyticsDTO> getCustomerAnalytics() {
         List<Customer> customers = customerRepository.findAll();
-        List<Order> allOrders = orderRepository.findAll();
+        List<Order> allOrders = orderRepository.findByStatus(Order.OrderStatus.DELIVERED);
 
         // Group orders by customer
         Map<Integer, List<Order>> ordersByCustomer = allOrders.stream()
