@@ -140,7 +140,8 @@ const RestaurantProfile: React.FC = () => {
     city: '',
     state: '',
     zipCode: '',
-    country: ''
+    country: '',
+    deliveryRangeKm: 5 // Default to 5km
   });
 
   // Profile Image
@@ -209,7 +210,8 @@ const RestaurantProfile: React.FC = () => {
           city: data.address?.city || '',
           state: data.address?.state || '',
           zipCode: data.address?.zipCode || '',
-          country: data.address?.country || ''
+          country: data.address?.country || '',
+          deliveryRangeKm: data.deliveryRangeKm || 5 // Default to 5km
         });
         
         // Set profile image URL if it exists
@@ -280,7 +282,8 @@ const RestaurantProfile: React.FC = () => {
         city: '',
         state: '',
         zipCode: '',
-        country: ''
+        country: '',
+        deliveryRangeKm: profileData.deliveryRangeKm || 5 // Default to 5km
       });
     }
   };
@@ -306,22 +309,25 @@ const RestaurantProfile: React.FC = () => {
     try {
       setLoading(true);
       console.log('[DEBUG] setLoading(true)');
-      // Always include the required fields
+      // Update data structure to match the DTO expected by the backend
       const updateData = {
         name: formValues.name,
         email: formValues.email,
         phoneNumber: formValues.phoneNumber,
         cuisineType: formValues.cuisineType,
-        // Add address fields if we're on the location tab
-        ...(activeTab === 1 && {
-          address: {
-            street: formValues.street,
-            city: formValues.city,
-            state: formValues.state,
-            zipCode: formValues.zipCode,
-            country: formValues.country
-          }
-        })
+        // Nest address fields in an address object
+        address: {
+          street: formValues.street,
+          city: formValues.city,
+          state: formValues.state,
+          zipCode: formValues.zipCode,
+          country: formValues.country,
+          // Explicitly set coordinates to undefined to trigger backend geocoding
+          latitude: undefined,
+          longitude: undefined
+        },
+        // Add deliveryRangeKm directly in the root object
+        deliveryRangeKm: parseInt(formValues.deliveryRangeKm.toString()) // Ensure it's a number
       };
       console.log('[DEBUG] updateData:', updateData);
       const updatedProfile = await updateRestaurantProfile(updateData);
@@ -844,6 +850,28 @@ const RestaurantProfile: React.FC = () => {
                       disabled={!editMode}
                       required
                     />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Delivery Range (km)
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <TextField
+                        type="number"
+                        name="deliveryRangeKm"
+                        value={formValues.deliveryRangeKm}
+                        onChange={handleInputChange}
+                        disabled={!editMode}
+                        inputProps={{ min: 1, max: 50, step: 1 }}
+                        sx={{ width: 100, mr: 2 }}
+                      />
+                      <Typography variant="body1" color="text.secondary">
+                        kilometers
+                      </Typography>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                      Customers located beyond this distance will not be able to place orders from your restaurant.
+                    </Typography>
                   </Grid>
                   
                   {/* Save Button - only shown in edit mode */}

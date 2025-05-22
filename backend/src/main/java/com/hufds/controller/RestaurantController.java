@@ -8,6 +8,7 @@ import com.hufds.entity.Order.OrderStatus;
 import com.hufds.service.RestaurantService;
 import com.hufds.service.CourierAssignmentService;
 import com.hufds.service.OrderService;
+import com.hufds.service.RestaurantConfigService;
 import com.hufds.dto.CourierAssignmentDTO;
 import com.hufds.dto.CourierAssignmentRequestDTO;
 import com.hufds.dto.OrderResponseDTO;
@@ -18,12 +19,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.http.HttpStatus;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/restaurants")
@@ -37,6 +38,9 @@ public class RestaurantController {
 
     @Autowired
     private OrderService orderService;
+    
+    @Autowired
+    private RestaurantConfigService restaurantConfigService;
 
     @GetMapping("/verify")
     public ResponseEntity<Void> verifyRestaurantExists() {
@@ -53,18 +57,12 @@ public class RestaurantController {
         return ResponseEntity.ok().build();
     }
 
-    @PutMapping("/{id}/status")
-    public ResponseEntity<BusinessHours> updateRestaurantStatus(
-            @PathVariable Integer id,
-            @RequestParam Boolean isClosed) {
-        BusinessHours updatedHours = restaurantService.updateRestaurantStatus(id, isClosed);
-        return ResponseEntity.ok(updatedHours);
-    }
-
-    @GetMapping("/{id}/status")
-    public ResponseEntity<Boolean> getRestaurantStatus(@PathVariable Integer id) {
-        Boolean isClosed = restaurantService.isRestaurantClosed(id);
-        return ResponseEntity.ok(isClosed);
+    @GetMapping("/{id}/open-status")
+    public ResponseEntity<Map<String, Boolean>> getRestaurantOpenStatus(@PathVariable Integer id) {
+        boolean isOpen = restaurantConfigService.isRestaurantOpen(id);
+        Map<String, Boolean> response = new HashMap<>();
+        response.put("isOpen", isOpen);
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}")

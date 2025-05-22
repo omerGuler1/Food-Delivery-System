@@ -10,7 +10,22 @@ const API_URL = 'http://localhost:8080/api';
 export const getAllRestaurants = async (): Promise<Restaurant[]> => {
   try {
     const response = await axiosInstance.get<Restaurant[]>('/restaurants');
-    return response.data;
+    const restaurants = response.data;
+    
+    // Fetch the open status for each restaurant
+    const restaurantsWithOpenStatus = await Promise.all(
+      restaurants.map(async (restaurant) => {
+        try {
+          const isOpen = await getRestaurantOpenStatus(restaurant.restaurantId);
+          return { ...restaurant, isOpen };
+        } catch (error) {
+          console.error(`Error fetching open status for restaurant ${restaurant.restaurantId}:`, error);
+          return restaurant; // Return the restaurant without updating isOpen if there's an error
+        }
+      })
+    );
+    
+    return restaurantsWithOpenStatus;
   } catch (error) {
     console.error('Error fetching restaurants:', error);
     return [];
@@ -133,23 +148,30 @@ export const deleteMenuItem = async (menuItemId: number, restaurantId: number): 
   }
 };
 
-// Update restaurant status (open/closed)
-export const updateRestaurantStatus = async (restaurantId: number, isOpen: boolean): Promise<{ isOpen: boolean }> => {
-  console.log(`API Call: Updating restaurant status to ${isOpen ? 'open' : 'closed'} for restaurant ${restaurantId}`);
-  try {
-    const response = await api.put(`/restaurants/${restaurantId}/status`, { isOpen });
-    console.log('API Response:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('API Error in updateRestaurantStatus:', error);
-    throw error;
-  }
-};
-
 // Get restaurants sorted by a specific field
 export const getRestaurantsSorted = async (sortBy: string): Promise<Restaurant[]> => {
-  const response = await api.get<Restaurant[]>(`/restaurants?sortBy=${sortBy}`);
-  return response.data;
+  try {
+    const response = await api.get<Restaurant[]>(`/restaurants?sortBy=${sortBy}`);
+    const restaurants = response.data;
+    
+    // Fetch the open status for each restaurant
+    const restaurantsWithOpenStatus = await Promise.all(
+      restaurants.map(async (restaurant) => {
+        try {
+          const isOpen = await getRestaurantOpenStatus(restaurant.restaurantId);
+          return { ...restaurant, isOpen };
+        } catch (error) {
+          console.error(`Error fetching open status for restaurant ${restaurant.restaurantId}:`, error);
+          return restaurant; // Return the restaurant without updating isOpen if there's an error
+        }
+      })
+    );
+    
+    return restaurantsWithOpenStatus;
+  } catch (error) {
+    console.error('Error fetching sorted restaurants:', error);
+    return [];
+  }
 };
 
 // Upload menu item image
@@ -187,5 +209,78 @@ export const checkRestaurantApprovalStatus = async (restaurantId: number) => {
   } catch (error) {
     console.error('Error checking restaurant approval status:', error);
     throw error;
+  }
+};
+
+// Get restaurant open status based on business hours
+export const getRestaurantOpenStatus = async (restaurantId: number): Promise<boolean> => {
+  try {
+    const response = await api.get(`/restaurants/${restaurantId}/open-status`);
+    return response.data.isOpen;
+  } catch (error) {
+    console.error('API Error in getRestaurantOpenStatus:', error);
+    throw error;
+  }
+};
+
+// Add these functions to update and check delivery range
+
+// Update delivery range for a restaurant
+export const updateDeliveryRange = async (restaurantId: number, deliveryRangeKm: number): Promise<Restaurant> => {
+  try {
+    const response = await api.put(`/restaurants/${restaurantId}/config/delivery-range`, {
+      deliveryRangeKm: deliveryRangeKm
+    });
+    return response.data;
+  } catch (error) {
+    console.error('API Error in updateDeliveryRange:', error);
+    throw error;
+  }
+};
+
+// Get the delivery range for a restaurant
+export const getDeliveryRange = async (restaurantId: number): Promise<number> => {
+  try {
+    const response = await api.get(`/restaurants/${restaurantId}/config/delivery-range`);
+    return response.data.deliveryRangeKm;
+  } catch (error) {
+    console.error('API Error in getDeliveryRange:', error);
+    throw error;
+  }
+};
+
+// Check if an address is within delivery range of a restaurant
+export interface DeliveryRangeCheck {
+  isInRange: boolean;
+  distanceKm: number | null;
+}
+
+export const checkDeliveryRange = async (restaurantId: number, addressId: number): Promise<DeliveryRangeCheck> => {
+  try {
+    const response = await api.get(`/restaurants/${restaurantId}/delivery/check/${addressId}`);
+    return response.data;
+  } catch (error) {
+    console.error('API Error in checkDeliveryRange:', error);
+    throw error;
+  }
+};
+
+// Check if a manually entered address is within a restaurant's delivery range
+export const checkAddressInDeliveryRange = async (
+  restaurantId: number,
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  }
+): Promise<DeliveryRangeCheck> => {
+  try {
+    const response = await api.post(`/restaurants/${restaurantId}/delivery/check-address`, address);
+    return response.data;
+  } catch (error) {
+    console.error('API Error in checkAddressInDeliveryRange:', error);
+    return { isInRange: false, distanceKm: null };
   }
 }; 
