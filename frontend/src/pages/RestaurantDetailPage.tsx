@@ -43,6 +43,7 @@ import { getRestaurantMenuItems, MenuItem as MenuServiceItem } from '../services
 import { favoriteService } from '../services/favoriteService';
 import { Restaurant } from '../interfaces';
 import { useCart } from '../contexts/CartContext';
+import { getDeliveryFee } from '../services/feeService';
 
 // Mock data for development and testing
 const mockRestaurant: Restaurant = {
@@ -88,11 +89,8 @@ const RestaurantDetailPage: React.FC = () => {
   const [menuLoading, setMenuLoading] = useState<boolean>(true);
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [deliveryFeeAmount, setDeliveryFeeAmount] = useState<number>(15);
   
-  // Constants for delivery and service fees
-  const DELIVERY_FEE = 15;
-  const SERVICE_FEE = 5;
-
   // Fetch restaurant details and favorite status
   useEffect(() => {
     const fetchRestaurantData = async () => {
@@ -151,6 +149,20 @@ const RestaurantDetailPage: React.FC = () => {
       fetchMenuItems();
     }
   }, [id, restaurant]);
+
+  // Fetch delivery fee from backend
+  useEffect(() => {
+    const fetchDeliveryFee = async () => {
+      try {
+        const feeData = await getDeliveryFee();
+        setDeliveryFeeAmount(feeData.fee);
+      } catch (error) {
+        console.error('Error fetching delivery fee:', error);
+      }
+    };
+    
+    fetchDeliveryFee();
+  }, []);
 
   const handleCategoryClick = (category: string) => {
     setSelectedCategory(category === selectedCategory ? '' : category);
@@ -252,9 +264,8 @@ const RestaurantDetailPage: React.FC = () => {
 
   // Calculate total with fees
   const subtotal = cart.totalPrice;
-  const deliveryFee = cart.items.length > 0 ? DELIVERY_FEE : 0;
-  const serviceFee = cart.items.length > 0 ? SERVICE_FEE : 0;
-  const orderTotal = subtotal + deliveryFee + serviceFee;
+  const deliveryFee = cart.items.length > 0 ? deliveryFeeAmount : 0;
+  const orderTotal = subtotal + deliveryFee;
 
   return (
     <Box sx={{ bgcolor: '#F8F9FA', minHeight: '100vh', pb: 10 }}>
@@ -729,10 +740,6 @@ const RestaurantDetailPage: React.FC = () => {
                         </Tooltip>
                       </Box>
                       <Typography variant="body2">{formatCurrency(deliveryFee)}</Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2">Service Fee</Typography>
-                      <Typography variant="body2">{formatCurrency(serviceFee)}</Typography>
                     </Box>
                     <Divider sx={{ my: 1.5 }} />
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>

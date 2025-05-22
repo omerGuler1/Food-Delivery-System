@@ -29,7 +29,10 @@ import {
   alpha,
   Stepper,
   Step,
-  StepLabel
+  StepLabel,
+  InputAdornment,
+  IconButton,
+  SelectChangeEvent
 } from '@mui/material';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import PaymentIcon from '@mui/icons-material/Payment';
@@ -37,11 +40,18 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import AddIcon from '@mui/icons-material/Add';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import CheckIcon from '@mui/icons-material/Check';
+import ClearIcon from '@mui/icons-material/Clear';
 
 import { useCart } from '../contexts/CartContext';
 import { getUserAddresses } from '../services/addressService';
-import { Address } from '../interfaces';
+import { Address, Promotion } from '../interfaces';
 import { placeOrder, prepareOrderData } from '../services/orderService';
+import { getDeliveryFee } from '../services/feeService';
+import { validateCoupon } from '../services/couponService';
+import { mockCoupons } from '../data/mockData';
+import { getActivePromotions } from '../services/promotionService';
 
 // Mock credit cards for demonstration
 const mockCards = [
@@ -75,16 +85,21 @@ const CheckoutPage: React.FC = () => {
   const [orderLoading, setOrderLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [deliveryFeeAmount, setDeliveryFeeAmount] = useState<number>(15);
   
-  // Constants for delivery and service fees
-  const DELIVERY_FEE = 15;
-  const SERVICE_FEE = 5;
+  // New state for promotions and coupons
+  const [selectedPromotionId, setSelectedPromotionId] = useState<string>("");
+  const [couponCode, setCouponCode] = useState<string>("");
+  const [appliedCoupon, setAppliedCoupon] = useState<typeof mockCoupons[0] | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [loadingPromotions, setLoadingPromotions] = useState<boolean>(false);
   
-  // Calculate total with fees
+  // Calculate total with fees and discount
   const subtotal = cart.totalPrice || 0;
-  const deliveryFee = cart.items.length > 0 ? DELIVERY_FEE : 0;
-  const serviceFee = cart.items.length > 0 ? SERVICE_FEE : 0;
-  const orderTotal = subtotal + deliveryFee + serviceFee;
+  const deliveryFee = cart.items.length > 0 ? deliveryFeeAmount : 0;
+  const orderTotal = subtotal + deliveryFee - discountAmount;
   
   // Steps for the checkout process
   const steps = ['Review Order', 'Delivery Address', 'Payment Method', 'Confirmation'];
@@ -113,6 +128,38 @@ const CheckoutPage: React.FC = () => {
     };
     
     fetchAddresses();
+  }, []);
+  
+  // Fetch delivery fee from backend
+  useEffect(() => {
+    const fetchDeliveryFee = async () => {
+      try {
+        const feeData = await getDeliveryFee();
+        setDeliveryFeeAmount(feeData.fee);
+      } catch (error) {
+        console.error('Error fetching delivery fee:', error);
+      }
+    };
+    
+    fetchDeliveryFee();
+  }, []);
+  
+  // Fetch promotions from backend
+  useEffect(() => {
+    const fetchPromotions = async () => {
+      setLoadingPromotions(true);
+      try {
+        const promotionList = await getActivePromotions();
+        setPromotions(promotionList);
+      } catch (error) {
+        console.error('Error fetching promotions:', error);
+        setPromotions([]);
+      } finally {
+        setLoadingPromotions(false);
+      }
+    };
+    
+    fetchPromotions();
   }, []);
   
   // Redirect if cart is empty
@@ -156,6 +203,84 @@ const CheckoutPage: React.FC = () => {
     setActiveStep((prevStep) => prevStep - 1);
   };
   
+  // Handle promotion selection
+  const handlePromotionChange = (event: SelectChangeEvent<string>) => {
+    const value = event.target.value;
+    setSelectedPromotionId(value);
+    
+    // Clear coupon if a promotion is selected
+    if (value) {
+      setCouponCode("");
+      setAppliedCoupon(null);
+      setCouponError(null);
+      
+      // Apply promotion discount
+      const selectedPromotion = promotions.find(p => p.id.toString() === value);
+      if (selectedPromotion && subtotal > 0) {
+        // Calculate discount based on percentage
+        const discount = (subtotal * selectedPromotion.discountPercentage) / 100;
+        setDiscountAmount(discount);
+      } else {
+        setDiscountAmount(0);
+      }
+    } else {
+      setDiscountAmount(0);
+    }
+  };
+  
+  // Handle coupon code validation
+  const handleApplyCoupon = async () => {
+    // Clear any previous errors or applied coupons
+    setCouponError(null);
+    setAppliedCoupon(null);
+    
+    if (!couponCode.trim()) {
+      setCouponError("Please enter a coupon code");
+      return;
+    }
+    
+    // Clear promotion if applying a coupon
+    setSelectedPromotionId("");
+    
+    try {
+      // Call backend to validate the coupon
+      const response = await validateCoupon(couponCode.trim(), subtotal);
+      
+      if (response.valid && response.couponId && response.name && response.description && response.discountAmount && response.minOrderAmount) {
+        // Coupon is valid - create a coupon object that matches the mockCoupons structure
+        const validCoupon = {
+          id: response.couponId,
+          name: response.name,
+          description: response.description,
+          discountAmount: response.discountAmount,
+          minOrderAmount: response.minOrderAmount,
+          quota: 100, // Default value, not used in UI
+          usageCount: 0, // Default value, not used in UI
+          isActive: true
+        };
+        
+        setAppliedCoupon(validCoupon);
+        setDiscountAmount(response.discountAmount);
+      } else {
+        // Coupon is invalid
+        setCouponError(response.message);
+        setDiscountAmount(0);
+      }
+    } catch (error) {
+      console.error('Error validating coupon:', error);
+      setCouponError('Failed to validate coupon. Please try again.');
+      setDiscountAmount(0);
+    }
+  };
+  
+  // Handle coupon removal
+  const handleRemoveCoupon = () => {
+    setCouponCode("");
+    setAppliedCoupon(null);
+    setCouponError(null);
+    setDiscountAmount(0);
+  };
+  
   // Handle order submission
   const handlePlaceOrder = async () => {
     if (!selectedAddressId) {
@@ -189,16 +314,18 @@ const CheckoutPage: React.FC = () => {
       const selectedPaymentMethod: 'CREDIT_CARD' | 'CASH_ON_DELIVERY' = 
         paymentMethod === 'cashOnDelivery' ? 'CASH_ON_DELIVERY' : 'CREDIT_CARD';
       
-      // Prepare order data
-      const orderData = {
-        restaurantId: cart.restaurantId,
-        addressId: addressId,
-        items: cart.items.map(item => ({
-          menuItemId: item.menuItemId,
-          quantity: item.quantity
-        })),
-        paymentMethod: selectedPaymentMethod
-      };
+      // Include promotion or coupon in order data
+      const promotionId = selectedPromotionId ? parseInt(selectedPromotionId) : null;
+      const couponId = appliedCoupon ? appliedCoupon.id : null;
+      
+      // Prepare order data with promotion or coupon
+      const orderData = prepareOrderData(
+        cart, 
+        addressId, 
+        selectedPaymentMethod,
+        promotionId,
+        couponId
+      );
       
       // Send order to backend
       console.log('Sending order data:', orderData);
@@ -278,6 +405,106 @@ const CheckoutPage: React.FC = () => {
       
       <Divider sx={{ mb: 2 }} />
       
+      {/* Promotions & Coupons Section */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+          <LocalOfferIcon fontSize="small" sx={{ mr: 1 }} />
+          Promotions & Coupons
+        </Typography>
+        
+        {/* Promotions Dropdown */}
+        <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+          <Select
+            value={selectedPromotionId}
+            onChange={handlePromotionChange}
+            displayEmpty
+            disabled={!!appliedCoupon || loadingPromotions}
+            renderValue={(selected) => {
+              if (!selected) {
+                return <Typography color="text.secondary">Select a promotion</Typography>;
+              }
+              const promotion = promotions.find(p => p.id.toString() === selected);
+              return promotion ? promotion.name : '';
+            }}
+          >
+            <MenuItem value="">
+              <em>None</em>
+            </MenuItem>
+            {loadingPromotions ? (
+              <MenuItem disabled>
+                <CircularProgress size={20} sx={{ mr: 1 }} />
+                Loading promotions...
+              </MenuItem>
+            ) : (
+              promotions.map((promotion) => (
+                <MenuItem key={promotion.id} value={promotion.id.toString()}>
+                  <Box>
+                    <Typography variant="body2">{promotion.name}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {promotion.description} ({promotion.discountPercentage}% off)
+                    </Typography>
+                  </Box>
+                </MenuItem>
+              ))
+            )}
+          </Select>
+        </FormControl>
+        
+        {/* OR Divider */}
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <Divider sx={{ flexGrow: 1 }} />
+          <Typography variant="body2" color="text.secondary" sx={{ px: 2 }}>OR</Typography>
+          <Divider sx={{ flexGrow: 1 }} />
+        </Box>
+        
+        {/* Coupon Code Field */}
+        <Box sx={{ display: 'flex' }}>
+          <TextField
+            size="small"
+            label="Coupon Code"
+            variant="outlined"
+            fullWidth
+            value={couponCode}
+            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+            disabled={!!selectedPromotionId || !!appliedCoupon}
+            error={!!couponError}
+            helperText={couponError}
+            InputProps={{
+              endAdornment: appliedCoupon && (
+                <InputAdornment position="end">
+                  <CheckIcon color="success" />
+                </InputAdornment>
+              )
+            }}
+          />
+          {!appliedCoupon ? (
+            <Button
+              variant="outlined"
+              sx={{ ml: 1, whiteSpace: 'nowrap' }}
+              onClick={handleApplyCoupon}
+              disabled={!couponCode.trim() || !!selectedPromotionId}
+            >
+              Apply
+            </Button>
+          ) : (
+            <Button
+              color="error"
+              variant="outlined"
+              sx={{ ml: 1 }}
+              onClick={handleRemoveCoupon}
+            >
+              Remove
+            </Button>
+          )}
+        </Box>
+        
+        {appliedCoupon && (
+          <Alert severity="success" sx={{ mt: 1 }}>
+            Coupon applied: {appliedCoupon.description}
+          </Alert>
+        )}
+      </Box>
+      
       {/* Order Summary */}
       <Box sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05), p: 2, borderRadius: 1 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
@@ -288,10 +515,16 @@ const CheckoutPage: React.FC = () => {
           <Typography variant="body2">Delivery Fee</Typography>
           <Typography variant="body2">{formatCurrency(deliveryFee)}</Typography>
         </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-          <Typography variant="body2">Service Fee</Typography>
-          <Typography variant="body2">{formatCurrency(serviceFee)}</Typography>
-        </Box>
+        {discountAmount > 0 && (
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="body2" color="success.main">
+              Discount
+            </Typography>
+            <Typography variant="body2" color="success.main">
+              -{formatCurrency(discountAmount)}
+            </Typography>
+          </Box>
+        )}
         <Divider sx={{ my: 1.5 }} />
         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Typography variant="subtitle1" fontWeight="600">Total</Typography>

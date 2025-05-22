@@ -9,6 +9,8 @@ export interface OrderRequest {
   addressId: number;
   items: OrderItem[];
   paymentMethod: 'CREDIT_CARD' | 'CASH_ON_DELIVERY';
+  promotionId?: number | null;
+  couponId?: number | null;
 }
 
 export interface OrderItem {
@@ -34,7 +36,9 @@ export const placeOrder = async (orderData: OrderRequest): Promise<any> => {
           menuItemId: item.menuItemId,
           quantity: item.quantity
         })),
-        paymentMethod: orderData.paymentMethod
+        paymentMethod: orderData.paymentMethod,
+        promotionId: orderData.promotionId || null,
+        couponId: orderData.couponId || null
       };
       
       const response = await api.post('/orders', formattedOrderData);
@@ -71,7 +75,13 @@ export const placeOrder = async (orderData: OrderRequest): Promise<any> => {
 };
 
 // Prepare order data from cart
-export const prepareOrderData = (cart: Cart, addressId: number, paymentMethod: 'CREDIT_CARD' | 'CASH_ON_DELIVERY'): OrderRequest => {
+export const prepareOrderData = (
+  cart: Cart, 
+  addressId: number, 
+  paymentMethod: 'CREDIT_CARD' | 'CASH_ON_DELIVERY',
+  promotionId?: number | null,
+  couponId?: number | null
+): OrderRequest => {
   if (!cart.restaurantId) {
     throw new Error('Cart does not have a restaurant ID');
   }
@@ -85,7 +95,9 @@ export const prepareOrderData = (cart: Cart, addressId: number, paymentMethod: '
     restaurantId: cart.restaurantId,
     addressId,
     items,
-    paymentMethod
+    paymentMethod,
+    promotionId,
+    couponId
   };
 };
 

@@ -158,4 +158,72 @@ export const restaurantInfo = {
   address: "123 Restaurant St, Foodville",
   phoneNumber: "+1 (555) 123-4567",
   email: "info@yourrestaurant.com",
-}; 
+};
+
+// Mock promotions for checkout page
+export const mockPromotions = [
+  {
+    id: 1,
+    name: "Summer Special",
+    description: "10% off your order this summer",
+    discountAmount: 10.00,
+    minOrderAmount: 30.00,
+    startDate: "2023-06-01",
+    endDate: "2023-09-30",
+    isActive: true
+  },
+  {
+    id: 2,
+    name: "Weekend Deal",
+    description: "15% off on weekend orders",
+    discountAmount: 15.00,
+    minOrderAmount: 40.00,
+    startDate: "2023-01-01",
+    endDate: "2023-12-31",
+    isActive: true
+  },
+  {
+    id: 3,
+    name: "New Customer Special",
+    description: "20% off your first order",
+    discountAmount: 20.00,
+    minOrderAmount: 25.00,
+    startDate: "2023-01-01",
+    endDate: "2023-12-31",
+    isActive: true
+  }
+];
+
+// Mock coupons for checkout page
+export const mockCoupons = [
+  {
+    id: 1,
+    name: "WELCOME10",
+    description: "10% off your first order",
+    discountAmount: 10.00,
+    minOrderAmount: 20.00,
+    quota: 100,
+    usageCount: 45,
+    isActive: true
+  },
+  {
+    id: 2,
+    name: "SUMMER25",
+    description: "25% off summer promotion",
+    discountAmount: 25.00,
+    minOrderAmount: 50.00,
+    quota: 50,
+    usageCount: 30,
+    isActive: true
+  },
+  {
+    id: 3,
+    name: "FREESHIP",
+    description: "Free delivery on your order",
+    discountAmount: 15.00,
+    minOrderAmount: 35.00,
+    quota: 200,
+    usageCount: 150,
+    isActive: true
+  }
+];

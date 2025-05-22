@@ -35,7 +35,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Collections.singletonList("*"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept"));
         configuration.setAllowCredentials(false);
 
@@ -63,6 +63,8 @@ public class SecurityConfig {
                         // Public endpoints for restaurant data must be before role-restricted endpoints
                         .requestMatchers("/api/restaurant/menu-items/public/**").permitAll()
                         .requestMatchers("/api/restaurants/**").permitAll()
+                        // Make promotions endpoints public for now
+                        .requestMatchers("/api/promotions/**").permitAll()
                         // Admin endpoints (all protected now since we created specific admin endpoints)
                         .requestMatchers("/api/admin/**").hasRole("admin")
                         // Role-restricted endpoints

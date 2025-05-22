@@ -11,4 +11,6 @@ public class PlaceOrderRequestDTO {
     private Integer addressId;
     private List<OrderItemRequestDTO> items;
     private PaymentMethod paymentMethod;
+    private Long promotionId;
+    private Long couponId;
 }

@@ -7,6 +7,8 @@ import com.hufds.repository.CustomerRepository;
 import com.hufds.repository.RestaurantRepository;
 import com.hufds.repository.AddressRepository;
 import com.hufds.repository.MenuItemRepository;
+import com.hufds.repository.CouponRepository;
+import com.hufds.repository.PromotionRepository;
 import com.hufds.service.OrderService;
 import com.hufds.service.PaymentService;
 import org.slf4j.Logger;
@@ -44,6 +46,12 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private PaymentService paymentService;
+
+    @Autowired
+    private CouponRepository couponRepository;
+
+    @Autowired
+    private PromotionRepository promotionRepository;
 
     @Override
     @Transactional
@@ -95,6 +103,62 @@ public class OrderServiceImpl implements OrderService {
             
             orderItems.add(orderItem);
             totalPrice = totalPrice.add(orderItem.getSubtotal());
+        }
+
+        // Apply promotion or coupon discount if applicable
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        
+        // Check and apply coupon if provided
+        if (dto.getCouponId() != null) {
+            Optional<Coupon> couponOpt = couponRepository.findById(dto.getCouponId());
+            if (couponOpt.isPresent()) {
+                Coupon coupon = couponOpt.get();
+                
+                // Validate coupon is active and not expired
+                if (coupon.getIsActive() && 
+                    (coupon.getEndDate() == null || coupon.getEndDate().isAfter(LocalDateTime.now().toLocalDate())) &&
+                    (coupon.getQuota() > coupon.getUsageCount() || coupon.getQuota() == -1) &&
+                    totalPrice.compareTo(coupon.getMinOrderAmount()) >= 0) {
+                    
+                    // Apply discount
+                    discountAmount = coupon.getDiscountAmount();
+                    
+                    // Increment usage count
+                    coupon.setUsageCount(coupon.getUsageCount() + 1);
+                    couponRepository.save(coupon);
+                    
+                    log.info("Applied coupon {} to order {}. Discount: {}", 
+                             coupon.getName(), order.getOrderId(), discountAmount);
+                }
+            }
+        }
+        // Check and apply promotion if provided and no coupon was applied
+        else if (dto.getPromotionId() != null && discountAmount.compareTo(BigDecimal.ZERO) == 0) {
+            Optional<Promotion> promotionOpt = promotionRepository.findById(dto.getPromotionId());
+            if (promotionOpt.isPresent()) {
+                Promotion promotion = promotionOpt.get();
+                
+                // Validate promotion is active and not expired
+                if (promotion.getIsActive() && 
+                    (promotion.getEndDate() == null || promotion.getEndDate().isAfter(LocalDateTime.now().toLocalDate()))) {
+                    
+                    // Calculate discount based on percentage
+                    BigDecimal discountPercentage = BigDecimal.valueOf(promotion.getDiscountPercentage());
+                    discountAmount = totalPrice.multiply(discountPercentage).divide(BigDecimal.valueOf(100));
+                    
+                    log.info("Applied promotion {} to order {}. Discount: {}", 
+                             promotion.getName(), order.getOrderId(), discountAmount);
+                }
+            }
+        }
+        
+        // Apply discount to total price if any
+        if (discountAmount.compareTo(BigDecimal.ZERO) > 0) {
+            totalPrice = totalPrice.subtract(discountAmount);
+            // Ensure total price is not negative
+            if (totalPrice.compareTo(BigDecimal.ZERO) < 0) {
+                totalPrice = BigDecimal.ZERO;
+            }
         }
 
         // Update order with items and total price
