@@ -30,6 +30,7 @@ import AdminProfile from './pages/AdminProfile';
 import AdminPromotions from './pages/AdminPromotions';
 import AdminApprovalPage from './pages/AdminApprovalPage';
 import AdminFees from './pages/AdminFees';
+import AdminAnalytics from './pages/AdminAnalytics';
 import PendingApprovalPage from './pages/PendingApprovalPage';
 
 // Protected route component
@@ -397,6 +398,9 @@ const App: React.FC = () => {
                   } />
                   <Route path="/admin/fees" element={
                     <ProtectedRoute userType="admin" element={<AdminFees />} />
+                  } />
+                  <Route path="/admin/analytics" element={
+                    <ProtectedRoute userType="admin" element={<AdminAnalytics />} />
                   } />
                   
                   {/* Add the checkout route */}

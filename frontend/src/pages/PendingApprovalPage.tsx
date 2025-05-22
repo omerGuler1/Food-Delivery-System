@@ -57,6 +57,8 @@ const PendingApprovalPage: React.FC = () => {
       } else if (userType === 'courier' && 'courierId' in user) {
         updatedStatus = await checkCourierApprovalStatus(user.courierId);
         
+        console.log("Courier approval status response:", updatedStatus);
+        
         if (updatedStatus && updatedStatus.approvalStatus === 'ACCEPTED') {
           // Update user in context with new status
           const updatedUser = { 

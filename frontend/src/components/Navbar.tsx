@@ -33,6 +33,7 @@ import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { getDeliveryFee } from '../services/feeService';
@@ -121,7 +122,8 @@ const Navbar: React.FC = () => {
     pages = [
       { title: 'Dashboard', path: '/admin/dashboard', icon: <DashboardIcon sx={{ mr: 0.5 }} /> },
       { title: 'Promotions & Coupons', path: '/admin/promotions', icon: <LocalOfferIcon sx={{ mr: 0.5 }} /> },
-      { title: 'Fees Management', path: '/admin/fees', icon: <MonetizationOnIcon sx={{ mr: 0.5 }} /> }
+      { title: 'Fees Management', path: '/admin/fees', icon: <MonetizationOnIcon sx={{ mr: 0.5 }} /> },
+      { title: 'Analytics', path: '/admin/analytics', icon: <AnalyticsIcon sx={{ mr: 0.5 }} /> }
     ];
   } else if (isAuthenticated && userType === 'customer') {
     // For customers, show regular navigation plus favorites
