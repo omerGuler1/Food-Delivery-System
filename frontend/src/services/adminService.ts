@@ -31,6 +31,8 @@ export interface RestaurantListItem {
   city: string;
   createdAt: string;
   approvalStatus: string;
+  deleted?: boolean;
+  deletedAt?: string | null;
 }
 
 /**

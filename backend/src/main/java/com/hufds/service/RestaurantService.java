@@ -6,6 +6,7 @@ import com.hufds.entity.Restaurant;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface RestaurantService {
     /**
@@ -65,4 +66,11 @@ public interface RestaurantService {
     Restaurant uploadProfileImage(Integer restaurantId, MultipartFile image);
 
     Restaurant updateApprovalStatus(Integer restaurantId, Restaurant.ApprovalStatus approvalStatus);
+    
+    /**
+     * Finds a restaurant by email
+     * @param email Email address
+     * @return Optional containing the restaurant if found, empty otherwise
+     */
+    Optional<Restaurant> findByEmail(String email);
 } 

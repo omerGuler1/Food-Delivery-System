@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class RestaurantServiceImpl implements RestaurantService {
@@ -148,5 +149,10 @@ public class RestaurantServiceImpl implements RestaurantService {
         Restaurant restaurant = getRestaurantById(restaurantId);
         restaurant.setApprovalStatus(approvalStatus);
         return restaurantRepository.save(restaurant);
+    }
+
+    @Override
+    public Optional<Restaurant> findByEmail(String email) {
+        return restaurantRepository.findByEmail(email);
     }
 } 

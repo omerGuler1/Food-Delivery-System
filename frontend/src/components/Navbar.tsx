@@ -38,7 +38,7 @@ import { useCart } from '../contexts/CartContext';
 import { getDeliveryFee } from '../services/feeService';
 
 const Navbar: React.FC = () => {
-  const { isAuthenticated, user, userType, logout } = useAuth();
+  const { isAuthenticated, user, userType, logout, verifyUserExists } = useAuth();
   const { cart, updateQuantity, removeFromCart } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
@@ -47,6 +47,28 @@ const Navbar: React.FC = () => {
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
   const [anchorElCart, setAnchorElCart] = useState<null | HTMLElement>(null);
   const [deliveryFeeAmount, setDeliveryFeeAmount] = useState<number>(15);
+  
+  // Check if user still exists on component mount and periodically
+  useEffect(() => {
+    const checkUserExists = async () => {
+      if (isAuthenticated) {
+        const exists = await verifyUserExists();
+        if (!exists) {
+          // User doesn't exist anymore, log them out and redirect
+          await logout();
+          navigate('/');
+        }
+      }
+    };
+    
+    // Check immediately
+    checkUserExists();
+    
+    // Then check periodically (every 30 seconds)
+    const interval = setInterval(checkUserExists, 30000);
+    
+    return () => clearInterval(interval);
+  }, [isAuthenticated, verifyUserExists, logout, navigate]);
   
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);

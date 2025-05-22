@@ -14,12 +14,15 @@ import com.hufds.dto.OrderResponseDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.http.HttpStatus;
 
 @RestController
@@ -34,6 +37,21 @@ public class RestaurantController {
 
     @Autowired
     private OrderService orderService;
+
+    @GetMapping("/verify")
+    public ResponseEntity<Void> verifyRestaurantExists() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+        
+        // Check if the restaurant with this email exists
+        Optional<Restaurant> restaurant = restaurantService.findByEmail(email);
+        if (restaurant.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        
+        // If we get here, the restaurant exists
+        return ResponseEntity.ok().build();
+    }
 
     @PutMapping("/{id}/status")
     public ResponseEntity<BusinessHours> updateRestaurantStatus(

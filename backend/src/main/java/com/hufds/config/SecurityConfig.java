@@ -26,6 +26,7 @@ import java.util.Collections;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final UserExistenceFilter userExistenceFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -73,7 +74,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/courier/**").hasRole("courier")
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(userExistenceFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
