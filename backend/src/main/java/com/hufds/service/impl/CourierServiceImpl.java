@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class CourierServiceImpl implements CourierService {
@@ -131,5 +132,10 @@ public class CourierServiceImpl implements CourierService {
         Courier courier = getCourierProfile(courierId);
         courier.setApprovalStatus(approvalStatus);
         return courierRepository.save(courier);
+    }
+
+    @Override
+    public Optional<Courier> findByEmail(String email) {
+        return courierRepository.findByEmail(email);
     }
 } 

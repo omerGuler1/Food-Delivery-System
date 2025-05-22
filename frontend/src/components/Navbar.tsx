@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   AppBar, 
   Box, 
@@ -32,11 +32,13 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
+import { getDeliveryFee } from '../services/feeService';
 
 const Navbar: React.FC = () => {
-  const { isAuthenticated, user, userType, logout } = useAuth();
+  const { isAuthenticated, user, userType, logout, verifyUserExists } = useAuth();
   const { cart, updateQuantity, removeFromCart } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,6 +46,29 @@ const Navbar: React.FC = () => {
   const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
   const [anchorElCart, setAnchorElCart] = useState<null | HTMLElement>(null);
+  const [deliveryFeeAmount, setDeliveryFeeAmount] = useState<number>(15);
+  
+  // Check if user still exists on component mount and periodically
+  useEffect(() => {
+    const checkUserExists = async () => {
+      if (isAuthenticated) {
+        const exists = await verifyUserExists();
+        if (!exists) {
+          // User doesn't exist anymore, log them out and redirect
+          await logout();
+          navigate('/');
+        }
+      }
+    };
+    
+    // Check immediately
+    checkUserExists();
+    
+    // Then check periodically (every 30 seconds)
+    const interval = setInterval(checkUserExists, 30000);
+    
+    return () => clearInterval(interval);
+  }, [isAuthenticated, verifyUserExists, logout, navigate]);
   
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
@@ -95,7 +120,8 @@ const Navbar: React.FC = () => {
     // For admin users, show dashboard and promotions
     pages = [
       { title: 'Dashboard', path: '/admin/dashboard', icon: <DashboardIcon sx={{ mr: 0.5 }} /> },
-      { title: 'Promotions & Coupons', path: '/admin/promotions', icon: <LocalOfferIcon sx={{ mr: 0.5 }} /> }
+      { title: 'Promotions & Coupons', path: '/admin/promotions', icon: <LocalOfferIcon sx={{ mr: 0.5 }} /> },
+      { title: 'Fees Management', path: '/admin/fees', icon: <MonetizationOnIcon sx={{ mr: 0.5 }} /> }
     ];
   } else if (isAuthenticated && userType === 'customer') {
     // For customers, show regular navigation plus favorites
@@ -149,15 +175,24 @@ const Navbar: React.FC = () => {
   // Calculate total quantity of items in cart
   const totalQuantity = cart.items.reduce((total, item) => total + item.quantity, 0);
 
-  // Constants for delivery and service fees
-  const DELIVERY_FEE = 15;
-  const SERVICE_FEE = 5;
+  // Fetch delivery fee from backend
+  useEffect(() => {
+    const fetchDeliveryFee = async () => {
+      try {
+        const feeData = await getDeliveryFee();
+        setDeliveryFeeAmount(feeData.fee);
+      } catch (error) {
+        console.error('Error fetching delivery fee:', error);
+      }
+    };
+    
+    fetchDeliveryFee();
+  }, []);
 
   // Calculate total with fees
   const subtotal = cart.totalPrice || 0;
-  const deliveryFee = cart.items.length > 0 ? DELIVERY_FEE : 0;
-  const serviceFee = cart.items.length > 0 ? SERVICE_FEE : 0;
-  const orderTotal = subtotal + deliveryFee + serviceFee;
+  const deliveryFee = cart.items.length > 0 ? deliveryFeeAmount : 0;
+  const orderTotal = subtotal + deliveryFee;
 
   return (
     <AppBar position="static">
@@ -430,14 +465,6 @@ const Navbar: React.FC = () => {
                             </Typography>
                             <Typography variant="body2">
                               {formatCurrency(deliveryFee)}
-                            </Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography variant="body2" color="text.secondary">
-                              Service Fee
-                            </Typography>
-                            <Typography variant="body2">
-                              {formatCurrency(serviceFee)}
                             </Typography>
                           </Box>
                         </Box>

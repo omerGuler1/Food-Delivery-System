@@ -7,13 +7,16 @@ import com.hufds.service.OrderService;
 import com.hufds.service.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/courier")
@@ -27,6 +30,21 @@ public class CourierController {
     
     @Autowired
     private JwtService jwtService;
+
+    @GetMapping("/verify")
+    public ResponseEntity<Void> verifyCourierExists() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+        
+        // Check if the courier with this email exists
+        Optional<Courier> courier = courierService.findByEmail(email);
+        if (courier.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        
+        // If we get here, the courier exists
+        return ResponseEntity.ok().build();
+    }
 
     @GetMapping("/profile/{courierId}")
     public ResponseEntity<Courier> getCourierProfile(@PathVariable Integer courierId) {

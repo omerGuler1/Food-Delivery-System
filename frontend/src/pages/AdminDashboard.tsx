@@ -246,8 +246,9 @@ const AdminDashboard: React.FC = () => {
     try {
       await deleteRestaurant(restaurantId);
       setSuccessMessage(`Restaurant successfully deleted`);
-      // Refresh the restaurant list
-      fetchRestaurants();
+      // Refresh the restaurant list and force update by creating a new array
+      const updatedRestaurants = restaurants.filter(r => r.restaurantId !== restaurantId);
+      setRestaurants(updatedRestaurants);
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
       setError('Failed to delete restaurant');
@@ -358,8 +359,11 @@ const AdminDashboard: React.FC = () => {
     try {
       setLoading(true);
       const data = await getAllRestaurants();
-      // Filter out restaurants with non-ACCEPTED approval status
-      const acceptedRestaurants = data.filter(restaurant => restaurant.approvalStatus === 'ACCEPTED');
+      // Filter out restaurants with non-ACCEPTED approval status and deleted restaurants
+      const acceptedRestaurants = data.filter(restaurant => 
+        restaurant.approvalStatus === 'ACCEPTED' && 
+        restaurant.deletedAt === null
+      );
       // ID'ye göre sıralama yap
       const sortedData = [...acceptedRestaurants].sort((a, b) => a.restaurantId - b.restaurantId);
       setRestaurants(sortedData);

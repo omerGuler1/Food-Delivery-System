@@ -6,6 +6,7 @@ import {
   getUserType as getAuthUserType, 
   logout as logoutService 
 } from '../services/authService';
+import api from '../services/api';
 
 type UserType = 'customer' | 'restaurant' | 'courier' | 'admin' | null;
 type User = Customer | Restaurant | Courier | Admin | null;
@@ -19,6 +20,7 @@ interface AuthContextType {
   checkAuth: () => boolean;
   getCurrentUserType: () => UserType;
   setUser: (user: User) => void;
+  verifyUserExists: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,6 +49,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (authenticated) {
       setUser(getCurrentUser());
       setUserType(getAuthUserType() as UserType);
+      
+      // Verify user exists on initial load
+      verifyUserExists().catch(() => {
+        // If verification fails, log out silently
+        logoutService().then(() => {
+          setUser(null);
+          setUserType(null);
+          setIsAuthenticated(false);
+          window.location.href = '/';
+        });
+      });
     }
   }, []);
 
@@ -72,6 +85,56 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const getCurrentUserType = () => {
     return userType;
   };
+  
+  // Function to verify if user still exists in the backend
+  const verifyUserExists = async (): Promise<boolean> => {
+    if (!isAuthenticated || !userType) {
+      return false;
+    }
+    
+    try {
+      let endpoint = '';
+      
+      switch (userType) {
+        case 'customer':
+          endpoint = '/customers/verify';
+          break;
+        case 'restaurant':
+          endpoint = '/restaurants/verify';
+          break;
+        case 'courier':
+          endpoint = '/couriers/verify';
+          break;
+        case 'admin':
+          endpoint = '/admin/verify';
+          break;
+      }
+      
+      if (endpoint) {
+        await api.get(endpoint);
+        return true;
+      }
+      
+      return false;
+    } catch (error: any) {
+      // Special handling for admin verify endpoint
+      if (userType === 'admin' && error.response && error.response.status === 404) {
+        console.log('Admin verify endpoint not found, assuming admin still exists');
+        return true;
+      }
+      
+      // Check if this is a 404 error (user not found)
+      if (error.response && error.response.status === 404) {
+        console.log(`User of type ${userType} no longer exists in the system`);
+        return false;
+      }
+      
+      // For other errors, log but don't automatically log out
+      console.error('Error verifying user existence:', error);
+      // Return true for network errors to prevent unnecessary logouts
+      return error.request && !error.response;
+    }
+  };
 
   return (
     <AuthContext.Provider value={{ 
@@ -82,7 +145,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       logout,
       checkAuth,
       getCurrentUserType,
-      setUser
+      setUser,
+      verifyUserExists
     }}>
       {children}
     </AuthContext.Provider>

@@ -5,6 +5,7 @@ import com.hufds.entity.Order;
 import com.hufds.dto.PasswordUpdateDTO;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface CourierService {
     // Profile operations
@@ -28,4 +29,11 @@ public interface CourierService {
     void updatePassword(Integer courierId, PasswordUpdateDTO passwordUpdateDTO);
 
     Courier updateApprovalStatus(Integer courierId, Courier.ApprovalStatus approvalStatus);
+    
+    /**
+     * Finds a courier by email
+     * @param email Email address
+     * @return Optional containing the courier if found, empty otherwise
+     */
+    Optional<Courier> findByEmail(String email);
 } 

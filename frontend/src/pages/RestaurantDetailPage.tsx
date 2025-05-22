@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   Container, 
   Grid, 
@@ -38,33 +38,15 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
-import { getRestaurantById } from '../services/restaurantService';
+import { getRestaurantById, getRestaurantOpenStatus, checkDeliveryRange, DeliveryRangeCheck } from '../services/restaurantService';
+import { getUserAddresses } from '../services/addressService';
 import { getRestaurantMenuItems, MenuItem as MenuServiceItem } from '../services/menuService';
 import { favoriteService } from '../services/favoriteService';
-import { Restaurant } from '../interfaces';
+import { getDeliveryFee } from '../services/feeService';
+import { Restaurant, Address } from '../interfaces';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 
-// Mock data for development and testing
-const mockRestaurant: Restaurant = {
-  restaurantId: 1,
-  name: "Sample Restaurant",
-  email: "sample@restaurant.com",
-  phoneNumber: "+1234567890",
-  token: "mock-token",
-  cuisineType: "Italian",
-  rating: 4.7,
-  isOpen: true,
-  address: {
-    street: "123 Main Street",
-    city: "Istanbul",
-    state: "",
-    zipCode: "",
-    country: "Turkey"
-  },
-  deliveryRangeKm: 5,
-  estimatedDeliveryTime: "30-45 min",
-  averagePrice: 25
-};
 
 // For simplicity, use MenuServiceItem type for the component
 type ComponentMenuItem = MenuServiceItem;
@@ -80,6 +62,7 @@ const RestaurantDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { cart, addToCart: addItemToCart, removeFromCart: removeItemFromCart, updateQuantity } = useCart();
+  const { isAuthenticated } = useAuth();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [menuItems, setMenuItems] = useState<ComponentMenuItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -88,11 +71,12 @@ const RestaurantDetailPage: React.FC = () => {
   const [menuLoading, setMenuLoading] = useState<boolean>(true);
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [deliveryFeeAmount, setDeliveryFeeAmount] = useState<number>(15);
+  const [userAddresses, setUserAddresses] = useState<Address[]>([]);
+  const [defaultAddress, setDefaultAddress] = useState<Address | null>(null);
+  const [deliveryRangeCheck, setDeliveryRangeCheck] = useState<DeliveryRangeCheck | null>(null);
+  const [checkingDeliveryRange, setCheckingDeliveryRange] = useState<boolean>(false);
   
-  // Constants for delivery and service fees
-  const DELIVERY_FEE = 15;
-  const SERVICE_FEE = 5;
-
   // Fetch restaurant details and favorite status
   useEffect(() => {
     const fetchRestaurantData = async () => {
@@ -103,11 +87,14 @@ const RestaurantDetailPage: React.FC = () => {
       
       try {
         const restaurantData = await getRestaurantById(Number(id));
-        // Ensure restaurant is open by default
+        
         if (restaurantData) {
+          // Fetch the open status from the API
+          const isOpen = await getRestaurantOpenStatus(Number(id));
+          
           setRestaurant({
             ...restaurantData,
-            isOpen: true
+            isOpen: isOpen
           });
           
           // Check if restaurant is in favorites
@@ -151,6 +138,58 @@ const RestaurantDetailPage: React.FC = () => {
       fetchMenuItems();
     }
   }, [id, restaurant]);
+
+  // Fetch delivery fee from backend
+  useEffect(() => {
+    const fetchDeliveryFee = async () => {
+      try {
+        const feeData = await getDeliveryFee();
+        setDeliveryFeeAmount(feeData.fee);
+      } catch (error) {
+        console.error('Error fetching delivery fee:', error);
+      }
+    };
+    
+    fetchDeliveryFee();
+  }, []);
+  // Add useEffect to fetch user's addresses and check delivery range
+  useEffect(() => {
+    if (!restaurant || !isAuthenticated) return;
+    
+    const fetchAddressesAndCheckRange = async () => {
+      try {
+        setCheckingDeliveryRange(true);
+        
+        // Get user addresses
+        const addresses = await getUserAddresses();
+        setUserAddresses(addresses);
+        
+        // Find default address
+        const defaultAddr = addresses.find((addr) => addr.isDefault);
+        const selectedAddr = defaultAddr || (addresses.length > 0 ? addresses[0] : null);
+        setDefaultAddress(selectedAddr);
+        
+        // Check if default address is within delivery range
+        if (selectedAddr && restaurant.restaurantId) {
+          try {
+            const rangeCheck = await checkDeliveryRange(
+              restaurant.restaurantId, 
+              selectedAddr.addressId
+            );
+            setDeliveryRangeCheck(rangeCheck);
+          } catch (error) {
+            console.error('Error checking delivery range:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user addresses:', error);
+      } finally {
+        setCheckingDeliveryRange(false);
+      }
+    };
+    
+    fetchAddressesAndCheckRange();
+  }, [restaurant, isAuthenticated]);
 
   const handleCategoryClick = (category: string) => {
     setSelectedCategory(category === selectedCategory ? '' : category);
@@ -252,9 +291,8 @@ const RestaurantDetailPage: React.FC = () => {
 
   // Calculate total with fees
   const subtotal = cart.totalPrice;
-  const deliveryFee = cart.items.length > 0 ? DELIVERY_FEE : 0;
-  const serviceFee = cart.items.length > 0 ? SERVICE_FEE : 0;
-  const orderTotal = subtotal + deliveryFee + serviceFee;
+  const deliveryFee = cart.items.length > 0 ? deliveryFeeAmount : 0;
+  const orderTotal = subtotal + deliveryFee;
 
   return (
     <Box sx={{ bgcolor: '#F8F9FA', minHeight: '100vh', pb: 10 }}>
@@ -412,6 +450,30 @@ const RestaurantDetailPage: React.FC = () => {
               </Grid>
             </Paper>
             
+            {/* Delivery Range Warning */}
+            {isAuthenticated && deliveryRangeCheck && !deliveryRangeCheck.isInRange && (
+              <Alert 
+                severity="warning" 
+                sx={{ 
+                  mt: 3,
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                    This restaurant doesn't deliver to your default address
+                    {deliveryRangeCheck.distanceKm && ` (${deliveryRangeCheck.distanceKm} km away)`}.
+                  </Typography>
+                  <Typography variant="body2">
+                    The restaurant's delivery range is {restaurant?.deliveryRangeKm} km. 
+                    Please select a different address at checkout.
+                  </Typography>
+                </Box>
+              </Alert>
+            )}
+            
             {/* Menu Section */}
             <Paper 
               sx={{ 
@@ -559,8 +621,13 @@ const RestaurantDetailPage: React.FC = () => {
                                   size="small" 
                                   color="primary" 
                                   startIcon={<AddIcon />}
-                                  disabled={!restaurant.isOpen || !item.availability}
+                                  disabled={!restaurant.isOpen || !item.availability || !isAuthenticated}
                                   onClick={() => {
+                                    if (!isAuthenticated) {
+                                      // Show login prompt instead of adding to cart
+                                      return;
+                                    }
+                                    
                                     if (restaurant) {
                                       const menuItem = {
                                         ...item,
@@ -576,7 +643,7 @@ const RestaurantDetailPage: React.FC = () => {
                                     minWidth: 120
                                   }}
                                 >
-                                  Add to Cart
+                                  {isAuthenticated ? 'Add to Cart' : 'Login to Order'}
                                 </Button>
                               </Box>
                             </Box>
@@ -613,7 +680,26 @@ const RestaurantDetailPage: React.FC = () => {
               
               <Divider sx={{ mb: 3 }} />
               
-              {cart.items.length === 0 ? (
+              {!isAuthenticated ? (
+                <Box sx={{ textAlign: 'center', py: 5 }}>
+                  <ShoppingCartIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+                  <Typography variant="h6" color="text.secondary" gutterBottom>
+                    Login Required
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3, px: 2 }}>
+                    You need to login to place orders from this restaurant
+                  </Typography>
+                  <Button 
+                    component={Link} 
+                    to="/login" 
+                    variant="contained" 
+                    color="primary"
+                    sx={{ mt: 2 }}
+                  >
+                    Login to Order
+                  </Button>
+                </Box>
+              ) : cart.items.length === 0 ? (
                 <Box sx={{ textAlign: 'center', py: 5 }}>
                   <ShoppingCartIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
                   <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -730,10 +816,6 @@ const RestaurantDetailPage: React.FC = () => {
                       </Box>
                       <Typography variant="body2">{formatCurrency(deliveryFee)}</Typography>
                     </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2">Service Fee</Typography>
-                      <Typography variant="body2">{formatCurrency(serviceFee)}</Typography>
-                    </Box>
                     <Divider sx={{ my: 1.5 }} />
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Typography variant="subtitle1" fontWeight="600">Total</Typography>
@@ -749,7 +831,7 @@ const RestaurantDetailPage: React.FC = () => {
                       color="primary" 
                       fullWidth
                       size="large"
-                      disabled={!restaurant.isOpen || cart.items.length === 0}
+                      disabled={!restaurant.isOpen || cart.items.length === 0 || !isAuthenticated}
                       startIcon={<ShoppingCartIcon />}
                       onClick={handleCheckout}
                       sx={{ 
@@ -758,14 +840,8 @@ const RestaurantDetailPage: React.FC = () => {
                         fontSize: '1rem'
                       }}
                     >
-                      {restaurant.isOpen ? 'Checkout' : 'Restaurant Closed'}
+                      {!isAuthenticated ? 'Login to Order' : restaurant.isOpen ? 'Checkout' : 'Restaurant Closed'}
                     </Button>
-                    
-                    {!restaurant.isOpen && (
-                      <Alert severity="warning" sx={{ mt: 2 }}>
-                        This restaurant is currently closed. You can't place orders at this time.
-                      </Alert>
-                    )}
                   </Box>
                 </>
               )}
@@ -775,7 +851,7 @@ const RestaurantDetailPage: React.FC = () => {
       </Container>
       
       {/* Mobile cart footer (visible only on mobile) */}
-      {cart.items.length > 0 && (
+      {cart.items.length > 0 && restaurant && (
         <Paper 
           sx={{ 
             display: { xs: 'block', md: 'none' },
@@ -805,11 +881,11 @@ const RestaurantDetailPage: React.FC = () => {
               <Button 
                 variant="contained" 
                 color="primary" 
-                disabled={!restaurant.isOpen || cart.items.length === 0}
+                disabled={!restaurant.isOpen || cart.items.length === 0 || !isAuthenticated}
                 onClick={handleCheckout}
                 sx={{ fontWeight: 600 }}
               >
-                {restaurant.isOpen ? 'Checkout' : 'Closed'}
+                {!isAuthenticated ? 'Login to Order' : restaurant.isOpen ? 'Checkout' : 'Closed'}
               </Button>
             </Box>
           </Container>

@@ -29,7 +29,11 @@ import {
   alpha,
   Stepper,
   Step,
-  StepLabel
+  StepLabel,
+  InputAdornment,
+  IconButton,
+  SelectChangeEvent,
+  Collapse
 } from '@mui/material';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import PaymentIcon from '@mui/icons-material/Payment';
@@ -37,11 +41,20 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import AddIcon from '@mui/icons-material/Add';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import CheckIcon from '@mui/icons-material/Check';
+import ClearIcon from '@mui/icons-material/Clear';
+import { Address, Promotion } from '../interfaces';
+import { getDeliveryFee } from '../services/feeService';
+import { validateCoupon } from '../services/couponService';
+import { mockCoupons } from '../data/mockData';
+import { getActivePromotions } from '../services/promotionService';
+import { Checkbox } from '@mui/material';
 import { useCart } from '../contexts/CartContext';
-import { getUserAddresses } from '../services/addressService';
-import { Address } from '../interfaces';
+import { getUserAddresses, addAddress } from '../services/addressService';
 import { placeOrder, prepareOrderData } from '../services/orderService';
+import { useAuth } from '../contexts/AuthContext';
+import { checkDeliveryRange, DeliveryRangeCheck, checkAddressInDeliveryRange } from '../services/restaurantService';
 
 // Mock credit cards for demonstration
 const mockCards = [
@@ -65,6 +78,7 @@ const CheckoutPage: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { cart, clearCart } = useCart();
+  const { isAuthenticated } = useAuth();
   
   const [activeStep, setActiveStep] = useState(0);
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -75,16 +89,35 @@ const CheckoutPage: React.FC = () => {
   const [orderLoading, setOrderLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [deliveryFeeAmount, setDeliveryFeeAmount] = useState<number>(15);
+  const [addressInRange, setAddressInRange] = useState<boolean | null>(null);
+  const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
+  const [checkingDeliveryRange, setCheckingDeliveryRange] = useState<boolean>(false);
+  const [newAddressFormOpen, setNewAddressFormOpen] = useState(false);
+  const [newAddress, setNewAddress] = useState({
+    street: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    country: '',
+    isDefault: false
+  });
+  const [addressSubmitting, setAddressSubmitting] = useState(false);
+  const [addressError, setAddressError] = useState('');
   
-  // Constants for delivery and service fees
-  const DELIVERY_FEE = 15;
-  const SERVICE_FEE = 5;
+  // New state for promotions and coupons
+  const [selectedPromotionId, setSelectedPromotionId] = useState<string>("");
+  const [couponCode, setCouponCode] = useState<string>("");
+  const [appliedCoupon, setAppliedCoupon] = useState<typeof mockCoupons[0] | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [loadingPromotions, setLoadingPromotions] = useState<boolean>(false);
   
-  // Calculate total with fees
+  // Calculate total with fees and discount
   const subtotal = cart.totalPrice || 0;
-  const deliveryFee = cart.items.length > 0 ? DELIVERY_FEE : 0;
-  const serviceFee = cart.items.length > 0 ? SERVICE_FEE : 0;
-  const orderTotal = subtotal + deliveryFee + serviceFee;
+  const deliveryFee = cart.items.length > 0 ? deliveryFeeAmount : 0;
+  const orderTotal = subtotal + deliveryFee - discountAmount;
   
   // Steps for the checkout process
   const steps = ['Review Order', 'Delivery Address', 'Payment Method', 'Confirmation'];
@@ -115,16 +148,103 @@ const CheckoutPage: React.FC = () => {
     fetchAddresses();
   }, []);
   
+  // Fetch delivery fee from backend
+  useEffect(() => {
+    const fetchDeliveryFee = async () => {
+      try {
+        const feeData = await getDeliveryFee();
+        setDeliveryFeeAmount(feeData.fee);
+      } catch (error) {
+        console.error('Error fetching delivery fee:', error);
+      }
+    };
+    
+    fetchDeliveryFee();
+  }, []);
+  
+  // Fetch promotions from backend
+  useEffect(() => {
+    const fetchPromotions = async () => {
+      setLoadingPromotions(true);
+      try {
+        const promotionList = await getActivePromotions();
+        setPromotions(promotionList);
+      } catch (error) {
+        console.error('Error fetching promotions:', error);
+        setPromotions([]);
+      } finally {
+        setLoadingPromotions(false);
+      }
+    };
+    
+    fetchPromotions();
+  }, []);
+  
   // Redirect if cart is empty
+  // Add a useEffect to redirect non-authenticated users
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: '/checkout', message: 'Please login to complete your order' } });
+    }
+  }, [isAuthenticated, navigate]);
+  
+  // Existing useEffect for empty cart redirect
   useEffect(() => {
     if (cart.items.length === 0 && !success) {
       navigate('/');
     }
   }, [cart.items.length, navigate, success]);
   
-  // Handle address selection
-  const handleAddressChange = (event: React.ChangeEvent<{ value: unknown }>) => {
-    setSelectedAddressId(event.target.value as number);
+  // Add this function for checking manually entered addresses
+  const checkManualAddressRange = async (address: any) => {
+    if (!cart.restaurantId || !address) return;
+    
+    setCheckingDeliveryRange(true);
+    try {
+      const result = await checkAddressInDeliveryRange(cart.restaurantId, {
+        street: address.street || '',
+        city: address.city || '',
+        state: address.state || '',
+        zipCode: address.zipCode || '',
+        country: address.country || ''
+      });
+      
+      setAddressInRange(result.isInRange);
+      setDeliveryDistance(result.distanceKm);
+      return result.isInRange;
+    } catch (error) {
+      console.error("Error checking delivery range:", error);
+      setAddressInRange(null);
+      setDeliveryDistance(null);
+      return null;
+    } finally {
+      setCheckingDeliveryRange(false);
+    }
+  };
+  
+  // Update the handleAddressChange function to check range for selected addresses
+  const handleAddressChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const addressId = parseInt(event.target.value);
+    setSelectedAddressId(addressId);
+    
+    // If this is an existing address, check its range
+    if (addressId && cart.restaurantId) {
+      setCheckingDeliveryRange(true);
+      try {
+        const result = await checkDeliveryRange(cart.restaurantId, addressId);
+        setAddressInRange(result.isInRange);
+        setDeliveryDistance(result.distanceKm);
+      } catch (error) {
+        console.error("Error checking delivery range:", error);
+        setAddressInRange(null);
+        setDeliveryDistance(null);
+      } finally {
+        setCheckingDeliveryRange(false);
+      }
+    } else {
+      setAddressInRange(null);
+      setDeliveryDistance(null);
+    }
   };
   
   // Handle payment method selection
@@ -144,6 +264,11 @@ const CheckoutPage: React.FC = () => {
   
   // Handle next step
   const handleNext = () => {
+    if (activeStep === 1 && addressInRange === false) {
+      // Don't allow to proceed if address is out of range
+      return;
+    }
+    
     if (activeStep === steps.length - 1) {
       // Process is complete, navigate to confirmation
       return;
@@ -154,6 +279,84 @@ const CheckoutPage: React.FC = () => {
   // Handle back step
   const handleBack = () => {
     setActiveStep((prevStep) => prevStep - 1);
+  };
+  
+  // Handle promotion selection
+  const handlePromotionChange = (event: SelectChangeEvent<string>) => {
+    const value = event.target.value;
+    setSelectedPromotionId(value);
+    
+    // Clear coupon if a promotion is selected
+    if (value) {
+      setCouponCode("");
+      setAppliedCoupon(null);
+      setCouponError(null);
+      
+      // Apply promotion discount
+      const selectedPromotion = promotions.find(p => p.id.toString() === value);
+      if (selectedPromotion && subtotal > 0) {
+        // Calculate discount based on percentage
+        const discount = (subtotal * selectedPromotion.discountPercentage) / 100;
+        setDiscountAmount(discount);
+      } else {
+        setDiscountAmount(0);
+      }
+    } else {
+      setDiscountAmount(0);
+    }
+  };
+  
+  // Handle coupon code validation
+  const handleApplyCoupon = async () => {
+    // Clear any previous errors or applied coupons
+    setCouponError(null);
+    setAppliedCoupon(null);
+    
+    if (!couponCode.trim()) {
+      setCouponError("Please enter a coupon code");
+      return;
+    }
+    
+    // Clear promotion if applying a coupon
+    setSelectedPromotionId("");
+    
+    try {
+      // Call backend to validate the coupon
+      const response = await validateCoupon(couponCode.trim(), subtotal);
+      
+      if (response.valid && response.couponId && response.name && response.description && response.discountAmount && response.minOrderAmount) {
+        // Coupon is valid - create a coupon object that matches the mockCoupons structure
+        const validCoupon = {
+          id: response.couponId,
+          name: response.name,
+          description: response.description,
+          discountAmount: response.discountAmount,
+          minOrderAmount: response.minOrderAmount,
+          quota: 100, // Default value, not used in UI
+          usageCount: 0, // Default value, not used in UI
+          isActive: true
+        };
+        
+        setAppliedCoupon(validCoupon);
+        setDiscountAmount(response.discountAmount);
+      } else {
+        // Coupon is invalid
+        setCouponError(response.message);
+        setDiscountAmount(0);
+      }
+    } catch (error) {
+      console.error('Error validating coupon:', error);
+      setCouponError('Failed to validate coupon. Please try again.');
+      setDiscountAmount(0);
+    }
+  };
+  
+  // Handle coupon removal
+  const handleRemoveCoupon = () => {
+    setCouponCode("");
+    setAppliedCoupon(null);
+    setCouponError(null);
+    setDiscountAmount(0);
   };
   
   // Handle order submission
@@ -173,6 +376,12 @@ const CheckoutPage: React.FC = () => {
       return;
     }
     
+    // Verify address is within delivery range
+    if (addressInRange === false) {
+      setError('Selected address is outside the restaurant\'s delivery range');
+      return;
+    }
+    
     setOrderLoading(true);
     setError(null);
     
@@ -189,16 +398,18 @@ const CheckoutPage: React.FC = () => {
       const selectedPaymentMethod: 'CREDIT_CARD' | 'CASH_ON_DELIVERY' = 
         paymentMethod === 'cashOnDelivery' ? 'CASH_ON_DELIVERY' : 'CREDIT_CARD';
       
-      // Prepare order data
-      const orderData = {
-        restaurantId: cart.restaurantId,
-        addressId: addressId,
-        items: cart.items.map(item => ({
-          menuItemId: item.menuItemId,
-          quantity: item.quantity
-        })),
-        paymentMethod: selectedPaymentMethod
-      };
+      // Include promotion or coupon in order data
+      const promotionId = selectedPromotionId ? parseInt(selectedPromotionId) : null;
+      const couponId = appliedCoupon ? appliedCoupon.id : null;
+      
+      // Prepare order data with promotion or coupon
+      const orderData = prepareOrderData(
+        cart, 
+        addressId, 
+        selectedPaymentMethod,
+        promotionId,
+        couponId
+      );
       
       // Send order to backend
       console.log('Sending order data:', orderData);
@@ -244,6 +455,15 @@ const CheckoutPage: React.FC = () => {
     }
   };
   
+  // Add this function to handle changes to the new address form
+  const handleNewAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, checked } = e.target;
+    setNewAddress({
+      ...newAddress,
+      [name]: name === 'isDefault' ? checked : value
+    });
+  };
+  
   // Render the cart summary
   const renderCartSummary = () => (
     <Paper
@@ -278,6 +498,106 @@ const CheckoutPage: React.FC = () => {
       
       <Divider sx={{ mb: 2 }} />
       
+      {/* Promotions & Coupons Section */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+          <LocalOfferIcon fontSize="small" sx={{ mr: 1 }} />
+          Promotions & Coupons
+        </Typography>
+        
+        {/* Promotions Dropdown */}
+        <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+          <Select
+            value={selectedPromotionId}
+            onChange={handlePromotionChange}
+            displayEmpty
+            disabled={!!appliedCoupon || loadingPromotions}
+            renderValue={(selected) => {
+              if (!selected) {
+                return <Typography color="text.secondary">Select a promotion</Typography>;
+              }
+              const promotion = promotions.find(p => p.id.toString() === selected);
+              return promotion ? promotion.name : '';
+            }}
+          >
+            <MenuItem value="">
+              <em>None</em>
+            </MenuItem>
+            {loadingPromotions ? (
+              <MenuItem disabled>
+                <CircularProgress size={20} sx={{ mr: 1 }} />
+                Loading promotions...
+              </MenuItem>
+            ) : (
+              promotions.map((promotion) => (
+                <MenuItem key={promotion.id} value={promotion.id.toString()}>
+                  <Box>
+                    <Typography variant="body2">{promotion.name}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {promotion.description} ({promotion.discountPercentage}% off)
+                    </Typography>
+                  </Box>
+                </MenuItem>
+              ))
+            )}
+          </Select>
+        </FormControl>
+        
+        {/* OR Divider */}
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <Divider sx={{ flexGrow: 1 }} />
+          <Typography variant="body2" color="text.secondary" sx={{ px: 2 }}>OR</Typography>
+          <Divider sx={{ flexGrow: 1 }} />
+        </Box>
+        
+        {/* Coupon Code Field */}
+        <Box sx={{ display: 'flex' }}>
+          <TextField
+            size="small"
+            label="Coupon Code"
+            variant="outlined"
+            fullWidth
+            value={couponCode}
+            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+            disabled={!!selectedPromotionId || !!appliedCoupon}
+            error={!!couponError}
+            helperText={couponError}
+            InputProps={{
+              endAdornment: appliedCoupon && (
+                <InputAdornment position="end">
+                  <CheckIcon color="success" />
+                </InputAdornment>
+              )
+            }}
+          />
+          {!appliedCoupon ? (
+            <Button
+              variant="outlined"
+              sx={{ ml: 1, whiteSpace: 'nowrap' }}
+              onClick={handleApplyCoupon}
+              disabled={!couponCode.trim() || !!selectedPromotionId}
+            >
+              Apply
+            </Button>
+          ) : (
+            <Button
+              color="error"
+              variant="outlined"
+              sx={{ ml: 1 }}
+              onClick={handleRemoveCoupon}
+            >
+              Remove
+            </Button>
+          )}
+        </Box>
+        
+        {appliedCoupon && (
+          <Alert severity="success" sx={{ mt: 1 }}>
+            Coupon applied: {appliedCoupon.description}
+          </Alert>
+        )}
+      </Box>
+      
       {/* Order Summary */}
       <Box sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05), p: 2, borderRadius: 1 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
@@ -288,10 +608,16 @@ const CheckoutPage: React.FC = () => {
           <Typography variant="body2">Delivery Fee</Typography>
           <Typography variant="body2">{formatCurrency(deliveryFee)}</Typography>
         </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-          <Typography variant="body2">Service Fee</Typography>
-          <Typography variant="body2">{formatCurrency(serviceFee)}</Typography>
-        </Box>
+        {discountAmount > 0 && (
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="body2" color="success.main">
+              Discount
+            </Typography>
+            <Typography variant="body2" color="success.main">
+              -{formatCurrency(discountAmount)}
+            </Typography>
+          </Box>
+        )}
         <Divider sx={{ my: 1.5 }} />
         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Typography variant="subtitle1" fontWeight="600">Total</Typography>
@@ -454,12 +780,187 @@ const CheckoutPage: React.FC = () => {
                     <Button
                       startIcon={<AddIcon />}
                       sx={{ mt: 1 }}
-                      onClick={() => navigate('/profile', { state: { fromCheckout: true } })}
+                      onClick={() => setNewAddressFormOpen(true)}
                     >
-                      Add New Address
+                      Enter Address Manually
                     </Button>
                   </>
                 )}
+                
+                {selectedAddressId && (
+                  <Box sx={{ mt: 2 }}>
+                    {checkingDeliveryRange ? (
+                      <CircularProgress size={16} sx={{ mr: 1, verticalAlign: 'middle' }} />
+                    ) : addressInRange === false ? (
+                      <Alert severity="error" sx={{ mb: 2 }}>
+                        This address is outside the restaurant's delivery range 
+                        {deliveryDistance && ` (${deliveryDistance} km away)`}. 
+                        Please choose another address.
+                      </Alert>
+                    ) : addressInRange === true && (
+                      <Alert severity="success" sx={{ mb: 2 }}>
+                        Address is within delivery range
+                        {deliveryDistance && ` (${deliveryDistance} km away)`}.
+                      </Alert>
+                    )}
+                  </Box>
+                )}
+                
+                {/* Form for entering a new address manually */}
+                <Collapse in={newAddressFormOpen}>
+                  <Paper elevation={0} sx={{ p: 2, mt: 2, border: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                      Enter New Delivery Address
+                    </Typography>
+                    
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      
+                      // Validate form
+                      if (!newAddress.street || !newAddress.city || !newAddress.state || !newAddress.zipCode || !newAddress.country) {
+                        setAddressError('All fields are required');
+                        return;
+                      }
+                      
+                      // Check if the address is within delivery range
+                      const isInRange = await checkManualAddressRange(newAddress);
+                      
+                      // Save the address if in range
+                      if (isInRange) {
+                        try {
+                          setAddressSubmitting(true);
+                          const result = await addAddress({
+                            street: newAddress.street,
+                            city: newAddress.city,
+                            state: newAddress.state,
+                            zipCode: newAddress.zipCode,
+                            country: newAddress.country,
+                            latitude: undefined,  // Explicitly set to undefined to trigger backend geocoding
+                            longitude: undefined, // Explicitly set to undefined to trigger backend geocoding
+                            isDefault: newAddress.isDefault
+                          });
+                          
+                          // Update addresses and select new one
+                          setAddresses([...addresses, result]);
+                          setSelectedAddressId(result.addressId);
+                          
+                          // Close form and reset
+                          setNewAddressFormOpen(false);
+                          setNewAddress({
+                            street: '',
+                            city: '',
+                            state: '',
+                            zipCode: '',
+                            country: '',
+                            isDefault: false
+                          });
+                          
+                        } catch (error) {
+                          console.error('Error adding address:', error);
+                          setAddressError('Failed to save address. Please try again.');
+                        } finally {
+                          setAddressSubmitting(false);
+                        }
+                      }
+                    }}>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12}>
+                          <TextField
+                            fullWidth
+                            label="Street Address"
+                            name="street"
+                            value={newAddress.street}
+                            onChange={handleNewAddressChange}
+                            required
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            label="City"
+                            name="city"
+                            value={newAddress.city}
+                            onChange={handleNewAddressChange}
+                            required
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            label="State/Province"
+                            name="state"
+                            value={newAddress.state}
+                            onChange={handleNewAddressChange}
+                            required
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            label="ZIP/Postal Code"
+                            name="zipCode"
+                            value={newAddress.zipCode}
+                            onChange={handleNewAddressChange}
+                            required
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            label="Country"
+                            name="country"
+                            value={newAddress.country}
+                            onChange={handleNewAddressChange}
+                            required
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <FormControlLabel
+                            control={
+                              <Checkbox 
+                                checked={newAddress.isDefault} 
+                                onChange={handleNewAddressChange}
+                                name="isDefault"
+                              />
+                            }
+                            label="Set as default address"
+                          />
+                        </Grid>
+                      </Grid>
+                      
+                      {addressError && (
+                        <Alert severity="error" sx={{ mt: 2 }}>
+                          {addressError}
+                        </Alert>
+                      )}
+                      
+                      {addressInRange === false && (
+                        <Alert severity="warning" sx={{ mt: 2 }}>
+                          This address is outside the restaurant's delivery range
+                          {deliveryDistance && ` (${deliveryDistance} km away)`}.
+                          Please enter a different address or choose a different restaurant.
+                        </Alert>
+                      )}
+                      
+                      <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                        <Button 
+                          onClick={() => setNewAddressFormOpen(false)} 
+                          sx={{ mr: 1 }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          variant="contained" 
+                          type="submit"
+                          disabled={addressSubmitting || checkingDeliveryRange}
+                          startIcon={addressSubmitting ? <CircularProgress size={20} color="inherit" /> : null}
+                        >
+                          {addressSubmitting ? 'Saving...' : 'Save Address'}
+                        </Button>
+                      </Box>
+                    </form>
+                  </Paper>
+                </Collapse>
                 
                 <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
                   <Button onClick={handleBack}>

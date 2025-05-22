@@ -278,4 +278,15 @@ export interface AdminEditCourierRequest {
   phoneNumber?: string;
   vehicleType?: string;
   newPassword?: string;
+}
+
+// Promotion interface
+export interface Promotion {
+  id: number;
+  name: string;
+  description: string;
+  discountPercentage: number;
+  createdAt?: string;
+  endDate?: string;
+  isActive: boolean;
 } 

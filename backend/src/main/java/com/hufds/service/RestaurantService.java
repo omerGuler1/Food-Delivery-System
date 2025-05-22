@@ -6,23 +6,9 @@ import com.hufds.entity.Restaurant;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface RestaurantService {
-    /**
-     * Updates the open/closed status of a restaurant for the current day
-     * @param restaurantId ID of the restaurant
-     * @param isClosed true if restaurant should be closed, false if open
-     * @return Updated BusinessHours
-     */
-    BusinessHours updateRestaurantStatus(Integer restaurantId, Boolean isClosed);
-
-    /**
-     * Gets the current open/closed status of a restaurant
-     * @param restaurantId ID of the restaurant
-     * @return true if restaurant is closed, false if open
-     */
-    Boolean isRestaurantClosed(Integer restaurantId);
-
     /**
      * Gets a restaurant by ID
      * @param id Restaurant ID
@@ -65,4 +51,11 @@ public interface RestaurantService {
     Restaurant uploadProfileImage(Integer restaurantId, MultipartFile image);
 
     Restaurant updateApprovalStatus(Integer restaurantId, Restaurant.ApprovalStatus approvalStatus);
+    
+    /**
+     * Finds a restaurant by email
+     * @param email Email address
+     * @return Optional containing the restaurant if found, empty otherwise
+     */
+    Optional<Restaurant> findByEmail(String email);
 } 

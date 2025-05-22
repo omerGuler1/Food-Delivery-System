@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline, Box, Typography, Button } from '@mui/material';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
+import { ErrorProvider, useError } from './contexts/ErrorContext';
 import { Link } from 'react-router-dom';
+import api, { setErrorHandler } from './services/api';
 
 // Components
 import Navbar from './components/Navbar';
@@ -27,6 +29,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminProfile from './pages/AdminProfile';
 import AdminPromotions from './pages/AdminPromotions';
 import AdminApprovalPage from './pages/AdminApprovalPage';
+import AdminFees from './pages/AdminFees';
 import PendingApprovalPage from './pages/PendingApprovalPage';
 
 // Protected route component
@@ -36,7 +39,56 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ userType, element }) => {
-  const { checkAuth, getCurrentUserType, user } = useAuth();
+  const { checkAuth, getCurrentUserType, user, logout } = useAuth();
+  
+  // Check if the user account still exists in the backend
+  useEffect(() => {
+    const verifyUserExists = async () => {
+      try {
+        // Make a lightweight API call to verify user still exists
+        // The endpoint will depend on user type
+        let endpoint = '';
+        
+        if (userType === 'customer') {
+          endpoint = '/customers/verify';
+        } else if (userType === 'restaurant') {
+          endpoint = '/restaurants/verify';
+        } else if (userType === 'courier') {
+          endpoint = '/couriers/verify';
+        } else if (userType === 'admin') {
+          endpoint = '/admin/verify';
+        }
+        
+        if (endpoint && user) {
+          await api.get(endpoint);
+        }
+      } catch (error: any) {
+        // If we get a 404 or 403 or 401, the user likely doesn't exist anymore
+        if (error.response && 
+            (error.response.status === 404 || 
+             error.response.status === 403 || 
+             error.response.status === 401)) {
+          // Log the user out and redirect to home
+          logout();
+          window.location.href = '/';
+        }
+      }
+    };
+    
+    // Only verify if the user is authenticated
+    if (checkAuth()) {
+      verifyUserExists();
+    }
+    
+    // Set up an interval to check periodically (every 1 minute)
+    const intervalId = setInterval(() => {
+      if (checkAuth()) {
+        verifyUserExists();
+      }
+    }, 60 * 1000); // 1 minute
+    
+    return () => clearInterval(intervalId);
+  }, [checkAuth, user, userType, logout]);
   
   if (!checkAuth()) {
     return <Navigate to="/login" replace />;
@@ -62,6 +114,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ userType, element }) =>
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const { isAuthenticated, userType } = useAuth();
+  const { showError } = useError();
+  
+  // Set up error handler for API errors
+  useEffect(() => {
+    setErrorHandler(showError);
+  }, [showError]);
   
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
   const isDashboardPage = location.pathname.includes('/dashboard');
@@ -289,76 +347,81 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AuthProvider>
-        <CartProvider>
-          <Router>
-            <AppLayout>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/" element={<HomePage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route path="/restaurants" element={<RestaurantsPage />} />
-                <Route path="/restaurants/:id" element={<RestaurantDetailPage />} />
-                <Route path="/pending-approval" element={<PendingApprovalPage />} />
-                
-                {/* Protected routes */}
-                <Route path="/profile" element={
-                  <ProtectedRoute userType="customer" element={<ProfilePage />} />
-                } />
-                
-                {/* Restaurant owner routes */}
-                <Route path="/restaurant/dashboard" element={
-                  <ProtectedRoute userType="restaurant" element={<RestaurantDashboard />} />
-                } />
-                <Route path="/restaurant/profile" element={
-                  <ProtectedRoute userType="restaurant" element={<RestaurantProfile />} />
-                } />
-                
-                {/* Courier routes */}
-                <Route path="/courier/dashboard" element={
-                  <ProtectedRoute userType="courier" element={<CourierDashboard />} />
-                } />
-                <Route path="/courier/profile" element={
-                  <ProtectedRoute userType="courier" element={<CourierProfile />} />
-                } />
-                
-                {/* Admin routes */}
-                <Route path="/admin/dashboard" element={
-                  <ProtectedRoute userType="admin" element={<AdminDashboard />} />
-                } />
-                <Route path="/admin/profile" element={
-                  <ProtectedRoute userType="admin" element={<AdminProfile />} />
-                } />
-                <Route path="/admin/promotions" element={
-                  <ProtectedRoute userType="admin" element={<AdminPromotions />} />
-                } />
-                <Route path="/admin/approvals" element={
-                  <ProtectedRoute userType="admin" element={<AdminApprovalPage />} />
-                } />
-                
-                {/* Add the checkout route */}
-                <Route path="/checkout" element={
-                  <ProtectedRoute userType="customer" element={<CheckoutPage />} />
-                } />
+      <ErrorProvider>
+        <AuthProvider>
+          <CartProvider>
+            <Router>
+              <AppLayout>
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/restaurants" element={<RestaurantsPage />} />
+                  <Route path="/restaurants/:id" element={<RestaurantDetailPage />} />
+                  <Route path="/pending-approval" element={<PendingApprovalPage />} />
+                  
+                  {/* Protected routes */}
+                  <Route path="/profile" element={
+                    <ProtectedRoute userType="customer" element={<ProfilePage />} />
+                  } />
+                  
+                  {/* Restaurant owner routes */}
+                  <Route path="/restaurant/dashboard" element={
+                    <ProtectedRoute userType="restaurant" element={<RestaurantDashboard />} />
+                  } />
+                  <Route path="/restaurant/profile" element={
+                    <ProtectedRoute userType="restaurant" element={<RestaurantProfile />} />
+                  } />
+                  
+                  {/* Courier routes */}
+                  <Route path="/courier/dashboard" element={
+                    <ProtectedRoute userType="courier" element={<CourierDashboard />} />
+                  } />
+                  <Route path="/courier/profile" element={
+                    <ProtectedRoute userType="courier" element={<CourierProfile />} />
+                  } />
+                  
+                  {/* Admin routes */}
+                  <Route path="/admin/dashboard" element={
+                    <ProtectedRoute userType="admin" element={<AdminDashboard />} />
+                  } />
+                  <Route path="/admin/profile" element={
+                    <ProtectedRoute userType="admin" element={<AdminProfile />} />
+                  } />
+                  <Route path="/admin/promotions" element={
+                    <ProtectedRoute userType="admin" element={<AdminPromotions />} />
+                  } />
+                  <Route path="/admin/approvals" element={
+                    <ProtectedRoute userType="admin" element={<AdminApprovalPage />} />
+                  } />
+                  <Route path="/admin/fees" element={
+                    <ProtectedRoute userType="admin" element={<AdminFees />} />
+                  } />
+                  
+                  {/* Add the checkout route */}
+                  <Route path="/checkout" element={
+                    <ProtectedRoute userType="customer" element={<CheckoutPage />} />
+                  } />
 
-                {/* Add the customer orders route */}
-                <Route path="/orders" element={
-                  <ProtectedRoute userType="customer" element={<CustomerOrdersPage />} />
-                } />
-                
-                {/* Add the favorites route */}
-                <Route path="/favorites" element={
-                  <ProtectedRoute userType="customer" element={<FavoriteRestaurantsPage />} />
-                } />
-                
-                {/* Fallback route */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </AppLayout>
-          </Router>
-        </CartProvider>
-      </AuthProvider>
+                  {/* Add the customer orders route */}
+                  <Route path="/orders" element={
+                    <ProtectedRoute userType="customer" element={<CustomerOrdersPage />} />
+                  } />
+                  
+                  {/* Add the favorites route */}
+                  <Route path="/favorites" element={
+                    <ProtectedRoute userType="customer" element={<FavoriteRestaurantsPage />} />
+                  } />
+                  
+                  {/* Fallback route */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </AppLayout>
+            </Router>
+          </CartProvider>
+        </AuthProvider>
+      </ErrorProvider>
     </ThemeProvider>
   );
 };

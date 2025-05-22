@@ -3,18 +3,24 @@ package com.hufds.controller;
 import com.hufds.dto.AdminEditCourierDTO;
 import com.hufds.dto.AdminEditCustomerDTO;
 import com.hufds.dto.AdminEditRestaurantDTO;
+import com.hufds.entity.AdminUser;
 import com.hufds.entity.Courier;
 import com.hufds.entity.Customer;
 import com.hufds.entity.Restaurant;
+import com.hufds.repository.AdminRepository;
 import com.hufds.service.AdminService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -22,6 +28,22 @@ import java.util.Map;
 public class AdminController {
 
     private final AdminService adminService;
+    private final AdminRepository adminRepository;
+
+    @GetMapping("/verify")
+    public ResponseEntity<Void> verifyAdminExists() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+        
+        // Check if the admin with this email exists
+        Optional<AdminUser> admin = adminRepository.findByEmail(email);
+        if (admin.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        
+        // If we get here, the admin exists
+        return ResponseEntity.ok().build();
+    }
 
     /**
      * Get all active customers
