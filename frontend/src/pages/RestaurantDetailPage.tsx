@@ -41,9 +41,11 @@ import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import { getRestaurantById, getRestaurantOpenStatus, checkDeliveryRange, DeliveryRangeCheck } from '../services/restaurantService';
 import { getUserAddresses } from '../services/addressService';
 import { getRestaurantMenuItems, MenuItem as MenuServiceItem } from '../services/menuService';
-import { Restaurant, Address } from '../interfaces';
+import { Restaurant, Address, ReviewRole } from '../interfaces';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
+import { getTargetReviews, getAverageRating } from '../services/reviewService';
+import ReviewList from '../components/ReviewList';
 
 // Mock data for development and testing
 const mockRestaurant: Restaurant = {
@@ -94,6 +96,8 @@ const RestaurantDetailPage: React.FC = () => {
   const [defaultAddress, setDefaultAddress] = useState<Address | null>(null);
   const [deliveryRangeCheck, setDeliveryRangeCheck] = useState<DeliveryRangeCheck | null>(null);
   const [checkingDeliveryRange, setCheckingDeliveryRange] = useState<boolean>(false);
+  const [restaurantReviews, setRestaurantReviews] = useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
   
   // Constants for delivery and service fees
   const DELIVERY_FEE = 15;
@@ -195,6 +199,73 @@ const RestaurantDetailPage: React.FC = () => {
     
     fetchAddressesAndCheckRange();
   }, [restaurant, isAuthenticated]);
+
+  // Debug useEffect for reviewing what's happening with reviews
+  useEffect(() => {
+    console.log('Restaurant reviews state updated:', restaurantReviews);
+    console.log('Restaurant reviews array type:', Array.isArray(restaurantReviews));
+    console.log('Restaurant reviews length:', restaurantReviews?.length);
+  }, [restaurantReviews]);
+
+  // Fetch restaurant reviews
+  useEffect(() => {
+    const fetchRestaurantReviews = async () => {
+      if (!id) return;
+      
+      setLoadingReviews(true);
+      
+      try {
+        console.log(`About to fetch reviews for restaurant ID: ${id}`);
+        // Get reviews for this restaurant using fetch with no credentials
+        // This is a workaround for the 403 issue
+        const response = await fetch(`http://localhost:8080/api/reviews/public/target/${id}?role=RESTAURANT`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            // No Authorization header
+          },
+        });
+        
+        if (response.ok) {
+          const reviews = await response.json();
+          console.log(`Reviews received for restaurant ${id}:`, reviews);
+          setRestaurantReviews(reviews);
+          
+          // Get updated average rating
+          try {
+            const ratingResponse = await fetch(`http://localhost:8080/api/reviews/public/target/${id}/average?role=RESTAURANT`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                // No Authorization header
+              },
+            });
+            
+            if (ratingResponse.ok) {
+              const avgRating = await ratingResponse.json();
+              console.log(`Average rating for restaurant ${id}:`, avgRating);
+              if (restaurant && avgRating !== restaurant.rating) {
+                setRestaurant({
+                  ...restaurant,
+                  rating: avgRating || 0
+                });
+              }
+            }
+          } catch (ratingError) {
+            console.error('Error fetching restaurant average rating:', ratingError);
+          }
+        } else {
+          console.error('Failed to fetch reviews:', response.status, response.statusText);
+        }
+      } catch (error) {
+        console.error('Error fetching restaurant reviews:', error);
+      } finally {
+        setLoadingReviews(false);
+      }
+    };
+
+    fetchRestaurantReviews();
+  }, [id, restaurant]);
 
   const handleCategoryClick = (category: string) => {
     setSelectedCategory(category === selectedCategory ? '' : category);
@@ -328,9 +399,23 @@ const RestaurantDetailPage: React.FC = () => {
                   {restaurant.name}
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                  <Rating value={restaurant.rating || 0} precision={0.1} readOnly sx={{ color: 'white' }} />
+                  <Rating 
+                    value={restaurant.rating || (restaurantReviews.length > 0 ? 
+                      restaurantReviews.reduce((acc, review) => acc + review.rating, 0) / restaurantReviews.length : 0)} 
+                    precision={0.1} 
+                    readOnly 
+                    sx={{ color: 'white' }} 
+                  />
                   <Typography variant="body1" sx={{ ml: 1 }}>
-                    {restaurant.rating?.toFixed(1) || 'No ratings'}
+                    {(() => {
+                      if (restaurant.rating) {
+                        return restaurant.rating.toFixed(1);
+                      } else if (restaurantReviews.length > 0) {
+                        return (restaurantReviews.reduce((acc, review) => acc + review.rating, 0) / restaurantReviews.length).toFixed(1);
+                      } else {
+                        return 'No ratings';
+                      }
+                    })()}
                   </Typography>
                   <Chip 
                     label={restaurant.cuisineType} 
@@ -886,6 +971,35 @@ const RestaurantDetailPage: React.FC = () => {
           </Container>
         </Paper>
       )}
+      
+      {/* Reviews section */}
+      <Container maxWidth="lg">
+        <Paper 
+          sx={{ 
+            p: 3, 
+            mt: 4,
+            mb: 4,
+            borderRadius: 2,
+            boxShadow: theme.shadows[1]
+          }}
+          elevation={0}
+        >
+          <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
+            Customer Reviews
+          </Typography>
+          
+          {loadingReviews ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <ReviewList 
+              reviews={restaurantReviews} 
+              emptyMessage="This restaurant has no reviews yet"
+            />
+          )}
+        </Paper>
+      </Container>
     </Box>
   );
 };

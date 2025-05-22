@@ -1,9 +1,12 @@
 import axios from 'axios';
+import { axiosInstance } from './axiosConfig';
 
-const API_URL = 'http://localhost:8080/api';
+// Main API instance with interceptors for auth
+const api = axiosInstance;
 
-const api = axios.create({
-  baseURL: API_URL,
+// Create a function for direct public API calls without authentication requirements
+export const publicApi = axios.create({
+  baseURL: 'http://localhost:8080/api',
   headers: {
     'Content-Type': 'application/json',
   },

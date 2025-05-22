@@ -130,6 +130,18 @@ public class ProfileService {
                         // Optionally log this situation
                         return null;
                     }
+                    
+                    // Build courier information if available
+                    CustomerOrderDTO.CourierInfoDTO courierDTO = null;
+                    if (order.getCourier() != null) {
+                        Courier courier = order.getCourier();
+                        courierDTO = CustomerOrderDTO.CourierInfoDTO.builder()
+                                .courierId(courier.getCourierId())
+                                .name(courier.getName())
+                                .phoneNumber(courier.getPhoneNumber())
+                                .vehicleType(courier.getVehicleType())
+                                .build();
+                    }
 
                     return CustomerOrderDTO.builder()
                             .orderId(order.getOrderId())
@@ -143,6 +155,7 @@ public class ProfileService {
                                     .phoneNumber(order.getRestaurant().getPhoneNumber())
                                     .cuisineType(order.getRestaurant().getCuisineType())
                                     .build())
+                            .courier(courierDTO)
                             .address(order.getAddress() != null ? AddressSummaryDTO.builder()
                                     .street(order.getAddress().getStreet())
                                     .city(order.getAddress().getCity())

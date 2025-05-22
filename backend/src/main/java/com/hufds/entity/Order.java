@@ -66,6 +66,10 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JsonManagedReference(value = "order-assignments")
     private Set<CourierAssignment> courierAssignments = new HashSet<>();
+    
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference(value = "order-reviews")
+    private Set<Review> reviews = new HashSet<>();
 
     public enum OrderStatus {
         PENDING, PROCESSING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED
