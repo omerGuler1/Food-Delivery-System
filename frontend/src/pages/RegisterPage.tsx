@@ -19,7 +19,9 @@ import {
   MenuItem,
   FormControl,
   FormHelperText,
-  SelectChangeEvent
+  SelectChangeEvent,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 import { Visibility, VisibilityOff, Home } from '@mui/icons-material';
@@ -110,6 +112,12 @@ const RegisterPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  
+  // Yeni state: Onay süreci bilgilendirme onayı için
+  const [approvalAcknowledged, setApprovalAcknowledged] = useState({
+    restaurant: false,
+    courier: false
+  });
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -136,6 +144,9 @@ const RegisterPage: React.FC = () => {
         if (formData.password !== formData.confirmPassword) {
           errors.confirmPassword = 'Passwords do not match';
         }
+        if (!approvalAcknowledged.restaurant) {
+          errors.approvalAcknowledged = 'You must acknowledge the approval process';
+        }
         break;
       case 2: // Courier
         formData = courierForm;
@@ -144,6 +155,9 @@ const RegisterPage: React.FC = () => {
         }
         if (formData.password !== formData.confirmPassword) {
           errors.confirmPassword = 'Passwords do not match';
+        }
+        if (!approvalAcknowledged.courier) {
+          errors.approvalAcknowledged = 'You must acknowledge the approval process';
         }
         break;
       default:
@@ -254,6 +268,14 @@ const RegisterPage: React.FC = () => {
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
+  };
+
+  // Kurye ve restoran için onay kutusu değişim olayı
+  const handleApprovalAcknowledgeChange = (userType: 'restaurant' | 'courier') => (event: React.ChangeEvent<HTMLInputElement>) => {
+    setApprovalAcknowledged({
+      ...approvalAcknowledged,
+      [userType]: event.target.checked
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -737,6 +759,19 @@ const RegisterPage: React.FC = () => {
                 }}
               />
               
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={approvalAcknowledged.restaurant}
+                    onChange={handleApprovalAcknowledgeChange('restaurant')}
+                    name="approvalAcknowledged"
+                    color="primary"
+                  />
+                }
+                label="I understand that my restaurant account requires admin approval before I can access the dashboard."
+                sx={{ mt: 2 }}
+              />
+              
               <Button
                 type="submit"
                 fullWidth
@@ -848,6 +883,23 @@ const RegisterPage: React.FC = () => {
                 </Select>
                 {formErrors.vehicleType && <FormHelperText>{formErrors.vehicleType}</FormHelperText>}
               </FormControl>
+              
+              <Alert severity="info" sx={{ mt: 2, mb: 2 }}>
+                Courier accounts require administrator approval. After registration, you will need to wait for approval before accessing the courier dashboard.
+              </Alert>
+              
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={approvalAcknowledged.courier}
+                    onChange={handleApprovalAcknowledgeChange('courier')}
+                    name="approvalAcknowledged"
+                    color="primary"
+                  />
+                }
+                label="I understand that my courier account requires admin approval before I can access the dashboard."
+                sx={{ mt: 2 }}
+              />
               
               <TextField
                 margin="dense"

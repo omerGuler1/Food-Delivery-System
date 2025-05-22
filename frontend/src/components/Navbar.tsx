@@ -37,6 +37,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import MailIcon from '@mui/icons-material/Mail';
 import DoneIcon from '@mui/icons-material/Done';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { getDeliveryFee } from '../services/feeService';
@@ -200,7 +201,8 @@ const Navbar: React.FC = () => {
       { title: 'Dashboard', path: '/admin/dashboard', icon: <DashboardIcon sx={{ mr: 0.5 }} /> },
       { title: 'Promotions & Coupons', path: '/admin/promotions', icon: <LocalOfferIcon sx={{ mr: 0.5 }} /> },
       { title: 'Fees Management', path: '/admin/fees', icon: <MonetizationOnIcon sx={{ mr: 0.5 }} /> },
-      { title: 'Send Message', path: '/admin/send-message', icon: <MailOutlineIcon sx={{ mr: 0.5 }} /> }
+      { title: 'Send Message', path: '/admin/send-message', icon: <MailOutlineIcon sx={{ mr: 0.5 }} /> },
+      { title: 'Analytics', path: '/admin/analytics', icon: <AnalyticsIcon sx={{ mr: 0.5 }} /> }
     ];
   } else if (isAuthenticated && userType === 'customer') {
     // For customers, show regular navigation plus favorites

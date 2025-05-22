@@ -89,9 +89,13 @@ export const courierLogin = async (data: LoginRequest) => {
       localStorage.setItem('user', JSON.stringify(response.data));
       localStorage.setItem('userType', 'courier');
       
-      // Check approval status
-      if (response.data.approvalStatus === 'PENDING' || response.data.approvalStatus === 'REJECTED') {
-        // Still allow login but the protected route will redirect to pending approval page
+      console.log("Courier login response data:", response.data);
+      
+      // Onay durumunu konsola yazdır
+      if (response.data.approvalStatus) {
+        console.log("Courier approval status from login:", response.data.approvalStatus);
+      } else {
+        console.log("No approval status found in login response");
       }
     }
     return response.data;

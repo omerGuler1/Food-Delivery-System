@@ -30,6 +30,7 @@ import AdminProfile from './pages/AdminProfile';
 import AdminPromotions from './pages/AdminPromotions';
 import AdminApprovalPage from './pages/AdminApprovalPage';
 import AdminFees from './pages/AdminFees';
+import AdminAnalytics from './pages/AdminAnalytics';
 import PendingApprovalPage from './pages/PendingApprovalPage';
 import FeedbackPage from './pages/FeedbackPage';
 import AdminNotificationsPage from './pages/AdminNotificationsPage';
@@ -410,6 +411,9 @@ const App: React.FC = () => {
                   } />
                   <Route path="/admin/send-message" element={
                     <ProtectedRoute userType="admin" element={<AdminSendMessagePage />} />
+                  } />
+                  <Route path="/admin/analytics" element={
+                    <ProtectedRoute userType="admin" element={<AdminAnalytics />} />
                   } />
                   
                   {/* Add the checkout route */}

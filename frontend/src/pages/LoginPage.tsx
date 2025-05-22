@@ -25,6 +25,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Visibility, VisibilityOff, Home, AdminPanelSettings } from '@mui/icons-material';
 import { LoginRequest, AdminLoginRequest } from '../interfaces';
 import { customerLogin, restaurantLogin, courierLogin, adminLogin } from '../services/authService';
+import { checkCourierApprovalStatus } from '../services/courierService';
 import { useAuth } from '../contexts/AuthContext';
 
 interface TabPanelProps {
@@ -128,6 +129,8 @@ const LoginPage: React.FC = () => {
           break;
         case 'courier':
           response = await courierLogin(formData);
+          // Debug: Konsola kurye yanıtını yazdır
+          console.log("Courier login response:", response);
           break;
         default:
           throw new Error('Invalid user type');
@@ -136,13 +139,56 @@ const LoginPage: React.FC = () => {
       // Update context with user data
       login(response, userType as any);
       
-      // Redirect based on user type
       if (userType === 'courier') {
-        navigate('/courier/dashboard');
-      } else if (userType === 'restaurant') {
+        // Kurye girişi başarılı - doğrudan dashboard'a yönlendir
+        // approvalStatus eksik veya "ACCEPTED" ise erişime izin ver
+        const courierResponse = response as any;
+        
+        // Gerçek zamanlı onay durumunu kontrol et
+        try {
+          if (courierResponse.courierId) {
+            const statusCheck = await checkCourierApprovalStatus(courierResponse.courierId);
+            if (statusCheck && statusCheck.approvalStatus === 'ACCEPTED') {
+              // Kullanıcı onay durumunu güncelle
+              courierResponse.approvalStatus = 'ACCEPTED';
+              // localStorage'daki bilgileri güncelle
+              localStorage.setItem('user', JSON.stringify(courierResponse));
+              navigate('/courier/dashboard');
+              return;
+            } else if (statusCheck && statusCheck.approvalStatus === 'PENDING') {
+              // Kullanıcı hala beklemede
+              navigate('/pending-approval');
+              return;
+            }
+          }
+        } catch (err) {
+          console.error("Error checking courier approval status:", err);
+        }
+        
+        // Backend'den güncel durumu alamadıysak, normal yönlendirme mantığına devam et
+        if (!courierResponse.approvalStatus || courierResponse.approvalStatus === 'ACCEPTED') {
+          navigate('/courier/dashboard');
+        } else {
+          navigate('/pending-approval');
+        }
+        return; // Diğer yönlendirmeleri engelle
+      }
+      
+      // Restoran için onay kontrolü
+      if (userType === 'restaurant') {
+        if ('approvalStatus' in response && 
+            (response.approvalStatus === 'PENDING' || response.approvalStatus === 'REJECTED')) {
+          navigate('/pending-approval');
+          return;
+        }
         navigate('/restaurant/dashboard');
-      } else {
+        return;
+      }
+      
+      // Customer için doğrudan ana sayfaya yönlendir
+      if (userType === 'customer') {
         navigate('/');
+        return;
       }
       
     } catch (err: any) {
