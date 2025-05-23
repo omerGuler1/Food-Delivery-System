@@ -25,7 +25,10 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
-  Badge
+  Badge,
+  Card,
+  CardContent,
+  Rating
 } from '@mui/material';
 import {
   LocalShipping as DeliveryIcon,
@@ -37,7 +40,8 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   Warning as WarningIcon,
-  DoubleArrow as DoubleArrowIcon
+  DoubleArrow as DoubleArrowIcon,
+  StarRate as StarIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -56,9 +60,14 @@ import {
   PendingDeliveryRequest, 
   CourierOrderHistoryDTO,
   CourierAssignment,
-  Courier
+  Courier,
+  ReviewRole,
+  ReviewResponseDTO
 } from '../interfaces';
 import { formatDate, formatDateTime } from '../utils/dateUtils';
+import { getTargetReviews, canRespondToReview } from '../services/reviewService';
+import ReviewList from '../components/ReviewList';
+import ReviewResponse from '../components/ReviewResponse';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -103,6 +112,9 @@ const CourierDashboard: React.FC = () => {
   const [pastDeliveriesPage, setPastDeliveriesPage] = useState(1);
   const [availableOrdersPage, setAvailableOrdersPage] = useState(1);
   const itemsPerPage = 10;
+  const [reviews, setReviews] = useState<ReviewResponseDTO[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [canRespondToReviews, setCanRespondToReviews] = useState<{[key: number]: boolean}>({});
 
   // Toggle courier availability
   const handleToggleAvailability = async () => {
@@ -439,6 +451,70 @@ const CourierDashboard: React.FC = () => {
     }
   }, [activeTab]);
 
+  // Fetch courier reviews
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!courierUser?.courierId) return;
+      
+      setLoadingReviews(true);
+      
+      try {
+        // Get reviews for this courier
+        const courierReviews = await getTargetReviews(parseInt(courierUser.courierId), ReviewRole.COURIER);
+        setReviews(courierReviews);
+        
+        // Check which reviews the courier can respond to
+        const respondableReviews: {[key: number]: boolean} = {};
+        for (const review of courierReviews) {
+          if (!review.response) {
+            try {
+              const canRespond = await canRespondToReview(review.reviewId);
+              respondableReviews[review.reviewId] = canRespond;
+            } catch (error) {
+              console.error(`Error checking if courier can respond to review ${review.reviewId}:`, error);
+            }
+          }
+        }
+        
+        setCanRespondToReviews(respondableReviews);
+      } catch (error) {
+        console.error('Error fetching courier reviews:', error);
+      } finally {
+        setLoadingReviews(false);
+      }
+    };
+    
+    fetchReviews();
+  }, [courierUser?.courierId]);
+  
+  // Handle review response submission
+  const handleReviewResponseSubmitted = async () => {
+    // Refresh reviews after response is submitted
+    if (courierUser?.courierId) {
+      try {
+        const updatedReviews = await getTargetReviews(parseInt(courierUser.courierId), ReviewRole.COURIER);
+        setReviews(updatedReviews);
+        
+        // Update which reviews can be responded to
+        const updatedRespondableReviews: {[key: number]: boolean} = {};
+        for (const review of updatedReviews) {
+          if (!review.response) {
+            try {
+              const canRespond = await canRespondToReview(review.reviewId);
+              updatedRespondableReviews[review.reviewId] = canRespond;
+            } catch (error) {
+              console.error(`Error checking if courier can respond to review ${review.reviewId}:`, error);
+            }
+          }
+        }
+        
+        setCanRespondToReviews(updatedRespondableReviews);
+      } catch (error) {
+        console.error('Error refreshing reviews:', error);
+      }
+    }
+  };
+
   return (
     <Box sx={{ minHeight: '100vh', py: 3, bgcolor: '#f8f9fa' }}>
       <Container maxWidth="lg">
@@ -525,6 +601,7 @@ const CourierDashboard: React.FC = () => {
             <Tab label="Active Deliveries" icon={<DeliveryDining />} iconPosition="start" />
             <Tab label="Available Orders" icon={<ReceiptIcon />} iconPosition="start" />
             <Tab label="Past Deliveries" icon={<HistoryIcon />} iconPosition="start" />
+            <Tab label="Reviews" icon={<StarIcon />} iconPosition="start" />
           </Tabs>
         </Paper>
 
@@ -822,6 +899,87 @@ const CourierDashboard: React.FC = () => {
                   color="primary"
                 />
               </Box>
+            </>
+          )}
+        </TabPanel>
+
+        {/* Reviews tab */}
+        <TabPanel value={activeTab} index={3}>
+          <Typography variant="h6" gutterBottom>
+            My Reviews
+          </Typography>
+
+          {loadingReviews ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <>
+              {reviews.length > 0 ? (
+                <Paper sx={{ p: 3 }}>
+                  {reviews.map(review => (
+                    <Box key={review.reviewId} sx={{ mb: 3 }}>
+                      {/* Display review */}
+                      <Box>
+                        <Card sx={{ mb: 2 }}>
+                          <CardContent>
+                            <Typography variant="subtitle1" gutterBottom>
+                              Order #{review.orderId}
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <Rating value={review.rating} readOnly precision={0.5} />
+                              <Typography variant="body2" sx={{ ml: 1 }}>
+                                {review.rating}/5
+                              </Typography>
+                            </Box>
+                            {review.comment && (
+                              <Typography variant="body1" gutterBottom>
+                                "{review.comment}"
+                              </Typography>
+                            )}
+                            <Typography variant="caption" color="text.secondary">
+                              - {review.customerName}, {new Date(review.createdAt).toLocaleDateString()}
+                            </Typography>
+                            
+                            {/* Show response if it exists */}
+                            {review.response && (
+                              <Box sx={{ 
+                                mt: 2, 
+                                pt: 2, 
+                                pl: 2, 
+                                borderLeft: '3px solid #f0f0f0',
+                                backgroundColor: 'rgba(0,0,0,0.02)',
+                                borderRadius: 1
+                              }}>
+                                <Typography variant="subtitle2" gutterBottom>
+                                  Your Response:
+                                </Typography>
+                                <Typography variant="body2">
+                                  {review.response}
+                                </Typography>
+                              </Box>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </Box>
+                      
+                      {/* Response form if courier can respond */}
+                      {canRespondToReviews[review.reviewId] && (
+                        <ReviewResponse 
+                          review={review}
+                          onResponseSubmitted={handleReviewResponseSubmitted}
+                        />
+                      )}
+                    </Box>
+                  ))}
+                </Paper>
+              ) : (
+                <Paper sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography color="text.secondary">
+                    You haven't received any reviews yet.
+                  </Typography>
+                </Paper>
+              )}
             </>
           )}
         </TabPanel>

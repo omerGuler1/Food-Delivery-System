@@ -70,6 +70,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/messages/**").authenticated()
                         // Admin endpoints (all protected now since we created specific admin endpoints)
                         .requestMatchers("/api/admin/**").hasRole("admin")
+                        // Public endpoints for reviews
+                        .requestMatchers("/api/reviews/target/**").permitAll()
+                        .requestMatchers("/api/reviews/public/**").permitAll()
+                        // Customer and Courier listing endpoints for admin
+                        .requestMatchers("/api/customers").hasRole("admin")
+                        .requestMatchers("/api/couriers").hasRole("admin")
                         // Role-restricted endpoints
                         .requestMatchers("/api/customer/**").hasRole("customer")
                         .requestMatchers("/api/restaurant/**").hasRole("restaurant")

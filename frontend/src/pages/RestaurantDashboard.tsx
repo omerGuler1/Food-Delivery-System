@@ -52,7 +52,8 @@ import {
   Collapse,
   Modal,
   Radio,
-  RadioGroup
+  RadioGroup,
+  Rating
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -80,15 +81,19 @@ import {
   DirectionsBike as DirectionsBikeIcon,
   TwoWheeler as TwoWheelerIcon,
   DirectionsCar as DirectionsCarIcon,
-  Remove as RemoveIcon
+  Remove as RemoveIcon,
+  Star as StarIcon
 } from '@mui/icons-material';
 import { mockMenuItems, foodCategories, restaurantInfo } from '../data/mockData';
-import { MenuItem as MenuItemType, FoodCategory, OrderResponseDTO, CourierInfo } from '../interfaces';
+import { MenuItem as MenuItemType, FoodCategory, OrderResponseDTO, CourierInfo, ReviewRole, ReviewResponseDTO, Restaurant } from '../interfaces';
 import { addMenuItem, updateMenuItem, deleteMenuItem, getRestaurantMenuItems, uploadMenuItemImage, getRestaurantOpenStatus } from '../services/restaurantService';
 import { getRestaurantOrders, updateOrderStatus, getAvailableCouriers, requestCourierForOrder, checkOrderAssignmentsExpired, getOrdersNeedingCouriers, cancelOrder } from '../services/orderService';
+import { getTargetReviews, canRespondToReview } from '../services/reviewService';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatDate, formatDateTime } from '../utils/dateUtils';
+import ReviewList from '../components/ReviewList';
+import ReviewResponse from '../components/ReviewResponse';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -143,6 +148,9 @@ const RestaurantDashboard: React.FC = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const [reviews, setReviews] = useState<ReviewResponseDTO[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [canRespondToReviews, setCanRespondToReviews] = useState<{[key: number]: boolean}>({});
 
   // Helper function to map API response to our MenuItem type
   const mapApiMenuItemToLocal = (apiItem: any): MenuItemType => {
@@ -793,6 +801,74 @@ const RestaurantDashboard: React.FC = () => {
     }
   };
 
+  // Fetch restaurant reviews
+  useEffect(() => {
+    if (!user || activeTab !== 3) return; // Only load when on reviews tab
+    
+    const fetchReviews = async () => {
+      setLoadingReviews(true);
+      
+      try {
+        console.log('Fetching reviews for restaurant with ID:', (user as Restaurant).restaurantId);
+        // Get reviews for this restaurant
+        const restaurantReviews = await getTargetReviews((user as Restaurant).restaurantId, ReviewRole.RESTAURANT);
+        console.log('Reviews received:', restaurantReviews);
+        setReviews(restaurantReviews);
+        
+        // Check which reviews the restaurant can respond to
+        const respondableReviews: {[key: number]: boolean} = {};
+        for (const review of restaurantReviews) {
+          if (!review.response) {
+            try {
+              const canRespond = await canRespondToReview(review.reviewId);
+              respondableReviews[review.reviewId] = canRespond;
+            } catch (error) {
+              console.error(`Error checking if restaurant can respond to review ${review.reviewId}:`, error);
+            }
+          }
+        }
+        
+        setCanRespondToReviews(respondableReviews);
+      } catch (error: any) {
+        console.error('Error fetching restaurant reviews:', error);
+        console.error('Error details:', error.response?.data || error.message);
+        setError('Failed to load reviews. Please try again later.');
+      } finally {
+        setLoadingReviews(false);
+      }
+    };
+    
+    fetchReviews();
+  }, [user, activeTab]);
+  
+  // Handle review response submission
+  const handleReviewResponseSubmitted = async () => {
+    if (!user) return;
+    
+    // Refresh reviews after response is submitted
+    try {
+      const updatedReviews = await getTargetReviews((user as Restaurant).restaurantId, ReviewRole.RESTAURANT);
+      setReviews(updatedReviews);
+      
+      // Update which reviews can be responded to
+      const updatedRespondableReviews: {[key: number]: boolean} = {};
+      for (const review of updatedReviews) {
+        if (!review.response) {
+          try {
+            const canRespond = await canRespondToReview(review.reviewId);
+            updatedRespondableReviews[review.reviewId] = canRespond;
+          } catch (error) {
+            console.error(`Error checking if restaurant can respond to review ${review.reviewId}:`, error);
+          }
+        }
+      }
+      
+      setCanRespondToReviews(updatedRespondableReviews);
+    } catch (error) {
+      console.error('Error refreshing reviews:', error);
+    }
+  };
+
   return (
     <Box sx={{ minHeight: '100vh', py: 3, bgcolor: '#f8f9fa' }}>
       {/* Full page loading indicator when processing an order */}
@@ -913,6 +989,7 @@ const RestaurantDashboard: React.FC = () => {
               <Tab label="Menu Items" icon={<RestaurantIcon />} iconPosition="start" />
               <Tab label="Orders" icon={<AccessTimeIcon />} iconPosition="start" />
               <Tab label="Restaurant Info" icon={<InfoIcon />} iconPosition="start" />
+              <Tab label="Reviews" icon={<StarIcon />} iconPosition="start" />
             </Tabs>
           </Paper>
         )}
@@ -1241,6 +1318,141 @@ const RestaurantDashboard: React.FC = () => {
             </Alert>
           </TabPanel>
         )}
+
+        {/* Reviews Tab */}
+        <TabPanel value={activeTab} index={3}>
+          <Typography variant="h5" gutterBottom>
+            Customer Reviews
+          </Typography>
+          
+          {loadingReviews ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={4}>
+                <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <Typography variant="h6" gutterBottom>Review Summary</Typography>
+                  
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Rating 
+                      value={(user as Restaurant)?.rating || (reviews.length > 0 ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length : 0)} 
+                      precision={0.1} 
+                      readOnly 
+                      sx={{ mr: 1 }}
+                    />
+                    <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+                      {(() => {
+                        const restaurantUser = user as Restaurant;
+                        if (restaurantUser && restaurantUser.rating) {
+                          return restaurantUser.rating.toFixed(1);
+                        } else if (reviews.length > 0) {
+                          return (reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length).toFixed(1);
+                        } else {
+                          return '0.0';
+                        }
+                      })()}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                      ({reviews.length} reviews)
+                    </Typography>
+                  </Box>
+                  
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Response rate: {
+                      reviews.length > 0 
+                        ? (reviews.filter(r => r.response).length / reviews.length * 100).toFixed(0)
+                        : '0'
+                    }%
+                  </Typography>
+                  
+                  <Typography variant="subtitle2" sx={{ mt: 'auto', pt: 2 }}>
+                    Tips for responding to reviews:
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    • Thank the customer for their feedback
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    • Address their specific concerns
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    • Be professional and courteous
+                  </Typography>
+                </Paper>
+              </Grid>
+              
+              <Grid item xs={12} md={8}>
+                {reviews.length > 0 ? (
+                  <Box>
+                    {reviews.map(review => (
+                      <Box key={review.reviewId} sx={{ mb: 3 }}>
+                        {/* Display review */}
+                        <Paper sx={{ p: 3, mb: canRespondToReviews[review.reviewId] ? 1 : 3 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                            <Box>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                                {review.customerName}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Order #{review.orderId} • {new Date(review.createdAt).toLocaleDateString()}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Rating value={review.rating} readOnly precision={0.5} size="small" />
+                              <Typography variant="body2" sx={{ ml: 1 }}>
+                                {review.rating}/5
+                              </Typography>
+                            </Box>
+                          </Box>
+                          
+                          {review.comment && (
+                            <Typography variant="body1" paragraph>
+                              "{review.comment}"
+                            </Typography>
+                          )}
+                          
+                          {/* Show response if it exists */}
+                          {review.response && (
+                            <Box sx={{ 
+                              mt: 2, 
+                              pt: 2, 
+                              pl: 2, 
+                              borderLeft: '3px solid #f0f0f0',
+                              backgroundColor: 'rgba(0,0,0,0.02)',
+                              borderRadius: 1
+                            }}>
+                              <Typography variant="subtitle2" gutterBottom>
+                                Your Response:
+                              </Typography>
+                              <Typography variant="body2">
+                                {review.response}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Paper>
+                        
+                        {/* Response form if restaurant can respond */}
+                        {canRespondToReviews[review.reviewId] && (
+                          <ReviewResponse 
+                            review={review}
+                            onResponseSubmitted={handleReviewResponseSubmitted}
+                          />
+                        )}
+                      </Box>
+                    ))}
+                  </Box>
+                ) : (
+                  <Paper sx={{ p: 3, textAlign: 'center' }}>
+                    <Typography color="text.secondary">
+                      You haven't received any reviews yet.
+                    </Typography>
+                  </Paper>
+                )}
+              </Grid>
+            </Grid>
+          )}
+        </TabPanel>
       </Container>
 
       {/* Menu Item Edit Dialog */}
