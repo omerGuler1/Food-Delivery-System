@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -24,6 +26,11 @@ public class Review {
     @JsonBackReference(value = "customer-reviews")
     private Customer customer;
 
+    @ManyToOne
+    @JoinColumn(name = "order_id", nullable = false)
+    @JsonBackReference(value = "order-reviews")
+    private Order order;
+
     // This is a manual reference — application logic will decide what it points to
     @Column(name = "target_id", nullable = false)
     private Integer targetId;
@@ -38,14 +45,24 @@ public class Review {
     @Column(nullable = false)
     private Integer rating;
 
+    @Column(columnDefinition = "TEXT")
+    private String response;
+
+    @Column
+    private LocalDateTime respondedAt;
+    
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+
     public enum ReviewRole {
-        Restaurant, Courier
+        RESTAURANT, COURIER
     }
 
     @PrePersist
-    protected void validateRating() {
+    protected void onCreate() {
         if (rating < 1 || rating > 5) {
             throw new IllegalArgumentException("Rating must be between 1 and 5");
         }
+        createdAt = LocalDateTime.now();
     }
 } 

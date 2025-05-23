@@ -49,7 +49,7 @@ public class RatingServiceImpl implements RatingService {
         Review review = new Review();
         review.setCustomer(order.getCustomer());
         review.setTargetId(order.getRestaurant().getRestaurantId());
-        review.setRole(ReviewRole.Restaurant);
+        review.setRole(ReviewRole.RESTAURANT);
         review.setRating(ratingDTO.getRating());
         review.setComment(ratingDTO.getComment());
 
@@ -60,7 +60,7 @@ public class RatingServiceImpl implements RatingService {
 
     @Override
     public List<RatingResponseDTO> getRestaurantRatings(Integer restaurantId) {
-        List<Review> reviews = reviewRepository.findByTargetIdAndRole(restaurantId, ReviewRole.Restaurant);
+        List<Review> reviews = reviewRepository.findByTargetIdAndRole(restaurantId, ReviewRole.RESTAURANT);
         return convertToRatingResponses(reviews);
     }
 
@@ -72,7 +72,7 @@ public class RatingServiceImpl implements RatingService {
 
     @Override
     public Double getRestaurantAverageRating(Integer restaurantId) {
-        return reviewRepository.calculateAverageRating(restaurantId, ReviewRole.Restaurant);
+        return reviewRepository.calculateAverageRating(restaurantId, ReviewRole.RESTAURANT);
     }
 
     @Override

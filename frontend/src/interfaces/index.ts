@@ -58,6 +58,37 @@ export interface Courier extends User {
   approvalStatus?: 'PENDING' | 'ACCEPTED' | 'REJECTED';
 }
 
+// Review interfaces
+export enum ReviewRole {
+  RESTAURANT = 'RESTAURANT',
+  COURIER = 'COURIER'
+}
+
+export interface CreateReviewDTO {
+  orderId: number;
+  role: ReviewRole;
+  rating: number;
+  comment?: string;
+}
+
+export interface ReviewResponseDTO {
+  reviewId: number;
+  customerId: number;
+  customerName: string;
+  orderId: number;
+  targetId: number;
+  role: ReviewRole;
+  rating: number;
+  comment?: string;
+  response?: string;
+  respondedAt?: string;
+  createdAt: string;
+}
+
+export interface ReviewResponseRequestDTO {
+  response: string;
+}
+
 // Auth interfaces
 export interface LoginRequest {
   email: string;
@@ -200,6 +231,7 @@ export interface OrderResponseDTO {
   courierAssignments: any[];
   customer: CustomerInfo;
   restaurant: Restaurant;
+  courier?: CourierInfo;
 }
 
 // CourierAssignment interface

@@ -5,9 +5,18 @@ export interface FeeDTO {
   fee: number;
 }
 
+// Varsayılan teslimat ücreti
+const DEFAULT_DELIVERY_FEE = 15;
+
 export const getDeliveryFee = async (): Promise<FeeDTO> => {
-  const response = await axiosInstance.get('/fees/delivery');
-  return response.data;
+  try {
+    const response = await axiosInstance.get('/fees/delivery');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching delivery fee, using default:', error);
+    // Hata durumunda varsayılan ücret kullan
+    return { id: 0, fee: DEFAULT_DELIVERY_FEE };
+  }
 };
 
 export const updateDeliveryFee = async (value: number): Promise<FeeDTO> => {
