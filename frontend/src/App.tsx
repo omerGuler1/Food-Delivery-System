@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline, Box, Typography, Button } from '@mui/material';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { ErrorProvider, useError } from './contexts/ErrorContext';
 import { Link } from 'react-router-dom';
 import api, { setErrorHandler } from './services/api';
+import { isUserBanned, getBanInfo } from './services/authService';
 
 // Components
 import Navbar from './components/Navbar';
@@ -38,6 +39,7 @@ import AdminSendMessagePage from './pages/AdminSendMessagePage';
 import RestaurantNotificationsPage from './pages/RestaurantNotificationsPage';
 import CourierNotificationsPage from './pages/CourierNotificationsPage';
 import CustomerNotificationsPage from './pages/CustomerNotificationsPage';
+import BannedPage from './pages/BannedPage';
 
 // Protected route component
 interface ProtectedRouteProps {
@@ -47,6 +49,14 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ userType, element }) => {
   const { checkAuth, getCurrentUserType, user, logout } = useAuth();
+  const navigate = useNavigate();
+  
+  // Check if user is banned
+  useEffect(() => {
+    if (isUserBanned()) {
+      navigate('/banned');
+    }
+  }, [navigate]);
   
   // Check if the user account still exists in the backend
   useEffect(() => {
@@ -106,6 +116,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ userType, element }) =>
     return <Navigate to="/" replace />;
   }
   
+  // Check if user is banned
+  if (isUserBanned()) {
+    return <Navigate to="/banned" replace />;
+  }
+  
   // Check approval status for restaurant and courier
   if ((userType === 'restaurant' || userType === 'courier') && user) {
     const approvalStatus = 'approvalStatus' in user ? user.approvalStatus : undefined;
@@ -122,6 +137,14 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const { isAuthenticated, userType } = useAuth();
   const { showError } = useError();
+  const navigate = useNavigate();
+  
+  // Check if user is banned and not already on the banned page
+  useEffect(() => {
+    if (isUserBanned() && location.pathname !== '/banned') {
+      navigate('/banned');
+    }
+  }, [location.pathname, navigate]);
   
   // Set up error handler for API errors
   useEffect(() => {
@@ -130,6 +153,21 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
   const isDashboardPage = location.pathname.includes('/dashboard');
+  const isBannedPage = location.pathname === '/banned';
+  
+  // Skip access checks for the banned page
+  if (isBannedPage) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        minHeight: '100vh' 
+      }}>
+        {children}
+        <Footer />
+      </Box>
+    );
+  }
   
   // If user is not a restaurant and trying to access restaurant dashboard, show an error or redirect
   if (isDashboardPage && location.pathname.includes('/restaurant/dashboard') && userType !== 'restaurant') {
@@ -367,6 +405,7 @@ const App: React.FC = () => {
                   <Route path="/restaurants" element={<RestaurantsPage />} />
                   <Route path="/restaurants/:id" element={<RestaurantDetailPage />} />
                   <Route path="/pending-approval" element={<PendingApprovalPage />} />
+                  <Route path="/banned" element={<BannedPage />} />
                   
                   {/* Protected routes */}
                   <Route path="/profile" element={

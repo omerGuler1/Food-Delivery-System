@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,4 +44,6 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Integer>
     );
 
     List<Restaurant> findByApprovalStatus(Restaurant.ApprovalStatus status);
+
+    List<Restaurant> findByIsBannedTrueAndBanOpenDateLessThan(LocalDateTime date);
 }

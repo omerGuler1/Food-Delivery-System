@@ -14,6 +14,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class RestaurantAuthServiceImpl implements RestaurantAuthService {
@@ -69,6 +71,19 @@ public class RestaurantAuthServiceImpl implements RestaurantAuthService {
 
         if (!passwordEncoder.matches(loginDTO.getPassword(), restaurant.getPassword())) {
             throw new CustomException("Invalid email or password", HttpStatus.UNAUTHORIZED);
+        }
+
+        // Check if the restaurant is banned
+        if (restaurant.getIsBanned() != null && restaurant.getIsBanned()) {
+            LocalDateTime banOpenDate = restaurant.getBanOpenDate();
+            if (banOpenDate != null && banOpenDate.isAfter(LocalDateTime.now())) {
+                throw new CustomException("Your account is banned until " + banOpenDate, HttpStatus.FORBIDDEN);
+            }
+            
+            // If ban period is over, automatically unban
+            restaurant.setIsBanned(false);
+            restaurant.setBanOpenDate(null);
+            restaurantRepository.save(restaurant);
         }
 
         // Allow login but include approval status in the response
