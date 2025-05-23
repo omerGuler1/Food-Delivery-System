@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,6 +28,9 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Integer>
     List<Restaurant> findByStateContainingIgnoreCase(String state);
     List<Restaurant> findByCountryContainingIgnoreCase(String country);
     
+    // Search by name or email
+    List<Restaurant> findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(String name, String email);
+    
     // Location-based search
     @Query("SELECT r FROM Restaurant r WHERE " +
            "6371 * acos(cos(radians(:latitude)) * cos(radians(r.latitude)) * " +
@@ -40,4 +44,6 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Integer>
     );
 
     List<Restaurant> findByApprovalStatus(Restaurant.ApprovalStatus status);
+
+    List<Restaurant> findByIsBannedTrueAndBanOpenDateLessThan(LocalDateTime date);
 }

@@ -7,6 +7,8 @@ export interface CustomerListItem {
   email: string;
   phoneNumber: string;
   createdAt: string;
+  isBanned?: boolean;
+  banOpenDate?: string;
 }
 
 export interface CourierListItem {
@@ -19,6 +21,8 @@ export interface CourierListItem {
   earnings: number;
   createdAt: string;
   approvalStatus: string;
+  isBanned?: boolean;
+  banOpenDate?: string;
 }
 
 export interface RestaurantListItem {
@@ -33,6 +37,8 @@ export interface RestaurantListItem {
   approvalStatus: string;
   deleted?: boolean;
   deletedAt?: string | null;
+  isBanned?: boolean;
+  banOpenDate?: string;
 }
 
 /**
@@ -117,30 +123,84 @@ export const deleteRestaurant = async (restaurantId: number): Promise<void> => {
 };
 
 /**
- * Placeholder for future implementation: Ban a customer
+ * Ban a customer for a specified number of days
+ * @param customerId Customer ID to ban
+ * @param days Number of days to ban the customer (can be decimal for hours/seconds)
  */
-export const banCustomer = async (customerId: number): Promise<void> => {
-  console.log(`Ban customer functionality not implemented yet for ID: ${customerId}`);
-  // Implementation will be added later
-  // await api.put(`/admin/customers/${customerId}/ban`);
+export const banCustomer = async (customerId: number, days: number = 7): Promise<void> => {
+  try {
+    await api.post(`/admin/customers/${customerId}/ban?days=${days}`);
+  } catch (error) {
+    console.error('Error banning customer:', error);
+    throw error;
+  }
 };
 
 /**
- * Placeholder for future implementation: Ban a courier
+ * Ban a courier for a specified number of days
+ * @param courierId Courier ID to ban
+ * @param days Number of days to ban the courier (can be decimal for hours/seconds)
  */
-export const banCourier = async (courierId: number): Promise<void> => {
-  console.log(`Ban courier functionality not implemented yet for ID: ${courierId}`);
-  // Implementation will be added later
-  // await api.put(`/admin/couriers/${courierId}/ban`);
+export const banCourier = async (courierId: number, days: number = 7): Promise<void> => {
+  try {
+    await api.post(`/admin/couriers/${courierId}/ban?days=${days}`);
+  } catch (error) {
+    console.error('Error banning courier:', error);
+    throw error;
+  }
 };
 
 /**
- * Placeholder for future implementation: Ban a restaurant
+ * Ban a restaurant for a specified number of days
+ * @param restaurantId Restaurant ID to ban
+ * @param days Number of days to ban the restaurant (can be decimal for hours/seconds)
  */
-export const banRestaurant = async (restaurantId: number): Promise<void> => {
-  console.log(`Ban restaurant functionality not implemented yet for ID: ${restaurantId}`);
-  // Implementation will be added later
-  // await api.put(`/admin/restaurants/${restaurantId}/ban`);
+export const banRestaurant = async (restaurantId: number, days: number = 7): Promise<void> => {
+  try {
+    await api.post(`/admin/restaurants/${restaurantId}/ban?days=${days}`);
+  } catch (error) {
+    console.error('Error banning restaurant:', error);
+    throw error;
+  }
+};
+
+/**
+ * Unban a customer
+ * @param customerId Customer ID to unban
+ */
+export const unbanCustomer = async (customerId: number): Promise<void> => {
+  try {
+    await api.post(`/admin/customers/${customerId}/unban`);
+  } catch (error) {
+    console.error('Error unbanning customer:', error);
+    throw error;
+  }
+};
+
+/**
+ * Unban a courier
+ * @param courierId Courier ID to unban
+ */
+export const unbanCourier = async (courierId: number): Promise<void> => {
+  try {
+    await api.post(`/admin/couriers/${courierId}/unban`);
+  } catch (error) {
+    console.error('Error unbanning courier:', error);
+    throw error;
+  }
+};
+
+/**
+ * Unban a restaurant
+ * @param restaurantId Restaurant ID to unban
+ */
+export const unbanRestaurant = async (restaurantId: number): Promise<void> => {
+  try {
+    await api.post(`/admin/restaurants/${restaurantId}/unban`);
+  } catch (error) {
+    console.error('Error unbanning restaurant:', error);
+    throw error;
+  }
 };
 
 /**
@@ -184,6 +244,35 @@ export const editCourier = async (data: AdminEditCourierRequest): Promise<Courie
     return response.data;
   } catch (error) {
     console.error('Error editing courier:', error);
+    throw error;
+  }
+};
+
+/**
+ * Search users by type and query
+ * @param userType User type to search for (CUSTOMER, RESTAURANT, COURIER)
+ * @param query Search query for name or email
+ * @returns List of matching users
+ */
+export interface UserSearchResult {
+  id: number;
+  name: string;
+  email: string;
+  type: string;
+  phoneNumber?: string;
+}
+
+export const searchUsers = async (userType: string, query: string): Promise<UserSearchResult[]> => {
+  try {
+    const response = await api.get<UserSearchResult[]>('/admin/users/search', {
+      params: {
+        type: userType,
+        query: query
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error searching users:', error);
     throw error;
   }
 }; 

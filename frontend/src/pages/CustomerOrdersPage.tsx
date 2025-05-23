@@ -18,7 +18,11 @@ import {
   CardContent,
   Grid,
   Tabs,
-  Tab
+  Tab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -28,12 +32,16 @@ import {
   ArrowBack,
   LocalShipping as DeliveryIcon,
   History as HistoryIcon,
-  Cancel as CancelIcon
+  Cancel as CancelIcon,
+  Star as StarIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { OrderResponseDTO } from '../interfaces';
+import { OrderResponseDTO, ReviewRole } from '../interfaces';
 import { getCustomerOrders, cancelOrder } from '../services/orderService';
+import { canCustomerReview, getReviewsByOrderId } from '../services/reviewService';
+import ReviewForm from '../components/ReviewForm';
+import ReviewList from '../components/ReviewList';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -71,6 +79,14 @@ const CustomerOrdersPage: React.FC = () => {
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [processingOrder, setProcessingOrder] = useState<number | null>(null);
+  
+  // Review States
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [selectedReviewOrder, setSelectedReviewOrder] = useState<OrderResponseDTO | null>(null);
+  const [selectedReviewRole, setSelectedReviewRole] = useState<ReviewRole | null>(null);
+  const [canReviewRestaurant, setCanReviewRestaurant] = useState<{[key: number]: boolean}>({});
+  const [canReviewCourier, setCanReviewCourier] = useState<{[key: number]: boolean}>({});
+  const [orderReviews, setOrderReviews] = useState<{[key: number]: any[]}>({});
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -88,6 +104,43 @@ const CustomerOrdersPage: React.FC = () => {
 
     fetchOrders();
   }, []);
+
+  // Check if customer can leave reviews for completed orders
+  useEffect(() => {
+    const checkReviewEligibility = async () => {
+      const restaurantEligibility: {[key: number]: boolean} = {};
+      const courierEligibility: {[key: number]: boolean} = {};
+      
+      for (const order of orders) {
+        if (order.status === 'DELIVERED') {
+          try {
+            // Check if customer can review restaurant
+            const canReviewRest = await canCustomerReview(order.orderId, ReviewRole.RESTAURANT);
+            restaurantEligibility[order.orderId] = canReviewRest;
+            
+            // Check if customer can review courier (if there was a courier)
+            if (order.courier) {
+              const canReviewCour = await canCustomerReview(order.orderId, ReviewRole.COURIER);
+              courierEligibility[order.orderId] = canReviewCour;
+            }
+            
+            // Load existing reviews for this order
+            const reviews = await getReviewsByOrderId(order.orderId);
+            setOrderReviews(prev => ({ ...prev, [order.orderId]: reviews }));
+          } catch (err) {
+            console.error(`Error checking review eligibility for order ${order.orderId}:`, err);
+          }
+        }
+      }
+      
+      setCanReviewRestaurant(restaurantEligibility);
+      setCanReviewCourier(courierEligibility);
+    };
+    
+    if (orders.length > 0) {
+      checkReviewEligibility();
+    }
+  }, [orders]);
 
   const handleOrderClick = (orderId: number) => {
     setExpandedOrder(expandedOrder === orderId ? null : orderId);
@@ -155,6 +208,45 @@ const CustomerOrdersPage: React.FC = () => {
     } finally {
       setProcessingOrder(null);
     }
+  };
+
+  // Handle opening the review dialog
+  const handleOpenReviewDialog = (order: OrderResponseDTO, role: ReviewRole) => {
+    setSelectedReviewOrder(order);
+    setSelectedReviewRole(role);
+    setReviewDialogOpen(true);
+  };
+
+  // Handle closing the review dialog
+  const handleCloseReviewDialog = () => {
+    setReviewDialogOpen(false);
+    setSelectedReviewOrder(null);
+    setSelectedReviewRole(null);
+  };
+
+  // Handle successful submission of a review
+  const handleReviewSubmitted = async () => {
+    if (selectedReviewOrder) {
+      // Refresh reviews for this order
+      try {
+        const reviews = await getReviewsByOrderId(selectedReviewOrder.orderId);
+        setOrderReviews(prev => ({ ...prev, [selectedReviewOrder.orderId]: reviews }));
+        
+        // Update eligibility
+        if (selectedReviewRole === ReviewRole.RESTAURANT) {
+          setCanReviewRestaurant(prev => ({ ...prev, [selectedReviewOrder.orderId]: false }));
+        } else if (selectedReviewRole === ReviewRole.COURIER) {
+          setCanReviewCourier(prev => ({ ...prev, [selectedReviewOrder.orderId]: false }));
+        }
+      } catch (err) {
+        console.error('Error refreshing reviews:', err);
+      }
+    }
+    
+    // Close dialog after a short delay to show success message
+    setTimeout(() => {
+      handleCloseReviewDialog();
+    }, 1500);
   };
 
   const renderOrderList = (orderList: OrderResponseDTO[]) => {
@@ -249,54 +341,97 @@ const CustomerOrdersPage: React.FC = () => {
                   {/* Restaurant Information */}
                   <Card variant="outlined" sx={{ mb: 2 }}>
                     <CardContent>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                        Restaurant
-                      </Typography>
-                      <Typography variant="body1">
+                      <Typography variant="h6" gutterBottom>
                         {order.restaurant.name}
                       </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        <LocationIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
+                        {order.restaurant.address?.street}, {order.restaurant.address?.city}
+                      </Typography>
                     </CardContent>
                   </Card>
 
-                  {/* Order Items */}
-                  <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                  {/* Order items */}
+                  <Typography variant="h6" gutterBottom>
                     Order Items
                   </Typography>
-                  <List dense>
-                    {order.orderItems.map((item, index) => (
-                      <ListItem key={index}>
-                        <ListItemText
-                          primary={
-                            <Typography variant="body1">
-                              {item.quantity}x {item.menuItem.name}
-                            </Typography>
-                          }
-                          secondary={
-                            <Typography variant="body2" color="text.secondary">
-                              {item.menuItem.description}
-                            </Typography>
-                          }
-                        />
-                        <Typography variant="body2" sx={{ ml: 2 }}>
-                          ${item.subtotal.toFixed(2)}
-                        </Typography>
-                      </ListItem>
-                    ))}
-                  </List>
+                  
+                  {order.orderItems.map((item) => (
+                    <Box 
+                      key={item.orderItemId} 
+                      sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        mb: 1 
+                      }}
+                    >
+                      <Typography>
+                        {item.quantity} x {item.menuItem.name}
+                      </Typography>
+                      <Typography fontWeight="bold">
+                        ${(item.menuItem.price * item.quantity).toFixed(2)}
+                      </Typography>
+                    </Box>
+                  ))}
+                  
+                  <Divider sx={{ my: 2 }} />
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography>Total</Typography>
+                    <Typography fontWeight="bold">${order.totalPrice.toFixed(2)}</Typography>
+                  </Box>
 
                   {/* Delivery Address */}
-                  <Card variant="outlined" sx={{ mt: 2 }}>
-                    <CardContent>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                        <LocationIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                        Delivery Address
+                  <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+                    Delivery Address
+                  </Typography>
+                  <Typography variant="body1">
+                    {order.address.street}, {order.address.city}, {order.address.state} {order.address.zipCode}
+                  </Typography>
+                  
+                  {/* Reviews section for completed orders */}
+                  {order.status === 'DELIVERED' && (
+                    <Box sx={{ mt: 3 }}>
+                      <Typography variant="h6" gutterBottom>
+                        Reviews
                       </Typography>
-                      <Typography variant="body1">
-                        {order.address.fullAddress || 
-                         `${order.address.street}, ${order.address.city}`}
-                      </Typography>
-                    </CardContent>
-                  </Card>
+                      
+                      {/* Display existing reviews */}
+                      {orderReviews[order.orderId] && orderReviews[order.orderId].length > 0 ? (
+                        <ReviewList 
+                          reviews={orderReviews[order.orderId]} 
+                          showTitle={false}
+                        />
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          No reviews yet for this order.
+                        </Typography>
+                      )}
+                      
+                      {/* Add review buttons */}
+                      <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                        {canReviewRestaurant[order.orderId] && (
+                          <Button 
+                            variant="outlined" 
+                            startIcon={<StarIcon />}
+                            onClick={() => handleOpenReviewDialog(order, ReviewRole.RESTAURANT)}
+                          >
+                            Review Restaurant
+                          </Button>
+                        )}
+                        
+                        {order.courier && canReviewCourier[order.orderId] && (
+                          <Button 
+                            variant="outlined" 
+                            startIcon={<StarIcon />}
+                            onClick={() => handleOpenReviewDialog(order, ReviewRole.COURIER)}
+                          >
+                            Review Courier
+                          </Button>
+                        )}
+                      </Box>
+                    </Box>
+                  )}
                 </Box>
               </Collapse>
             </Paper>
@@ -315,57 +450,92 @@ const CustomerOrdersPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      {/* Back button */}
-      <Box sx={{ mb: 2 }}>
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={() => navigate('/')}
-          sx={{ mb: 2 }}
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
+        <IconButton
+          onClick={() => navigate(-1)}
+          sx={{ mr: 2 }}
         >
-          Back to Home
-        </Button>
+          <ArrowBack />
+        </IconButton>
+        <Typography variant="h4" component="h1">
+          My Orders
+        </Typography>
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
       )}
-
+      
       {successMessage && (
-        <Alert severity="success" sx={{ mb: 2 }}>{successMessage}</Alert>
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {successMessage}
+        </Alert>
       )}
 
-      <Typography variant="h4" component="h1" gutterBottom>
-        My Orders
-      </Typography>
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          <Paper sx={{ mb: 4 }}>
+            <Tabs
+              value={activeTab}
+              onChange={handleTabChange}
+              indicatorColor="primary"
+              textColor="primary"
+              variant="fullWidth"
+            >
+              <Tab 
+                icon={<DeliveryIcon />} 
+                label={`Active (${activeOrders.length})`} 
+                id="orders-tab-0"
+                aria-controls="orders-tabpanel-0"
+              />
+              <Tab 
+                icon={<HistoryIcon />} 
+                label={`Past (${pastOrders.length})`} 
+                id="orders-tab-1"
+                aria-controls="orders-tabpanel-1"
+              />
+            </Tabs>
+          </Paper>
 
-      <Paper sx={{ width: '100%', mb: 2 }}>
-        <Tabs
-          value={activeTab}
-          onChange={handleTabChange}
-          indicatorColor="primary"
-          textColor="primary"
-          variant="fullWidth"
-        >
-          <Tab 
-            icon={<DeliveryIcon />} 
-            label={`Active Orders (${activeOrders.length})`} 
-            iconPosition="start"
-          />
-          <Tab 
-            icon={<HistoryIcon />} 
-            label={`Past Orders (${pastOrders.length})`} 
-            iconPosition="start"
-          />
-        </Tabs>
-
-        <TabPanel value={activeTab} index={0}>
-          {renderOrderList(activeOrders)}
-        </TabPanel>
-        <TabPanel value={activeTab} index={1}>
-          {renderOrderList(pastOrders)}
-        </TabPanel>
-      </Paper>
+          <TabPanel value={activeTab} index={0}>
+            {renderOrderList(activeOrders)}
+          </TabPanel>
+          <TabPanel value={activeTab} index={1}>
+            {renderOrderList(pastOrders)}
+          </TabPanel>
+        </>
+      )}
+      
+      {/* Review Dialog */}
+      <Dialog open={reviewDialogOpen} onClose={handleCloseReviewDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {selectedReviewRole === ReviewRole.RESTAURANT ? 'Restaurant Review' : 'Courier Review'}
+        </DialogTitle>
+        <DialogContent>
+          {selectedReviewOrder && selectedReviewRole && (
+            <ReviewForm
+              orderId={selectedReviewOrder.orderId}
+              role={selectedReviewRole}
+              targetName={
+                selectedReviewRole === ReviewRole.RESTAURANT
+                  ? selectedReviewOrder.restaurant.name
+                  : selectedReviewOrder.courier ? selectedReviewOrder.courier.name : ''
+              }
+              onReviewSubmitted={handleReviewSubmitted}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseReviewDialog}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

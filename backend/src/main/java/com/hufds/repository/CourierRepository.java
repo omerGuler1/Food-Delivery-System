@@ -4,6 +4,7 @@ import com.hufds.entity.Courier;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,6 +18,11 @@ public interface CourierRepository extends JpaRepository<Courier, Integer> {
     
     // Find active couriers (not deleted and with specific status)
     List<Courier> findByStatusAndDeletedAtIsNull(Courier.CourierStatus status);
+    
+    // Search by name or email
+    List<Courier> findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(String name, String email);
 
     List<Courier> findByApprovalStatus(Courier.ApprovalStatus status);
+    
+    List<Courier> findByIsBannedTrueAndBanOpenDateLessThan(LocalDateTime date);
 }

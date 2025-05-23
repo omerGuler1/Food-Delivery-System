@@ -58,6 +58,37 @@ export interface Courier extends User {
   approvalStatus?: 'PENDING' | 'ACCEPTED' | 'REJECTED';
 }
 
+// Review interfaces
+export enum ReviewRole {
+  RESTAURANT = 'RESTAURANT',
+  COURIER = 'COURIER'
+}
+
+export interface CreateReviewDTO {
+  orderId: number;
+  role: ReviewRole;
+  rating: number;
+  comment?: string;
+}
+
+export interface ReviewResponseDTO {
+  reviewId: number;
+  customerId: number;
+  customerName: string;
+  orderId: number;
+  targetId: number;
+  role: ReviewRole;
+  rating: number;
+  comment?: string;
+  response?: string;
+  respondedAt?: string;
+  createdAt: string;
+}
+
+export interface ReviewResponseRequestDTO {
+  response: string;
+}
+
 // Auth interfaces
 export interface LoginRequest {
   email: string;
@@ -200,6 +231,7 @@ export interface OrderResponseDTO {
   courierAssignments: any[];
   customer: CustomerInfo;
   restaurant: Restaurant;
+  courier?: CourierInfo;
 }
 
 // CourierAssignment interface
@@ -289,4 +321,20 @@ export interface Promotion {
   createdAt?: string;
   endDate?: string;
   isActive: boolean;
+}
+
+// Message interface
+export interface Message {
+  messageId?: number;
+  senderId: number;
+  receiverId: number;
+  senderName: string;
+  receiverName: string;
+  senderType: 'CUSTOMER' | 'ADMIN' | 'RESTAURANT' | 'COURIER';
+  receiverType: 'CUSTOMER' | 'ADMIN' | 'RESTAURANT' | 'COURIER';
+  messageContent: string;
+  messageType: 'REQUEST' | 'SUGGESTION' | 'COMPLAINT' | 'WARNING';
+  isRead: boolean;
+  createdAt?: string;
+  deletedAt?: string | null;
 } 

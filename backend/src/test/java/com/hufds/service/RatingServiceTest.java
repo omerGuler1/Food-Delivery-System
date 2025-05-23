@@ -69,7 +69,7 @@ public class RatingServiceTest {
         testReview.setReviewId(1);
         testReview.setCustomer(testCustomer);
         testReview.setTargetId(testRestaurant.getRestaurantId());
-        testReview.setRole(Review.ReviewRole.Restaurant);
+        testReview.setRole(Review.ReviewRole.RESTAURANT);
         testReview.setRating(5);
         testReview.setComment("Great service!");
 
@@ -145,7 +145,7 @@ public class RatingServiceTest {
     void getRestaurantRatings_ShouldReturnAllRatings() {
         // Arrange
         List<Review> reviews = Arrays.asList(testReview);
-        when(reviewRepository.findByTargetIdAndRole(1, Review.ReviewRole.Restaurant))
+        when(reviewRepository.findByTargetIdAndRole(1, Review.ReviewRole.RESTAURANT))
                 .thenReturn(reviews);
         when(orderRepository.findByCustomerCustomerIdAndRestaurantRestaurantId(1, 1))
                 .thenReturn(Arrays.asList(testOrder));
@@ -183,7 +183,7 @@ public class RatingServiceTest {
     @Test
     void getRestaurantAverageRating_ShouldReturnAverage() {
         // Arrange
-        when(reviewRepository.calculateAverageRating(1, Review.ReviewRole.Restaurant))
+        when(reviewRepository.calculateAverageRating(1, Review.ReviewRole.RESTAURANT))
                 .thenReturn(4.5);
 
         // Act

@@ -18,6 +18,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -176,5 +177,107 @@ public class AdminController {
     @GetMapping("/couriers/pending-approval")
     public ResponseEntity<List<Courier>> getPendingCouriers() {
         return ResponseEntity.ok(adminService.getPendingApprovalCouriers());
+    }
+
+    /**
+     * Search users by type and query
+     * @param type Type of user to search for (CUSTOMER, RESTAURANT, COURIER)
+     * @param query Search query for name or email
+     * @return List of matching users
+     */
+    @GetMapping("/users/search")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<com.hufds.dto.UserSearchResultDTO>> searchUsers(
+            @RequestParam String type,
+            @RequestParam String query) {
+        List<com.hufds.dto.UserSearchResultDTO> results = adminService.searchUsers(type, query);
+        return ResponseEntity.ok(results);
+    }
+    
+    /**
+     * Ban a customer until the specified date
+     * @param customerId Customer ID to ban
+     * @param days Number of days to ban the customer (can be decimal for hours/seconds)
+     * @return Updated customer
+     */
+    @PostMapping("/customers/{customerId}/ban")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Customer> banCustomer(
+            @PathVariable Integer customerId,
+            @RequestParam Double days) {
+        // Calculate ban duration - supporting fractional days for seconds/minutes/hours
+        LocalDateTime banUntil = LocalDateTime.now().plusSeconds((long)(days * 24 * 60 * 60));
+        Customer customer = adminService.banCustomer(customerId, banUntil);
+        return ResponseEntity.ok(customer);
+    }
+    
+    /**
+     * Ban a restaurant until the specified date
+     * @param restaurantId Restaurant ID to ban
+     * @param days Number of days to ban the restaurant (can be decimal for hours/seconds)
+     * @return Updated restaurant
+     */
+    @PostMapping("/restaurants/{restaurantId}/ban")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Restaurant> banRestaurant(
+            @PathVariable Integer restaurantId,
+            @RequestParam Double days) {
+        // Calculate ban duration - supporting fractional days for seconds/minutes/hours
+        LocalDateTime banUntil = LocalDateTime.now().plusSeconds((long)(days * 24 * 60 * 60));
+        Restaurant restaurant = adminService.banRestaurant(restaurantId, banUntil);
+        return ResponseEntity.ok(restaurant);
+    }
+    
+    /**
+     * Ban a courier until the specified date
+     * @param courierId Courier ID to ban
+     * @param days Number of days to ban the courier (can be decimal for hours/seconds)
+     * @return Updated courier
+     */
+    @PostMapping("/couriers/{courierId}/ban")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Courier> banCourier(
+            @PathVariable Integer courierId,
+            @RequestParam Double days) {
+        // Calculate ban duration - supporting fractional days for seconds/minutes/hours
+        LocalDateTime banUntil = LocalDateTime.now().plusSeconds((long)(days * 24 * 60 * 60));
+        Courier courier = adminService.banCourier(courierId, banUntil);
+        return ResponseEntity.ok(courier);
+    }
+    
+    /**
+     * Remove ban from a customer
+     * @param customerId Customer ID to unban
+     * @return Updated customer
+     */
+    @PostMapping("/customers/{customerId}/unban")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Customer> unbanCustomer(@PathVariable Integer customerId) {
+        Customer customer = adminService.unbanCustomer(customerId);
+        return ResponseEntity.ok(customer);
+    }
+    
+    /**
+     * Remove ban from a restaurant
+     * @param restaurantId Restaurant ID to unban
+     * @return Updated restaurant
+     */
+    @PostMapping("/restaurants/{restaurantId}/unban")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Restaurant> unbanRestaurant(@PathVariable Integer restaurantId) {
+        Restaurant restaurant = adminService.unbanRestaurant(restaurantId);
+        return ResponseEntity.ok(restaurant);
+    }
+    
+    /**
+     * Remove ban from a courier
+     * @param courierId Courier ID to unban
+     * @return Updated courier
+     */
+    @PostMapping("/couriers/{courierId}/unban")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Courier> unbanCourier(@PathVariable Integer courierId) {
+        Courier courier = adminService.unbanCourier(courierId);
+        return ResponseEntity.ok(courier);
     }
 } 

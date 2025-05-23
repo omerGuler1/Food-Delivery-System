@@ -11,6 +11,26 @@ import {
   Admin
 } from '../interfaces';
 
+// Add functions to manage ban state
+export const setBanState = (banInfo: any) => {
+  localStorage.setItem('userBanned', 'true');
+  localStorage.setItem('banInfo', JSON.stringify(banInfo));
+};
+
+export const clearBanState = () => {
+  localStorage.removeItem('userBanned');
+  localStorage.removeItem('banInfo');
+};
+
+export const getBanInfo = () => {
+  const banInfo = localStorage.getItem('banInfo');
+  return banInfo ? JSON.parse(banInfo) : null;
+};
+
+export const isUserBanned = () => {
+  return localStorage.getItem('userBanned') === 'true';
+};
+
 // Customer authentication
 export const customerLogin = async (data: LoginRequest) => {
   try {
@@ -23,6 +43,29 @@ export const customerLogin = async (data: LoginRequest) => {
     }
     return response.data;
   } catch (error: any) {
+    // Handle ban error (HTTP 403 Forbidden)
+    if (error.response && error.response.status === 403) {
+      // Extract ban info from error message
+      const banMessage = error.response.data.message || '';
+      const banUntilMatch = banMessage.match(/banned until (.+)/);
+      const banUntil = banUntilMatch ? banUntilMatch[1] : null;
+      
+      // Create ban info object
+      const banInfo = {
+        userType: 'Customer',
+        message: banMessage,
+        banUntil: banUntil
+      };
+      
+      // Store ban info in localStorage
+      setBanState(banInfo);
+      
+      // Throw a special error with ban info
+      const banError = new Error('Account banned');
+      (banError as any).isBanError = true;
+      (banError as any).banInfo = banInfo;
+      throw banError;
+    }
     console.error('Customer login error:', error);
     throw error;
   }
@@ -60,6 +103,29 @@ export const restaurantLogin = async (data: LoginRequest) => {
     }
     return response.data;
   } catch (error: any) {
+    // Handle ban error (HTTP 403 Forbidden)
+    if (error.response && error.response.status === 403) {
+      // Extract ban info from error message
+      const banMessage = error.response.data.message || '';
+      const banUntilMatch = banMessage.match(/banned until (.+)/);
+      const banUntil = banUntilMatch ? banUntilMatch[1] : null;
+      
+      // Create ban info object
+      const banInfo = {
+        userType: 'Restaurant',
+        message: banMessage,
+        banUntil: banUntil
+      };
+      
+      // Store ban info in localStorage
+      setBanState(banInfo);
+      
+      // Throw a special error with ban info
+      const banError = new Error('Account banned');
+      (banError as any).isBanError = true;
+      (banError as any).banInfo = banInfo;
+      throw banError;
+    }
     console.error('Restaurant login error:', error);
     throw error;
   }
@@ -89,13 +155,40 @@ export const courierLogin = async (data: LoginRequest) => {
       localStorage.setItem('user', JSON.stringify(response.data));
       localStorage.setItem('userType', 'courier');
       
-      // Check approval status
-      if (response.data.approvalStatus === 'PENDING' || response.data.approvalStatus === 'REJECTED') {
-        // Still allow login but the protected route will redirect to pending approval page
+      console.log("Courier login response data:", response.data);
+      
+      // Onay durumunu konsola yazdır
+      if (response.data.approvalStatus) {
+        console.log("Courier approval status from login:", response.data.approvalStatus);
+      } else {
+        console.log("No approval status found in login response");
       }
     }
     return response.data;
   } catch (error: any) {
+    // Handle ban error (HTTP 403 Forbidden)
+    if (error.response && error.response.status === 403) {
+      // Extract ban info from error message
+      const banMessage = error.response.data.message || '';
+      const banUntilMatch = banMessage.match(/banned until (.+)/);
+      const banUntil = banUntilMatch ? banUntilMatch[1] : null;
+      
+      // Create ban info object
+      const banInfo = {
+        userType: 'Courier',
+        message: banMessage,
+        banUntil: banUntil
+      };
+      
+      // Store ban info in localStorage
+      setBanState(banInfo);
+      
+      // Throw a special error with ban info
+      const banError = new Error('Account banned');
+      (banError as any).isBanError = true;
+      (banError as any).banInfo = banInfo;
+      throw banError;
+    }
     console.error('Courier login error:', error);
     throw error;
   }
@@ -144,6 +237,8 @@ export const logout = async () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('userType');
+    // Also clear ban state
+    clearBanState();
   }
 };
 

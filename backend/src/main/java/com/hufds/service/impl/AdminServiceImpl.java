@@ -248,4 +248,126 @@ public class AdminServiceImpl implements AdminService {
     public List<Courier> getPendingApprovalCouriers() {
         return courierRepository.findByApprovalStatus(Courier.ApprovalStatus.PENDING);
     }
+
+    @Override
+    public List<com.hufds.dto.UserSearchResultDTO> searchUsers(String userType, String query) {
+        String searchTerm = "%" + query.toLowerCase() + "%";
+        
+        if (userType.equalsIgnoreCase("CUSTOMER")) {
+            // Search for customers
+            List<Customer> customers = customerRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query);
+            return customers.stream()
+                .filter(c -> c.getDeletedAt() == null) // Only include non-deleted users
+                .map(c -> com.hufds.dto.UserSearchResultDTO.builder()
+                    .id(c.getCustomerId())
+                    .name(c.getName())
+                    .email(c.getEmail())
+                    .type("CUSTOMER")
+                    .phoneNumber(c.getPhoneNumber())
+                    .build())
+                .toList();
+        } else if (userType.equalsIgnoreCase("RESTAURANT")) {
+            // Search for restaurants
+            List<Restaurant> restaurants = restaurantRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query);
+            return restaurants.stream()
+                .filter(r -> r.getDeletedAt() == null && r.getApprovalStatus() == Restaurant.ApprovalStatus.ACCEPTED) 
+                .map(r -> com.hufds.dto.UserSearchResultDTO.builder()
+                    .id(r.getRestaurantId())
+                    .name(r.getName())
+                    .email(r.getEmail())
+                    .type("RESTAURANT")
+                    .phoneNumber(r.getPhoneNumber())
+                    .build())
+                .toList();
+        } else if (userType.equalsIgnoreCase("COURIER")) {
+            // Search for couriers
+            List<Courier> couriers = courierRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query);
+            return couriers.stream()
+                .filter(c -> c.getDeletedAt() == null && c.getApprovalStatus() == Courier.ApprovalStatus.ACCEPTED)
+                .map(c -> com.hufds.dto.UserSearchResultDTO.builder()
+                    .id(c.getCourierId())
+                    .name(c.getName())
+                    .email(c.getEmail())
+                    .type("COURIER")
+                    .phoneNumber(c.getPhoneNumber())
+                    .build())
+                .toList();
+        }
+        
+        // If user type is not recognized, return empty list
+        return List.of();
+    }
+    
+    @Override
+    @Transactional
+    public Customer banCustomer(Integer customerId, LocalDateTime banUntil) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new CustomException("Customer not found", HttpStatus.NOT_FOUND));
+        
+        // İlgili alanları güncelle
+        customer.setIsBanned(true); // Boolean alan için
+        customer.setBanOpenDate(banUntil); // Tarih alanı için
+        
+        return customerRepository.save(customer);
+    }
+    
+    @Override
+    @Transactional
+    public Restaurant banRestaurant(Integer restaurantId, LocalDateTime banUntil) {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new CustomException("Restaurant not found", HttpStatus.NOT_FOUND));
+        
+        restaurant.setIsBanned(true);
+        restaurant.setBanOpenDate(banUntil);
+        
+        return restaurantRepository.save(restaurant);
+    }
+    
+    @Override
+    @Transactional
+    public Courier banCourier(Integer courierId, LocalDateTime banUntil) {
+        Courier courier = courierRepository.findById(courierId)
+                .orElseThrow(() -> new CustomException("Courier not found", HttpStatus.NOT_FOUND));
+        
+        courier.setIsBanned(true);
+        courier.setBanOpenDate(banUntil);
+        
+        return courierRepository.save(courier);
+    }
+    
+    @Override
+    @Transactional
+    public Customer unbanCustomer(Integer customerId) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new CustomException("Customer not found", HttpStatus.NOT_FOUND));
+        
+        customer.setIsBanned(false);
+        customer.setBanOpenDate(null);
+        
+        return customerRepository.save(customer);
+    }
+    
+    @Override
+    @Transactional
+    public Restaurant unbanRestaurant(Integer restaurantId) {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new CustomException("Restaurant not found", HttpStatus.NOT_FOUND));
+        
+        restaurant.setIsBanned(false);
+        restaurant.setBanOpenDate(null);
+        
+        return restaurantRepository.save(restaurant);
+    }
+    
+    @Override
+    @Transactional
+    public Courier unbanCourier(Integer courierId) {
+        Courier courier = courierRepository.findById(courierId)
+                .orElseThrow(() -> new CustomException("Courier not found", HttpStatus.NOT_FOUND));
+        
+        courier.setIsBanned(false);
+        courier.setBanOpenDate(null);
+        
+        return courierRepository.save(courier);
+    }
 } 

@@ -33,9 +33,16 @@ import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import MailOutlineIcon from '@mui/icons-material/MailOutline';
+import MailIcon from '@mui/icons-material/Mail';
+import DoneIcon from '@mui/icons-material/Done';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { getDeliveryFee } from '../services/feeService';
+import { getUserReceivedMessages, markMessageAsRead, getAdminReceivedMessages, getRestaurantReceivedMessages, getUserReceivedMessagesByType, getCourierReceivedMessages, getCustomerReceivedMessages } from '../services/messageService';
+import { Message } from '../interfaces';
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, user, userType, logout, verifyUserExists } = useAuth();
@@ -46,7 +53,10 @@ const Navbar: React.FC = () => {
   const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
   const [anchorElCart, setAnchorElCart] = useState<null | HTMLElement>(null);
+  const [anchorElNotifications, setAnchorElNotifications] = useState<null | HTMLElement>(null);
   const [deliveryFeeAmount, setDeliveryFeeAmount] = useState<number>(15);
+  const [notifications, setNotifications] = useState<Message[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
   
   // Check if user still exists on component mount and periodically
   useEffect(() => {
@@ -70,6 +80,60 @@ const Navbar: React.FC = () => {
     return () => clearInterval(interval);
   }, [isAuthenticated, verifyUserExists, logout, navigate]);
   
+  // Fetch admin/restaurant notifications
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (isAuthenticated && (userType === 'admin' || userType === 'restaurant' || userType === 'courier' || userType === 'customer') && user) {
+        try {
+          let messages: Message[] = [];
+          
+          if (userType === 'admin') {
+            // Admin tipinde user olduğunda adminId'ye eriş
+            const adminId = (user as any).adminId;
+            if (adminId) {
+              messages = await getAdminReceivedMessages(adminId);
+            }
+          } else if (userType === 'restaurant') {
+            // Restaurant tipinde user olduğunda restaurantId'ye eriş
+            const restaurantId = (user as any).restaurantId;
+            if (restaurantId) {
+              messages = await getRestaurantReceivedMessages(restaurantId);
+            }
+          } else if (userType === 'courier') {
+            // Courier tipinde user olduğunda courierId'ye eriş
+            const courierId = (user as any).courierId;
+            if (courierId) {
+              // Backend'de filtrelenmiş mesajları al
+              messages = await getCourierReceivedMessages(courierId);
+            }
+          } else if (userType === 'customer') {
+            // Customer tipinde user olduğunda customerId'ye eriş
+            const customerId = (user as any).customerId;
+            if (customerId) {
+              // Müşteri için özel filtrelenmiş mesajları al
+              messages = await getCustomerReceivedMessages(customerId);
+            }
+          }
+          
+          setNotifications(messages);
+          
+          // Count unread messages
+          const unread = messages.filter(msg => !msg.isRead).length;
+          setUnreadCount(unread);
+        } catch (error) {
+          console.error('Error fetching notifications:', error);
+        }
+      }
+    };
+    
+    fetchNotifications();
+    
+    // Refresh notifications every minute
+    const interval = setInterval(fetchNotifications, 60000);
+    
+    return () => clearInterval(interval);
+  }, [isAuthenticated, userType, user]);
+  
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
   };
@@ -80,6 +144,10 @@ const Navbar: React.FC = () => {
   
   const handleOpenCartMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElCart(event.currentTarget);
+  };
+  
+  const handleOpenNotificationsMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorElNotifications(event.currentTarget);
   };
   
   const handleCloseNavMenu = () => {
@@ -93,11 +161,35 @@ const Navbar: React.FC = () => {
   const handleCloseCartMenu = () => {
     setAnchorElCart(null);
   };
+  
+  const handleCloseNotificationsMenu = () => {
+    setAnchorElNotifications(null);
+  };
 
   const handleLogout = async () => {
     await logout();
     navigate('/');
     handleCloseUserMenu();
+  };
+  
+  const handleMarkAsRead = async (messageId: number) => {
+    try {
+      await markMessageAsRead(messageId);
+      
+      // Update notifications list
+      setNotifications(prevNotifications => 
+        prevNotifications.map(notification => 
+          notification.messageId === messageId 
+            ? { ...notification, isRead: true } 
+            : notification
+        )
+      );
+      
+      // Update unread count
+      setUnreadCount(prevCount => prevCount > 0 ? prevCount - 1 : 0);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
 
   // Check if current route is dashboard
@@ -107,28 +199,34 @@ const Navbar: React.FC = () => {
   let pages = [];
   
   if (isAuthenticated && userType === 'restaurant') {
-    // For restaurant users, show dashboard only
+    // For restaurant users, show dashboard and notifications
     pages = [
-      { title: 'Dashboard', path: '/restaurant/dashboard', icon: <DashboardIcon sx={{ mr: 0.5 }} /> }
+      { title: 'Dashboard', path: '/restaurant/dashboard', icon: <DashboardIcon sx={{ mr: 0.5 }} /> },
+      { title: 'Notifications', path: '/restaurant/notifications', icon: <MailOutlineIcon sx={{ mr: 0.5 }} /> }
     ];
   } else if (isAuthenticated && userType === 'courier') {
-    // For courier users, show dashboard only
+    // For courier users, show dashboard and notifications
     pages = [
-      { title: 'Dashboard', path: '/courier/dashboard', icon: <DashboardIcon sx={{ mr: 0.5 }} /> }
+      { title: 'Dashboard', path: '/courier/dashboard', icon: <DashboardIcon sx={{ mr: 0.5 }} /> },
+      { title: 'Notifications', path: '/courier/notifications', icon: <MailOutlineIcon sx={{ mr: 0.5 }} /> }
     ];
   } else if (isAuthenticated && userType === 'admin') {
     // For admin users, show dashboard and promotions
     pages = [
       { title: 'Dashboard', path: '/admin/dashboard', icon: <DashboardIcon sx={{ mr: 0.5 }} /> },
       { title: 'Promotions & Coupons', path: '/admin/promotions', icon: <LocalOfferIcon sx={{ mr: 0.5 }} /> },
-      { title: 'Fees Management', path: '/admin/fees', icon: <MonetizationOnIcon sx={{ mr: 0.5 }} /> }
+      { title: 'Fees Management', path: '/admin/fees', icon: <MonetizationOnIcon sx={{ mr: 0.5 }} /> },
+      { title: 'Send Message', path: '/admin/send-message', icon: <MailOutlineIcon sx={{ mr: 0.5 }} /> },
+      { title: 'Analytics', path: '/admin/analytics', icon: <AnalyticsIcon sx={{ mr: 0.5 }} /> }
     ];
   } else if (isAuthenticated && userType === 'customer') {
     // For customers, show regular navigation plus favorites
     pages = [
       { title: 'Home', path: '/', icon: null },
       { title: 'Restaurants', path: '/restaurants', icon: null },
-      { title: 'Favorites', path: '/favorites', icon: null }
+      { title: 'Favorites', path: '/favorites', icon: null },
+      { title: 'Notifications', path: '/notifications', icon: <MailOutlineIcon sx={{ mr: 0.5 }} /> },
+      { title: 'Request/Complaint', path: '/feedback', icon: null }
     ];
   } else {
     // For non-authenticated users, show regular navigation
@@ -307,16 +405,161 @@ const Navbar: React.FC = () => {
                 {/* Shopping cart icon (only for customers) */}
                 {userType === 'customer' && (
                   <IconButton 
-                    size="large" 
-                    color="inherit"
-                    sx={{ mr: 1 }}
                     onClick={handleOpenCartMenu}
+                    sx={{ ml: 1 }}
+                    aria-label="shopping cart" 
+                    aria-controls="menu-cart"
+                    aria-haspopup="true"
                   >
-                    <Badge badgeContent={totalQuantity} color="error">
+                    <Badge badgeContent={totalQuantity} color="error" overlap="circular">
                       <ShoppingCartIcon />
                     </Badge>
                   </IconButton>
                 )}
+                
+                {/* Notifications icon (for admin, restaurant, and courier) */}
+                {(userType === 'admin' || userType === 'restaurant' || userType === 'courier' || userType === 'customer') && (
+                  <IconButton
+                    onClick={handleOpenNotificationsMenu}
+                    sx={{ ml: 1 }}
+                    aria-label="notifications"
+                    aria-controls="menu-notifications"
+                    aria-haspopup="true"
+                  >
+                    <Badge badgeContent={unreadCount} color="error" overlap="circular">
+                      <NotificationsIcon />
+                    </Badge>
+                  </IconButton>
+                )}
+                
+                {/* Notifications Menu */}
+                <Menu
+                  sx={{ mt: '45px' }}
+                  id="notifications-menu"
+                  anchorEl={anchorElNotifications}
+                  anchorOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right',
+                  }}
+                  keepMounted
+                  transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right',
+                  }}
+                  open={Boolean(anchorElNotifications)}
+                  onClose={handleCloseNotificationsMenu}
+                >
+                  <Box sx={{ width: 320, maxHeight: 400, overflow: 'auto', p: 2 }}>
+                    {notifications.length === 0 ? (
+                      <Box sx={{ textAlign: 'center', py: 2 }}>
+                        <MailOutlineIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
+                        <Typography variant="body1" color="text.secondary">
+                          No notifications found
+                        </Typography>
+                        
+                        <Divider />
+                        
+                        <Box sx={{ textAlign: 'center', my: 2 }}>
+                          <Button
+                            size="small"
+                            onClick={() => {
+                              handleCloseNotificationsMenu();
+                              // Kullanıcı tipine göre bildirim sayfasına yönlendir
+                              if (userType === 'admin') {
+                                navigate('/admin/notifications');
+                              } else if (userType === 'restaurant') {
+                                navigate('/restaurant/notifications');
+                              } else if (userType === 'courier') {
+                                navigate('/courier/notifications');
+                              } else if (userType === 'customer') {
+                                navigate('/notifications');
+                              }
+                            }}
+                          >
+                            View All Notifications
+                          </Button>
+                        </Box>
+                      </Box>
+                    ) : (
+                      <>
+                        <Typography variant="h6" sx={{ mb: 2 }}>
+                          Notifications
+                        </Typography>
+                        <List sx={{ mb: 2 }}>
+                          {notifications.map((notification) => (
+                            <ListItem 
+                              key={notification.messageId} 
+                              sx={{ 
+                                px: 0, 
+                                py: 1.5, 
+                                borderBottom: '1px solid', 
+                                borderColor: 'divider',
+                                bgcolor: notification.isRead ? 'transparent' : 'rgba(0, 0, 0, 0.04)'
+                              }}
+                            >
+                              <Box sx={{ width: '100%' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                  <ListItemIcon sx={{ minWidth: 36 }}>
+                                    {notification.isRead ? (
+                                      <MailIcon color="disabled" fontSize="small" />
+                                    ) : (
+                                      <MailOutlineIcon color="primary" fontSize="small" />
+                                    )}
+                                  </ListItemIcon>
+                                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                    {notification.senderName}
+                                  </Typography>
+                                </Box>
+                                <Typography variant="body2" sx={{ ml: 4.5, mb: 1 }}>
+                                  {notification.messageContent.length > 100
+                                    ? `${notification.messageContent.substring(0, 100)}...`
+                                    : notification.messageContent}
+                                </Typography>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', ml: 4.5 }}>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {notification.createdAt ? new Date(notification.createdAt).toLocaleString() : ''}
+                                  </Typography>
+                                  {!notification.isRead && (
+                                    <Button
+                                      size="small"
+                                      startIcon={<DoneIcon />}
+                                      onClick={() => notification.messageId && handleMarkAsRead(notification.messageId)}
+                                    >
+                                      Mark as Read
+                                    </Button>
+                                  )}
+                                </Box>
+                              </Box>
+                            </ListItem>
+                          ))}
+                        </List>
+                        
+                        <Divider />
+                        
+                        <Box sx={{ textAlign: 'center', my: 2 }}>
+                          <Button
+                            size="small"
+                            onClick={() => {
+                              handleCloseNotificationsMenu();
+                              // Kullanıcı tipine göre bildirim sayfasına yönlendir
+                              if (userType === 'admin') {
+                                navigate('/admin/notifications');
+                              } else if (userType === 'restaurant') {
+                                navigate('/restaurant/notifications');
+                              } else if (userType === 'courier') {
+                                navigate('/courier/notifications');
+                              } else if (userType === 'customer') {
+                                navigate('/notifications');
+                              }
+                            }}
+                          >
+                            View All Notifications
+                          </Button>
+                        </Box>
+                      </>
+                    )}
+                  </Box>
+                </Menu>
                 
                 {/* User menu */}
                 <Tooltip title="Open settings">

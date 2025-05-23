@@ -31,7 +31,8 @@ import {
   MenuItem,
   InputAdornment,
   Grid,
-  TableSortLabel
+  TableSortLabel,
+  Slider
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -42,7 +43,8 @@ import {
   Restaurant as RestaurantIcon,
   AdminPanelSettings as AdminIcon,
   Search as SearchIcon,
-  FilterList as FilterIcon
+  FilterList as FilterIcon,
+  LockOpen as UnlockIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -56,6 +58,9 @@ import {
   banCustomer,
   banCourier,
   banRestaurant,
+  unbanCustomer,
+  unbanCourier,
+  unbanRestaurant,
   editCustomer,
   editRestaurant,
   editCourier,
@@ -90,6 +95,24 @@ function TabPanel(props: TabPanelProps) {
     </div>
   );
 }
+
+// Utility function to format dates in a readable way
+const formatDate = (dateString: string | undefined | null): string => {
+  if (!dateString) return 'N/A';
+  
+  try {
+    const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) return dateString;
+    
+    // Format: DD-MM-YYYY HH:MM:SS
+    return `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getFullYear()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+  } catch (e) {
+    console.error("Error formatting date:", e);
+    return dateString;
+  }
+};
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -134,6 +157,12 @@ const AdminDashboard: React.FC = () => {
   const [couriersPage, setCouriersPage] = useState(1);
   const [restaurantsPage, setRestaurantsPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Add states for ban dialog
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [selectedBanDays, setSelectedBanDays] = useState<number>(7);
+  const [banTargetId, setBanTargetId] = useState<number | null>(null);
+  const [banTargetType, setBanTargetType] = useState<'customer' | 'courier' | 'restaurant'>('customer');
 
   // Handle tab change
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -206,63 +235,74 @@ const AdminDashboard: React.FC = () => {
     setRestaurantEditOpen(false);
   };
 
-  // Ban handlers
-  const handleBanCustomer = async (customerId: number) => {
+  // New function to open ban dialog
+  const openBanDialog = (id: number, type: 'customer' | 'courier' | 'restaurant') => {
+    setBanTargetId(id);
+    setBanTargetType(type);
+    setSelectedBanDays(7); // Default 7 days
+    setBanDialogOpen(true);
+  };
+
+  // New function to handle ban action with selected days
+  const handleBanConfirm = async () => {
+    if (!banTargetId) return;
+    
     try {
-      await banCustomer(customerId);
-      setSuccessMessage(`Customer ban functionality will be implemented soon.`);
+      if (banTargetType === 'customer') {
+        await banCustomer(banTargetId, selectedBanDays);
+        setSuccessMessage(`Customer has been banned for ${selectedBanDays} days successfully.`);
+        fetchCustomers();
+      } else if (banTargetType === 'courier') {
+        await banCourier(banTargetId, selectedBanDays);
+        setSuccessMessage(`Courier has been banned for ${selectedBanDays} days successfully.`);
+        fetchCouriers();
+      } else if (banTargetType === 'restaurant') {
+        await banRestaurant(banTargetId, selectedBanDays);
+        setSuccessMessage(`Restaurant has been banned for ${selectedBanDays} days successfully.`);
+        fetchRestaurants();
+      }
+      
+      setBanDialogOpen(false);
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
-      setError('Failed to ban customer');
+      setError(`Failed to ban ${banTargetType}`);
       setTimeout(() => setError(null), 3000);
     }
   };
 
-  const handleDeleteCourier = async (courierId: number) => {
+  // New functions to handle unban
+  const handleUnbanCustomer = async (customerId: number) => {
     try {
-      await deleteCourier(courierId);
-      setSuccessMessage(`Courier successfully deleted`);
-      // Refresh the courier list
+      await unbanCustomer(customerId);
+      setSuccessMessage(`Customer has been unbanned successfully.`);
+      fetchCustomers();
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error) {
+      setError('Failed to unban customer');
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const handleUnbanCourier = async (courierId: number) => {
+    try {
+      await unbanCourier(courierId);
+      setSuccessMessage(`Courier has been unbanned successfully.`);
       fetchCouriers();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
-      setError('Failed to delete courier');
+      setError('Failed to unban courier');
       setTimeout(() => setError(null), 3000);
     }
   };
 
-  const handleBanCourier = async (courierId: number) => {
+  const handleUnbanRestaurant = async (restaurantId: number) => {
     try {
-      await banCourier(courierId);
-      setSuccessMessage(`Courier ban functionality will be implemented soon.`);
+      await unbanRestaurant(restaurantId);
+      setSuccessMessage(`Restaurant has been unbanned successfully.`);
+      fetchRestaurants();
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
-      setError('Failed to ban courier');
-      setTimeout(() => setError(null), 3000);
-    }
-  };
-
-  const handleDeleteRestaurant = async (restaurantId: number) => {
-    try {
-      await deleteRestaurant(restaurantId);
-      setSuccessMessage(`Restaurant successfully deleted`);
-      // Refresh the restaurant list and force update by creating a new array
-      const updatedRestaurants = restaurants.filter(r => r.restaurantId !== restaurantId);
-      setRestaurants(updatedRestaurants);
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (error) {
-      setError('Failed to delete restaurant');
-      setTimeout(() => setError(null), 3000);
-    }
-  };
-
-  const handleBanRestaurant = async (restaurantId: number) => {
-    try {
-      await banRestaurant(restaurantId);
-      setSuccessMessage(`Restaurant ban functionality will be implemented soon.`);
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (error) {
-      setError('Failed to ban restaurant');
+      setError('Failed to unban restaurant');
       setTimeout(() => setError(null), 3000);
     }
   };
@@ -322,6 +362,49 @@ const AdminDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Action handlers for deleting users
+  const handleDeleteCourier = async (courierId: number) => {
+    try {
+      await deleteCourier(courierId);
+      setSuccessMessage(`Courier successfully deleted`);
+      // Refresh the courier list
+      fetchCouriers();
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error) {
+      setError('Failed to delete courier');
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const handleDeleteRestaurant = async (restaurantId: number) => {
+    try {
+      await deleteRestaurant(restaurantId);
+      setSuccessMessage(`Restaurant successfully deleted`);
+      // Refresh the restaurant list and force update by creating a new array
+      const updatedRestaurants = restaurants.filter(r => r.restaurantId !== restaurantId);
+      setRestaurants(updatedRestaurants);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error) {
+      setError('Failed to delete restaurant');
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  // Replace the old handleBanCustomer with a function that opens the dialog
+  const handleBanCustomer = (customerId: number) => {
+    openBanDialog(customerId, 'customer');
+  };
+
+  // Replace the old handleBanCourier with a function that opens the dialog
+  const handleBanCourier = (courierId: number) => {
+    openBanDialog(courierId, 'courier');
+  };
+
+  // Replace the old handleBanRestaurant with a function that opens the dialog
+  const handleBanRestaurant = (restaurantId: number) => {
+    openBanDialog(restaurantId, 'restaurant');
   };
 
   // Data fetching functions
@@ -735,6 +818,95 @@ const AdminDashboard: React.FC = () => {
           </DialogActions>
         </Dialog>
 
+        {/* Add Ban Dialog */}
+        <Dialog open={banDialogOpen} onClose={() => setBanDialogOpen(false)}>
+          <DialogTitle>Ban {banTargetType}</DialogTitle>
+          <DialogContent sx={{ minWidth: 400, pt: 2, pb: 3 }}>
+            <Typography gutterBottom variant="h6">Select ban duration</Typography>
+            
+            <Box sx={{ display: 'flex', flexDirection: 'column', mt: 2, gap: 2 }}>
+              {/* Change 10 second ban option to 30 seconds */}
+              <Button 
+                variant={selectedBanDays === (30/86400) ? "contained" : "outlined"} 
+                onClick={() => setSelectedBanDays(30/86400)} // 30 seconds converted to days (30/(24*60*60))
+                color="warning"
+              >
+                30 Seconds
+              </Button>
+              
+              <Button 
+                variant={selectedBanDays === 1 ? "contained" : "outlined"} 
+                onClick={() => setSelectedBanDays(1)}
+                color="warning"
+              >
+                1 Day
+              </Button>
+              
+              <Button 
+                variant={selectedBanDays === 7 ? "contained" : "outlined"} 
+                onClick={() => setSelectedBanDays(7)}
+                color="warning"
+              >
+                7 Days
+              </Button>
+              
+              <Button 
+                variant={selectedBanDays === 30 ? "contained" : "outlined"} 
+                onClick={() => setSelectedBanDays(30)}
+                color="warning"
+              >
+                30 Days
+              </Button>
+              
+              <Button 
+                variant={selectedBanDays === 90 ? "contained" : "outlined"} 
+                onClick={() => setSelectedBanDays(90)}
+                color="warning"
+              >
+                90 Days
+              </Button>
+              
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+                <Typography>Custom:</Typography>
+                <TextField
+                  type="number"
+                  size="small"
+                  InputProps={{ inputProps: { min: 0.0001, max: 365 } }}
+                  value={selectedBanDays}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (value >= 0.0001 && value <= 365) {
+                      setSelectedBanDays(value);
+                    }
+                  }}
+                  sx={{ width: 100 }}
+                />
+                <Typography>days</Typography>
+              </Box>
+            </Box>
+            
+            <Typography 
+              variant="h6" 
+              align="center" 
+              sx={{ mt: 3, color: 'warning.main', fontWeight: 'bold' }}
+            >
+              Ban for {selectedBanDays < 1/1440 ? `${Math.round(selectedBanDays * 86400)} seconds` : 
+                       selectedBanDays < 1 ? `${Math.round(selectedBanDays * 24)} hours` : 
+                       `${selectedBanDays} ${selectedBanDays === 1 ? 'day' : 'days'}`}
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setBanDialogOpen(false)}>Cancel</Button>
+            <Button 
+              onClick={handleBanConfirm} 
+              variant="contained" 
+              color="warning"
+            >
+              Ban
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         {/* Dashboard Tabs */}
         <Paper sx={{ mb: 2, borderRadius: 2 }}>
           <Tabs 
@@ -794,51 +966,12 @@ const AdminDashboard: React.FC = () => {
                 <Table>
                   <TableHead sx={{ bgcolor: 'primary.light' }}>
                     <TableRow>
-                      <TableCell>
-                        <TableSortLabel
-                          active={customerOrderBy === 'customerId'}
-                          direction={customerOrderBy === 'customerId' ? customerOrder : 'asc'}
-                          onClick={() => handleRequestSort('customer', 'customerId')}
-                        >
-                          ID
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell>
-                        <TableSortLabel
-                          active={customerOrderBy === 'name'}
-                          direction={customerOrderBy === 'name' ? customerOrder : 'asc'}
-                          onClick={() => handleRequestSort('customer', 'name')}
-                        >
-                          Name
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell>
-                        <TableSortLabel
-                          active={customerOrderBy === 'email'}
-                          direction={customerOrderBy === 'email' ? customerOrder : 'asc'}
-                          onClick={() => handleRequestSort('customer', 'email')}
-                        >
-                          Email
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell>
-                        <TableSortLabel
-                          active={customerOrderBy === 'phoneNumber'}
-                          direction={customerOrderBy === 'phoneNumber' ? customerOrder : 'asc'}
-                          onClick={() => handleRequestSort('customer', 'phoneNumber')}
-                        >
-                          Phone
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell>
-                        <TableSortLabel
-                          active={customerOrderBy === 'createdAt'}
-                          direction={customerOrderBy === 'createdAt' ? customerOrder : 'asc'}
-                          onClick={() => handleRequestSort('customer', 'createdAt')}
-                        >
-                          Created At
-                        </TableSortLabel>
-                      </TableCell>
+                      <TableCell>ID</TableCell>
+                      <TableCell>Name</TableCell>
+                      <TableCell>Email</TableCell>
+                      <TableCell>Phone</TableCell>
+                      <TableCell>Created At</TableCell>
+                      <TableCell>Status</TableCell>
                       <TableCell align="center">Actions</TableCell>
                     </TableRow>
                   </TableHead>
@@ -851,7 +984,16 @@ const AdminDashboard: React.FC = () => {
                           <TableCell>{customer.name}</TableCell>
                           <TableCell>{customer.email}</TableCell>
                           <TableCell>{customer.phoneNumber}</TableCell>
-                          <TableCell>{customer.createdAt}</TableCell>
+                          <TableCell>{formatDate(customer.createdAt)}</TableCell>
+                          <TableCell>
+                            {customer.isBanned && (
+                              <Chip 
+                                label={`Banned until ${formatDate(customer.banOpenDate)}`}
+                                color="error" 
+                                size="small"
+                              />
+                            )}
+                          </TableCell>
                           <TableCell align="center">
                             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
                               <Tooltip title="Edit Customer">
@@ -872,15 +1014,27 @@ const AdminDashboard: React.FC = () => {
                                   <DeleteIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
-                              <Tooltip title="Ban Customer">
-                                <IconButton 
-                                  size="small" 
-                                  color="warning"
-                                  onClick={() => handleBanCustomer(customer.customerId)}
-                                >
-                                  <BlockIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
+                              {customer.isBanned ? (
+                                <Tooltip title="Unban Customer">
+                                  <IconButton 
+                                    size="small" 
+                                    color="success"
+                                    onClick={() => handleUnbanCustomer(customer.customerId)}
+                                  >
+                                    <UnlockIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              ) : (
+                                <Tooltip title="Ban Customer">
+                                  <IconButton 
+                                    size="small" 
+                                    color="warning"
+                                    onClick={() => handleBanCustomer(customer.customerId)}
+                                  >
+                                    <BlockIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
                             </Box>
                           </TableCell>
                         </TableRow>
@@ -948,69 +1102,14 @@ const AdminDashboard: React.FC = () => {
                 <Table>
                   <TableHead sx={{ bgcolor: 'primary.light' }}>
                     <TableRow>
-                      <TableCell>
-                        <TableSortLabel
-                          active={courierOrderBy === 'courierId'}
-                          direction={courierOrderBy === 'courierId' ? courierOrder : 'asc'}
-                          onClick={() => handleRequestSort('courier', 'courierId')}
-                        >
-                          ID
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell>
-                        <TableSortLabel
-                          active={courierOrderBy === 'name'}
-                          direction={courierOrderBy === 'name' ? courierOrder : 'asc'}
-                          onClick={() => handleRequestSort('courier', 'name')}
-                        >
-                          Name
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell>
-                        <TableSortLabel
-                          active={courierOrderBy === 'email'}
-                          direction={courierOrderBy === 'email' ? courierOrder : 'asc'}
-                          onClick={() => handleRequestSort('courier', 'email')}
-                        >
-                          Email
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell>
-                        <TableSortLabel
-                          active={courierOrderBy === 'phoneNumber'}
-                          direction={courierOrderBy === 'phoneNumber' ? courierOrder : 'asc'}
-                          onClick={() => handleRequestSort('courier', 'phoneNumber')}
-                        >
-                          Phone
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell>
-                        <TableSortLabel
-                          active={courierOrderBy === 'vehicleType'}
-                          direction={courierOrderBy === 'vehicleType' ? courierOrder : 'asc'}
-                          onClick={() => handleRequestSort('courier', 'vehicleType')}
-                        >
-                          Vehicle Type
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell>
-                        <TableSortLabel
-                          active={courierOrderBy === 'status'}
-                          direction={courierOrderBy === 'status' ? courierOrder : 'asc'}
-                          onClick={() => handleRequestSort('courier', 'status')}
-                        >
-                          Status
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell>
-                        <TableSortLabel
-                          active={courierOrderBy === 'earnings'}
-                          direction={courierOrderBy === 'earnings' ? courierOrder : 'asc'}
-                          onClick={() => handleRequestSort('courier', 'earnings')}
-                        >
-                          Earnings
-                        </TableSortLabel>
-                      </TableCell>
+                      <TableCell>ID</TableCell>
+                      <TableCell>Name</TableCell>
+                      <TableCell>Email</TableCell>
+                      <TableCell>Phone</TableCell>
+                      <TableCell>Vehicle Type</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Earnings</TableCell>
+                      <TableCell>Ban Status</TableCell>
                       <TableCell align="center">Actions</TableCell>
                     </TableRow>
                   </TableHead>
@@ -1032,6 +1131,15 @@ const AdminDashboard: React.FC = () => {
                             />
                           </TableCell>
                           <TableCell>${courier.earnings?.toFixed(2) || '0.00'}</TableCell>
+                          <TableCell>
+                            {courier.isBanned && (
+                              <Chip 
+                                label={`Banned until ${formatDate(courier.banOpenDate)}`}
+                                color="error" 
+                                size="small"
+                              />
+                            )}
+                          </TableCell>
                           <TableCell align="center">
                             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
                               <Tooltip title="Edit Courier">
@@ -1052,15 +1160,27 @@ const AdminDashboard: React.FC = () => {
                                   <DeleteIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
-                              <Tooltip title="Ban Courier">
-                                <IconButton 
-                                  size="small" 
-                                  color="warning"
-                                  onClick={() => handleBanCourier(courier.courierId)}
-                                >
-                                  <BlockIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
+                              {courier.isBanned ? (
+                                <Tooltip title="Unban Courier">
+                                  <IconButton 
+                                    size="small" 
+                                    color="success"
+                                    onClick={() => handleUnbanCourier(courier.courierId)}
+                                  >
+                                    <UnlockIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              ) : (
+                                <Tooltip title="Ban Courier">
+                                  <IconButton 
+                                    size="small" 
+                                    color="warning"
+                                    onClick={() => handleBanCourier(courier.courierId)}
+                                  >
+                                    <BlockIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
                             </Box>
                           </TableCell>
                         </TableRow>
@@ -1128,69 +1248,14 @@ const AdminDashboard: React.FC = () => {
                 <Table>
                   <TableHead sx={{ bgcolor: 'primary.light' }}>
                     <TableRow>
-                      <TableCell>
-                        <TableSortLabel
-                          active={restaurantOrderBy === 'restaurantId'}
-                          direction={restaurantOrderBy === 'restaurantId' ? restaurantOrder : 'asc'}
-                          onClick={() => handleRequestSort('restaurant', 'restaurantId')}
-                        >
-                          ID
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell>
-                        <TableSortLabel
-                          active={restaurantOrderBy === 'name'}
-                          direction={restaurantOrderBy === 'name' ? restaurantOrder : 'asc'}
-                          onClick={() => handleRequestSort('restaurant', 'name')}
-                        >
-                          Name
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell>
-                        <TableSortLabel
-                          active={restaurantOrderBy === 'email'}
-                          direction={restaurantOrderBy === 'email' ? restaurantOrder : 'asc'}
-                          onClick={() => handleRequestSort('restaurant', 'email')}
-                        >
-                          Email
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell>
-                        <TableSortLabel
-                          active={restaurantOrderBy === 'phoneNumber'}
-                          direction={restaurantOrderBy === 'phoneNumber' ? restaurantOrder : 'asc'}
-                          onClick={() => handleRequestSort('restaurant', 'phoneNumber')}
-                        >
-                          Phone
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell>
-                        <TableSortLabel
-                          active={restaurantOrderBy === 'cuisineType'}
-                          direction={restaurantOrderBy === 'cuisineType' ? restaurantOrder : 'asc'}
-                          onClick={() => handleRequestSort('restaurant', 'cuisineType')}
-                        >
-                          Cuisine
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell>
-                        <TableSortLabel
-                          active={restaurantOrderBy === 'rating'}
-                          direction={restaurantOrderBy === 'rating' ? restaurantOrder : 'asc'}
-                          onClick={() => handleRequestSort('restaurant', 'rating')}
-                        >
-                          Rating
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell>
-                        <TableSortLabel
-                          active={restaurantOrderBy === 'city'}
-                          direction={restaurantOrderBy === 'city' ? restaurantOrder : 'asc'}
-                          onClick={() => handleRequestSort('restaurant', 'city')}
-                        >
-                          City
-                        </TableSortLabel>
-                      </TableCell>
+                      <TableCell>ID</TableCell>
+                      <TableCell>Name</TableCell>
+                      <TableCell>Email</TableCell>
+                      <TableCell>Phone</TableCell>
+                      <TableCell>Cuisine</TableCell>
+                      <TableCell>Rating</TableCell>
+                      <TableCell>City</TableCell>
+                      <TableCell>Ban Status</TableCell>
                       <TableCell align="center">Actions</TableCell>
                     </TableRow>
                   </TableHead>
@@ -1206,6 +1271,15 @@ const AdminDashboard: React.FC = () => {
                           <TableCell>{restaurant.cuisineType}</TableCell>
                           <TableCell>{restaurant.rating?.toFixed(1) || 'N/A'}</TableCell>
                           <TableCell>{restaurant.city || 'N/A'}</TableCell>
+                          <TableCell>
+                            {restaurant.isBanned && (
+                              <Chip 
+                                label={`Banned until ${formatDate(restaurant.banOpenDate)}`}
+                                color="error" 
+                                size="small"
+                              />
+                            )}
+                          </TableCell>
                           <TableCell align="center">
                             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
                               <Tooltip title="Edit Restaurant">
@@ -1226,15 +1300,27 @@ const AdminDashboard: React.FC = () => {
                                   <DeleteIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
-                              <Tooltip title="Ban Restaurant">
-                                <IconButton 
-                                  size="small" 
-                                  color="warning"
-                                  onClick={() => handleBanRestaurant(restaurant.restaurantId)}
-                                >
-                                  <BlockIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
+                              {restaurant.isBanned ? (
+                                <Tooltip title="Unban Restaurant">
+                                  <IconButton 
+                                    size="small" 
+                                    color="success"
+                                    onClick={() => handleUnbanRestaurant(restaurant.restaurantId)}
+                                  >
+                                    <UnlockIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              ) : (
+                                <Tooltip title="Ban Restaurant">
+                                  <IconButton 
+                                    size="small" 
+                                    color="warning"
+                                    onClick={() => handleBanRestaurant(restaurant.restaurantId)}
+                                  >
+                                    <BlockIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
                             </Box>
                           </TableCell>
                         </TableRow>

@@ -24,6 +24,9 @@ public class CustomerOrderDTO {
     // Restaurant information
     private RestaurantSummaryDTO restaurant;
     
+    // Courier information
+    private CourierInfoDTO courier;
+    
     // Address information (nested object so that frontend can use order.address.fullAddress, etc.)
     private AddressSummaryDTO address;
     
@@ -42,5 +45,16 @@ public class CustomerOrderDTO {
         private String paymentMethod;
         private String paymentStatus;
         private LocalDateTime paymentDate;
+    }
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CourierInfoDTO {
+        private Integer courierId;
+        private String name;
+        private String phoneNumber;
+        private String vehicleType;
     }
 } 
