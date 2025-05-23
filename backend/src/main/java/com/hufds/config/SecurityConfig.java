@@ -66,6 +66,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/restaurants/**").permitAll()
                         // Make promotions endpoints public for now
                         .requestMatchers("/api/promotions/**").permitAll()
+                        // Messages endpoints (authenticated users only)
+                        .requestMatchers("/api/messages/**").authenticated()
                         // Admin endpoints (all protected now since we created specific admin endpoints)
                         .requestMatchers("/api/admin/**").hasRole("admin")
                         // Role-restricted endpoints

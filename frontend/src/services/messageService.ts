@@ -68,6 +68,30 @@ export const getRestaurantReceivedMessages = async (restaurantId: number): Promi
   }
 };
 
+// Get messages received by a courier (special endpoint for couriers)
+export const getCourierReceivedMessages = async (courierId: number): Promise<Message[]> => {
+  try {
+    const response = await axiosInstance.get<Message[]>(`/messages/courier/received/${courierId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching courier received messages:', error);
+    throw error;
+  }
+};
+
+// Get messages received by a customer (special endpoint for customers)
+export const getCustomerReceivedMessages = async (customerId: number): Promise<Message[]> => {
+  try {
+    console.log('MESSAGE SERVICE - getCustomerReceivedMessages called with ID:', customerId);
+    const response = await axiosInstance.get<Message[]>(`/messages/customer/received/${customerId}`);
+    console.log('MESSAGE SERVICE - Customer messages response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching customer received messages:', error);
+    throw error;
+  }
+};
+
 // Get unread messages for an admin (special endpoint for admins)
 export const getAdminUnreadMessages = async (adminId: number): Promise<Message[]> => {
   try {
@@ -86,6 +110,28 @@ export const getRestaurantUnreadMessages = async (restaurantId: number): Promise
     return response.data;
   } catch (error) {
     console.error('Error fetching restaurant unread messages:', error);
+    throw error;
+  }
+};
+
+// Get unread messages for a courier (special endpoint for couriers)
+export const getCourierUnreadMessages = async (courierId: number): Promise<Message[]> => {
+  try {
+    const response = await axiosInstance.get<Message[]>(`/messages/courier/unread/${courierId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching courier unread messages:', error);
+    throw error;
+  }
+};
+
+// Get unread messages for a customer (special endpoint for customers)
+export const getCustomerUnreadMessages = async (customerId: number): Promise<Message[]> => {
+  try {
+    const response = await axiosInstance.get<Message[]>(`/messages/customer/unread/${customerId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching customer unread messages:', error);
     throw error;
   }
 };
@@ -109,4 +155,4 @@ export const deleteMessage = async (messageId: number): Promise<void> => {
     console.error('Error deleting message:', error);
     throw error;
   }
-}; 
+};

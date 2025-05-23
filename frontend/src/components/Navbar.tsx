@@ -41,7 +41,7 @@ import AnalyticsIcon from '@mui/icons-material/Analytics';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { getDeliveryFee } from '../services/feeService';
-import { getUserReceivedMessages, markMessageAsRead, getAdminReceivedMessages, getRestaurantReceivedMessages } from '../services/messageService';
+import { getUserReceivedMessages, markMessageAsRead, getAdminReceivedMessages, getRestaurantReceivedMessages, getUserReceivedMessagesByType, getCourierReceivedMessages, getCustomerReceivedMessages } from '../services/messageService';
 import { Message } from '../interfaces';
 
 const Navbar: React.FC = () => {
@@ -83,7 +83,7 @@ const Navbar: React.FC = () => {
   // Fetch admin/restaurant notifications
   useEffect(() => {
     const fetchNotifications = async () => {
-      if (isAuthenticated && (userType === 'admin' || userType === 'restaurant') && user) {
+      if (isAuthenticated && (userType === 'admin' || userType === 'restaurant' || userType === 'courier' || userType === 'customer') && user) {
         try {
           let messages: Message[] = [];
           
@@ -98,6 +98,20 @@ const Navbar: React.FC = () => {
             const restaurantId = (user as any).restaurantId;
             if (restaurantId) {
               messages = await getRestaurantReceivedMessages(restaurantId);
+            }
+          } else if (userType === 'courier') {
+            // Courier tipinde user olduğunda courierId'ye eriş
+            const courierId = (user as any).courierId;
+            if (courierId) {
+              // Backend'de filtrelenmiş mesajları al
+              messages = await getCourierReceivedMessages(courierId);
+            }
+          } else if (userType === 'customer') {
+            // Customer tipinde user olduğunda customerId'ye eriş
+            const customerId = (user as any).customerId;
+            if (customerId) {
+              // Müşteri için özel filtrelenmiş mesajları al
+              messages = await getCustomerReceivedMessages(customerId);
             }
           }
           
@@ -191,9 +205,10 @@ const Navbar: React.FC = () => {
       { title: 'Notifications', path: '/restaurant/notifications', icon: <MailOutlineIcon sx={{ mr: 0.5 }} /> }
     ];
   } else if (isAuthenticated && userType === 'courier') {
-    // For courier users, show dashboard only
+    // For courier users, show dashboard and notifications
     pages = [
-      { title: 'Dashboard', path: '/courier/dashboard', icon: <DashboardIcon sx={{ mr: 0.5 }} /> }
+      { title: 'Dashboard', path: '/courier/dashboard', icon: <DashboardIcon sx={{ mr: 0.5 }} /> },
+      { title: 'Notifications', path: '/courier/notifications', icon: <MailOutlineIcon sx={{ mr: 0.5 }} /> }
     ];
   } else if (isAuthenticated && userType === 'admin') {
     // For admin users, show dashboard and promotions
@@ -210,6 +225,7 @@ const Navbar: React.FC = () => {
       { title: 'Home', path: '/', icon: null },
       { title: 'Restaurants', path: '/restaurants', icon: null },
       { title: 'Favorites', path: '/favorites', icon: null },
+      { title: 'Notifications', path: '/notifications', icon: <MailOutlineIcon sx={{ mr: 0.5 }} /> },
       { title: 'Request/Complaint', path: '/feedback', icon: null }
     ];
   } else {
@@ -389,26 +405,28 @@ const Navbar: React.FC = () => {
                 {/* Shopping cart icon (only for customers) */}
                 {userType === 'customer' && (
                   <IconButton 
-                    size="large" 
-                    color="inherit"
-                    sx={{ mr: 1 }}
                     onClick={handleOpenCartMenu}
+                    sx={{ ml: 1 }}
+                    aria-label="shopping cart" 
+                    aria-controls="menu-cart"
+                    aria-haspopup="true"
                   >
-                    <Badge badgeContent={totalQuantity} color="error">
+                    <Badge badgeContent={totalQuantity} color="error" overlap="circular">
                       <ShoppingCartIcon />
                     </Badge>
                   </IconButton>
                 )}
                 
-                {/* Notifications icon (for admin and restaurant) */}
-                {(userType === 'admin' || userType === 'restaurant') && (
-                  <IconButton 
-                    size="large" 
-                    color="inherit"
-                    sx={{ mr: 1 }}
+                {/* Notifications icon (for admin, restaurant, and courier) */}
+                {(userType === 'admin' || userType === 'restaurant' || userType === 'courier' || userType === 'customer') && (
+                  <IconButton
                     onClick={handleOpenNotificationsMenu}
+                    sx={{ ml: 1 }}
+                    aria-label="notifications"
+                    aria-controls="menu-notifications"
+                    aria-haspopup="true"
                   >
-                    <Badge badgeContent={unreadCount > 0 ? unreadCount : undefined} color="error">
+                    <Badge badgeContent={unreadCount} color="error" overlap="circular">
                       <NotificationsIcon />
                     </Badge>
                   </IconButton>
@@ -439,18 +457,28 @@ const Navbar: React.FC = () => {
                           No notifications found
                         </Typography>
                         
-                        {/* Boş bildirim durumunda da tüm bildirimleri görüntüle butonu */}
-                        <Button
-                          variant="contained"
-                          fullWidth
-                          onClick={() => {
-                            handleCloseNotificationsMenu();
-                            navigate(userType === 'admin' ? '/admin/notifications' : '/restaurant/notifications');
-                          }}
-                          sx={{ mt: 2 }}
-                        >
-                          View All Notifications
-                        </Button>
+                        <Divider />
+                        
+                        <Box sx={{ textAlign: 'center', my: 2 }}>
+                          <Button
+                            size="small"
+                            onClick={() => {
+                              handleCloseNotificationsMenu();
+                              // Kullanıcı tipine göre bildirim sayfasına yönlendir
+                              if (userType === 'admin') {
+                                navigate('/admin/notifications');
+                              } else if (userType === 'restaurant') {
+                                navigate('/restaurant/notifications');
+                              } else if (userType === 'courier') {
+                                navigate('/courier/notifications');
+                              } else if (userType === 'customer') {
+                                navigate('/notifications');
+                              }
+                            }}
+                          >
+                            View All Notifications
+                          </Button>
+                        </Box>
                       </Box>
                     ) : (
                       <>
@@ -506,17 +534,28 @@ const Navbar: React.FC = () => {
                           ))}
                         </List>
                         
-                        {/* Tüm bildirimleri görüntüle butonu */}
-                        <Button
-                          variant="contained"
-                          fullWidth
-                          onClick={() => {
-                            handleCloseNotificationsMenu();
-                            navigate(userType === 'admin' ? '/admin/notifications' : '/restaurant/notifications');
-                          }}
-                        >
-                          View All Notifications
-                        </Button>
+                        <Divider />
+                        
+                        <Box sx={{ textAlign: 'center', my: 2 }}>
+                          <Button
+                            size="small"
+                            onClick={() => {
+                              handleCloseNotificationsMenu();
+                              // Kullanıcı tipine göre bildirim sayfasına yönlendir
+                              if (userType === 'admin') {
+                                navigate('/admin/notifications');
+                              } else if (userType === 'restaurant') {
+                                navigate('/restaurant/notifications');
+                              } else if (userType === 'courier') {
+                                navigate('/courier/notifications');
+                              } else if (userType === 'customer') {
+                                navigate('/notifications');
+                              }
+                            }}
+                          >
+                            View All Notifications
+                          </Button>
+                        </Box>
                       </>
                     )}
                   </Box>

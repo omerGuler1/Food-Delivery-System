@@ -75,6 +75,15 @@ public class MessageController {
     }
     
     /**
+     * Courier için özel olarak mesajları getir (sadece receiverType=COURIER olanlar)
+     */
+    @GetMapping("/courier/received/{courierId}")
+    public ResponseEntity<List<MessageDTO>> getCourierReceivedMessages(@PathVariable Long courierId) {
+        List<MessageDTO> messages = messageService.getReceivedMessages(courierId, "COURIER");
+        return ResponseEntity.ok(messages);
+    }
+    
+    /**
      * Bir kullanıcının okunmamış mesajlarını getir
      */
     @GetMapping("/unread/{userId}")
@@ -109,6 +118,15 @@ public class MessageController {
     @GetMapping("/restaurant/unread/{restaurantId}")
     public ResponseEntity<List<MessageDTO>> getRestaurantUnreadMessages(@PathVariable Long restaurantId) {
         List<MessageDTO> messages = messageService.getUnreadMessages(restaurantId, "RESTAURANT");
+        return ResponseEntity.ok(messages);
+    }
+    
+    /**
+     * Courier için özel olarak okunmamış mesajları getir (sadece receiverType=COURIER olanlar)
+     */
+    @GetMapping("/courier/unread/{courierId}")
+    public ResponseEntity<List<MessageDTO>> getCourierUnreadMessages(@PathVariable Long courierId) {
+        List<MessageDTO> messages = messageService.getUnreadMessages(courierId, "COURIER");
         return ResponseEntity.ok(messages);
     }
     
@@ -151,5 +169,23 @@ public class MessageController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
+    }
+    
+    /**
+     * Customer için özel olarak mesajları getir (sadece receiverType=CUSTOMER olanlar)
+     */
+    @GetMapping("/customer/received/{customerId}")
+    public ResponseEntity<List<MessageDTO>> getCustomerReceivedMessages(@PathVariable Long customerId) {
+        List<MessageDTO> messages = messageService.getCustomerReceivedMessages(customerId);
+        return ResponseEntity.ok(messages);
+    }
+    
+    /**
+     * Customer için özel olarak okunmamış mesajları getir (sadece receiverType=CUSTOMER olanlar)
+     */
+    @GetMapping("/customer/unread/{customerId}")
+    public ResponseEntity<List<MessageDTO>> getCustomerUnreadMessages(@PathVariable Long customerId) {
+        List<MessageDTO> messages = messageService.getCustomerUnreadMessages(customerId);
+        return ResponseEntity.ok(messages);
     }
 } 

@@ -36,6 +36,8 @@ import FeedbackPage from './pages/FeedbackPage';
 import AdminNotificationsPage from './pages/AdminNotificationsPage';
 import AdminSendMessagePage from './pages/AdminSendMessagePage';
 import RestaurantNotificationsPage from './pages/RestaurantNotificationsPage';
+import CourierNotificationsPage from './pages/CourierNotificationsPage';
+import CustomerNotificationsPage from './pages/CustomerNotificationsPage';
 
 // Protected route component
 interface ProtectedRouteProps {
@@ -389,6 +391,9 @@ const App: React.FC = () => {
                   <Route path="/courier/profile" element={
                     <ProtectedRoute userType="courier" element={<CourierProfile />} />
                   } />
+                  <Route path="/courier/notifications" element={
+                    <ProtectedRoute userType="courier" element={<CourierNotificationsPage />} />
+                  } />
                   
                   {/* Admin routes */}
                   <Route path="/admin/dashboard" element={
@@ -434,6 +439,11 @@ const App: React.FC = () => {
                   {/* Add the feedback route */}
                   <Route path="/feedback" element={
                     <ProtectedRoute userType="customer" element={<FeedbackPage />} />
+                  } />
+                  
+                  {/* Add the customer notifications route */}
+                  <Route path="/notifications" element={
+                    <ProtectedRoute userType="customer" element={<CustomerNotificationsPage />} />
                   } />
                   
                   {/* Fallback route */}

@@ -44,20 +44,35 @@ public class MessageService {
      * Bir kullanıcının aldığı tüm mesajları getir
      * Eğer kullanıcı admin ise, sadece receiverType=ADMIN olan mesajları getir
      * Eğer kullanıcı restaurant ise, sadece receiverType=RESTAURANT olan mesajları getir
+     * Eğer kullanıcı courier ise, sadece receiverType=COURIER olan mesajları getir
+     * Eğer kullanıcı customer ise, sadece receiverType=CUSTOMER olan mesajları getir
      */
     @Transactional(readOnly = true)
     public List<MessageDTO> getReceivedMessages(Long userId, String userType) {
         List<Message> messages;
         
+        System.out.println("getReceivedMessages called with userId: " + userId + ", userType: " + userType);
+        
         if ("ADMIN".equalsIgnoreCase(userType)) {
             // Admin kullanıcısı için özel sorgu
             messages = messageRepository.findAdminReceivedMessages(userId);
+            System.out.println("Admin messages found: " + messages.size());
         } else if ("RESTAURANT".equalsIgnoreCase(userType)) {
             // Restaurant kullanıcısı için özel sorgu
             messages = messageRepository.findRestaurantReceivedMessages(userId);
+            System.out.println("Restaurant messages found: " + messages.size());
+        } else if ("COURIER".equalsIgnoreCase(userType)) {
+            // Courier kullanıcısı için özel sorgu
+            messages = messageRepository.findCourierReceivedMessages(userId);
+            System.out.println("Courier messages found: " + messages.size());
+        } else if ("CUSTOMER".equalsIgnoreCase(userType)) {
+            // Customer kullanıcısı için özel sorgu
+            messages = messageRepository.findCustomerReceivedMessages(userId);
+            System.out.println("Customer messages found: " + messages.size());
         } else {
             // Diğer kullanıcılar için standart sorgu
             messages = messageRepository.findReceivedMessagesByUserId(userId);
+            System.out.println("Standard messages found: " + messages.size());
         }
         
         return messages.stream()
@@ -69,20 +84,35 @@ public class MessageService {
      * Bir kullanıcının okunmamış mesajlarını getir
      * Eğer kullanıcı admin ise, sadece receiverType=ADMIN olan mesajları getir
      * Eğer kullanıcı restaurant ise, sadece receiverType=RESTAURANT olan mesajları getir
+     * Eğer kullanıcı courier ise, sadece receiverType=COURIER olan mesajları getir
+     * Eğer kullanıcı customer ise, sadece receiverType=CUSTOMER olan mesajları getir
      */
     @Transactional(readOnly = true)
     public List<MessageDTO> getUnreadMessages(Long userId, String userType) {
         List<Message> messages;
         
+        System.out.println("getUnreadMessages called with userId: " + userId + ", userType: " + userType);
+        
         if ("ADMIN".equalsIgnoreCase(userType)) {
             // Admin kullanıcısı için özel sorgu
             messages = messageRepository.findAdminUnreadMessages(userId);
+            System.out.println("Admin unread messages found: " + messages.size());
         } else if ("RESTAURANT".equalsIgnoreCase(userType)) {
             // Restaurant kullanıcısı için özel sorgu
             messages = messageRepository.findRestaurantUnreadMessages(userId);
+            System.out.println("Restaurant unread messages found: " + messages.size());
+        } else if ("COURIER".equalsIgnoreCase(userType)) {
+            // Courier kullanıcısı için özel sorgu
+            messages = messageRepository.findCourierUnreadMessages(userId);
+            System.out.println("Courier unread messages found: " + messages.size());
+        } else if ("CUSTOMER".equalsIgnoreCase(userType)) {
+            // Customer kullanıcısı için özel sorgu
+            messages = messageRepository.findCustomerUnreadMessages(userId);
+            System.out.println("Customer unread messages found: " + messages.size());
         } else {
             // Diğer kullanıcılar için standart sorgu
             messages = messageRepository.findUnreadMessagesByUserId(userId);
+            System.out.println("Standard unread messages found: " + messages.size());
         }
         
         return messages.stream()
@@ -92,18 +122,30 @@ public class MessageService {
     
     /**
      * Geriye uyumluluk için eski metot (userType belirtilmeden)
+     * Filtreleme olmadan tüm mesajları döndürür
      */
     @Transactional(readOnly = true)
     public List<MessageDTO> getReceivedMessages(Long userId) {
-        return getReceivedMessages(userId, "CUSTOMER"); // Varsayılan olarak CUSTOMER
+        System.out.println("getReceivedMessages (no filter) called with userId: " + userId);
+        List<Message> messages = messageRepository.findReceivedMessagesByUserId(userId);
+        System.out.println("All messages (no filter) found: " + messages.size());
+        return messages.stream()
+                .map(MessageDTO::fromEntity)
+                .collect(Collectors.toList());
     }
     
     /**
      * Geriye uyumluluk için eski metot (userType belirtilmeden)
+     * Filtreleme olmadan tüm okunmamış mesajları döndürür
      */
     @Transactional(readOnly = true)
     public List<MessageDTO> getUnreadMessages(Long userId) {
-        return getUnreadMessages(userId, "CUSTOMER"); // Varsayılan olarak CUSTOMER
+        System.out.println("getUnreadMessages (no filter) called with userId: " + userId);
+        List<Message> messages = messageRepository.findUnreadMessagesByUserId(userId);
+        System.out.println("All unread messages (no filter) found: " + messages.size());
+        return messages.stream()
+                .map(MessageDTO::fromEntity)
+                .collect(Collectors.toList());
     }
     
     /**
@@ -124,6 +166,54 @@ public class MessageService {
     public List<MessageDTO> getRestaurantUnreadMessages(Long restaurantId) {
         return messageRepository.findRestaurantUnreadMessages(restaurantId)
                 .stream()
+                .map(MessageDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Courier için özel olarak alınan mesajları getir
+     */
+    @Transactional(readOnly = true)
+    public List<MessageDTO> getCourierReceivedMessages(Long courierId) {
+        return messageRepository.findCourierReceivedMessages(courierId)
+                .stream()
+                .map(MessageDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Courier için özel olarak okunmamış mesajları getir
+     */
+    @Transactional(readOnly = true)
+    public List<MessageDTO> getCourierUnreadMessages(Long courierId) {
+        return messageRepository.findCourierUnreadMessages(courierId)
+                .stream()
+                .map(MessageDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Customer için özel olarak alınan mesajları getir
+     */
+    @Transactional(readOnly = true)
+    public List<MessageDTO> getCustomerReceivedMessages(Long customerId) {
+        System.out.println("getCustomerReceivedMessages called with customerId: " + customerId);
+        List<Message> messages = messageRepository.findCustomerReceivedMessages(customerId);
+        System.out.println("Customer specific messages found: " + messages.size());
+        return messages.stream()
+                .map(MessageDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Customer için özel olarak okunmamış mesajları getir
+     */
+    @Transactional(readOnly = true)
+    public List<MessageDTO> getCustomerUnreadMessages(Long customerId) {
+        System.out.println("getCustomerUnreadMessages called with customerId: " + customerId);
+        List<Message> messages = messageRepository.findCustomerUnreadMessages(customerId);
+        System.out.println("Customer specific unread messages found: " + messages.size());
+        return messages.stream()
                 .map(MessageDTO::fromEntity)
                 .collect(Collectors.toList());
     }
