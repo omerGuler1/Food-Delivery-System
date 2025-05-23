@@ -277,15 +277,23 @@ const Navbar: React.FC = () => {
   useEffect(() => {
     const fetchDeliveryFee = async () => {
       try {
-        const feeData = await getDeliveryFee();
-        setDeliveryFeeAmount(feeData.fee);
+        // Sadece oturum açmış kullanıcılar için API'yi çağır
+        if (isAuthenticated && userType === 'customer') {
+          const feeData = await getDeliveryFee();
+          setDeliveryFeeAmount(feeData.fee);
+        } else {
+          // Oturum açmamış kullanıcılar için varsayılan değer kullan (15)
+          setDeliveryFeeAmount(15);
+        }
       } catch (error) {
         console.error('Error fetching delivery fee:', error);
+        // Hata durumunda varsayılan değer
+        setDeliveryFeeAmount(15);
       }
     };
     
     fetchDeliveryFee();
-  }, []);
+  }, [isAuthenticated, userType]);
 
   // Calculate total with fees
   const subtotal = cart.totalPrice || 0;
