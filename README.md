@@ -433,3 +433,11 @@ Create production configuration files:
 - **Password Encryption**: Secure password hashing
 - **Session Management**: Secure token handling
 
+<img width="1470" height="799" alt="Image" src="https://github.com/user-attachments/assets/399171f0-de10-4224-8bab-48c1d628f032" />
+<img width="1424" height="779" alt="Image" src="https://github.com/user-attachments/assets/8d8f2cac-9094-4600-abb0-cdc88b3f8eca" />
+<img width="1470" height="843" alt="Image" src="https://github.com/user-attachments/assets/b83788e2-d1d9-471b-8a4e-34089cabc3be" />
+<img width="1470" height="799" alt="Image" src="https://github.com/user-attachments/assets/5ec4b6f6-aaaa-431b-a1b4-87843154823a" />
+<img width="1470" height="799" alt="Image" src="https://github.com/user-attachments/assets/703c96a7-4846-429e-b8b0-e0cfe68b6c82" />
+<img width="1470" height="799" alt="Image" src="https://github.com/user-attachments/assets/90ffbcb5-81f9-4584-813e-f1c59887b9dc" />
+<img width="1470" height="867" alt="Image" src="https://github.com/user-attachments/assets/1daef9a9-e7d0-4ee1-a1ab-01db68167a56" />
+<img width="1470" height="843" alt="Image" src="https://github.com/user-attachments/assets/41a932c5-3531-4536-ac4b-c9e0f5a1f162" />
