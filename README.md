@@ -441,3 +441,4 @@ Create production configuration files:
 <img width="1470" height="799" alt="Image" src="https://github.com/user-attachments/assets/90ffbcb5-81f9-4584-813e-f1c59887b9dc" />
 <img width="1470" height="867" alt="Image" src="https://github.com/user-attachments/assets/1daef9a9-e7d0-4ee1-a1ab-01db68167a56" />
 <img width="1470" height="843" alt="Image" src="https://github.com/user-attachments/assets/41a932c5-3531-4536-ac4b-c9e0f5a1f162" />
+<img width="4409" height="2198" alt="image" src="https://github.com/user-attachments/assets/9f17e6c5-a00d-4549-b8ca-24b1b99d7e7f" />
